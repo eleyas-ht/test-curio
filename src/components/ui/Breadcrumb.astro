@@ -1,0 +1,33 @@
+---
+// ============================================================
+//  Breadcrumb — editorial trail (Home / Shop / …).
+// ============================================================
+interface Crumb {
+  label: string;
+  href?: string;
+}
+interface Props {
+  items: Crumb[];
+  class?: string;
+}
+const { items, class: className = '' } = Astro.props;
+---
+
+<nav aria-label="Breadcrumb" class={`wrap pt-6 ${className}`}>
+  <ol class="flex flex-wrap items-center gap-2 text-xs tracking-wide text-muted">
+    {
+      items.map((item, i) => (
+        <li class="flex items-center gap-2">
+          {item.href && i < items.length - 1 ? (
+            <a href={item.href} class="transition-fluid hover:text-clay">
+              {item.label}
+            </a>
+          ) : (
+            <span class="text-ink">{item.label}</span>
+          )}
+          {i < items.length - 1 && <span class="text-muted-light">/</span>}
+        </li>
+      ))
+    }
+  </ol>
+</nav>

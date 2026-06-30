@@ -1,0 +1,144 @@
+---
+// ============================================================
+//  Blog listing page — /blogs/[blog]
+//  Fetches all articles from a Shopify blog and renders them
+//  in the editorial journal-grid layout.
+// ============================================================
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import { getBlogListing } from '~/lib/shopify';
+import type { BlogArticle } from '~/lib/shopify/types';
+
+const { blog: blogHandle } = Astro.params;
+
+let blogTitle = '';
+let articles: BlogArticle[] = [];
+let loadFailed = false;
+
+try {
+  const result = await getBlogListing(blogHandle!, 24);
+  if (result) {
+    blogTitle = result.title;
+    articles = result.articles;
+  } else {
+    Astro.response.status = 404;
+  }
+} catch (err) {
+  loadFailed = true;
+  console.error('[blog] load failed:', (err as Error).message);
+  Astro.response.status = 503;
+}
+
+function formatDate(iso: string): string {
+  try {
+    return new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).format(new Date(iso));
+  } catch {
+    return '';
+  }
+}
+
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function truncate(text: string, max: number): string {
+  if (text.length <= max) return text;
+  return text.slice(0, max).trimEnd() + '…';
+}
+
+function getExcerpt(a: BlogArticle): string {
+  const raw = a.excerpt || (a.contentHtml ? stripHtml(a.contentHtml) : '');
+  return truncate(raw, 180);
+}
+---
+
+<BaseLayout
+  title={blogTitle || 'Journal'}
+  description={`Latest stories from ${blogTitle || 'the journal'}.`}
+>
+  <main class="blog-listing">
+    <div class="container">
+
+      {/* Breadcrumb */}
+      <nav class="shop-breadcrumb" aria-label="Breadcrumb">
+        <a href="/">Home</a>
+        <span class="shop-bc-sep">/</span>
+        <span aria-current="page">{blogTitle || 'Journal'}</span>
+      </nav>
+
+      {/* Header */}
+      <header class="blog-listing-head">
+        <span class="shop-eyebrow"><span class="shop-eyebrow-dot"></span>The Journal</span>
+        <h1 class="blog-listing-title">{blogTitle || 'Journal'}</h1>
+      </header>
+
+      {loadFailed ? (
+        <p class="blog-listing-empty">Unable to load articles right now. Please try again later.</p>
+      ) : articles.length === 0 ? (
+        <p class="blog-listing-empty">No articles found.</p>
+      ) : (
+        <div class="journal-grid blog-listing-grid">
+          {articles.map((a) => {
+            const href = `/blogs/${a.blog.handle}/${a.handle}`;
+            const category = a.tags[0] ?? 'Journal';
+            const excerpt = getExcerpt(a);
+            return (
+              <article class="journal-card">
+                <a href={href} class="journal-image">
+                  {a.image
+                    ? <img src={a.image.url} alt={a.image.altText ?? a.title} loading="lazy" />
+                    : <div class="journal-image-placeholder" aria-hidden="true" />
+                  }
+                </a>
+                <span class="journal-cat">{category}</span>
+                <h3 class="journal-title">
+                  <a href={href} class="blog-title-link">{a.title}</a>
+                </h3>
+                {excerpt && <p class="journal-excerpt">{excerpt}</p>}
+                <div class="journal-meta">
+                  {a.author?.name && <span>By <em>{a.author.name}</em></span>}
+                  {a.author?.name && <span class="dot" />}
+                  <span>{formatDate(a.publishedAt)}</span>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
+
+    </div>
+  </main>
+</BaseLayout>
+
+<style>
+  .blog-listing {
+    padding: 40px 0 100px;
+  }
+  .blog-listing-head {
+    padding-bottom: 40px;
+    border-bottom: 1px solid var(--sand);
+    margin-bottom: 48px;
+  }
+  .blog-listing-title {
+    font-family: var(--font-serif);
+    font-size: clamp(36px, 5vw, 64px);
+    font-weight: 400;
+    line-height: 1.05;
+    letter-spacing: -0.025em;
+    color: var(--ink);
+    margin-top: 10px;
+  }
+  .blog-listing-grid {
+    /* Reuse the .journal-grid class from editorial.css but with more rows */
+  }
+  .blog-title-link {
+    color: inherit;
+    text-decoration: none;
+  }
+  .blog-title-link:hover {
+    color: var(--clay);
+  }
+  .blog-listing-empty {
+    color: var(--muted);
+    padding: 40px 0;
+  }
+</style>

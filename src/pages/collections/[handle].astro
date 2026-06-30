@@ -1,0 +1,56 @@
+---
+// Collection PLP — uses the editorial shop layout (the mockup's shop
+// page IS the collection listing), wired to the live Shopify collection.
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import ShopBody from '~/components/pages/ShopBody.astro';
+import '~/styles/pages/shop.css';
+import { getCollection } from '~/lib/shopify';
+import { buildFacets } from '~/lib/facets';
+import type { CollectionWithProducts } from '~/lib/shopify/types';
+
+const { handle } = Astro.params;
+
+let collection: CollectionWithProducts | null = null;
+let loadFailed = false;
+try {
+  collection = await getCollection({ handle: handle!, pageSize: 100, sortKey: 'COLLECTION_DEFAULT' });
+} catch (err) {
+  loadFailed = true;
+  console.error('[collection] load failed:', (err as Error).message);
+}
+if (loadFailed) Astro.response.status = 503;
+else if (!collection) Astro.response.status = 404;
+
+const products = collection?.products.items ?? [];
+const facets = buildFacets(products);
+const titleWord = collection
+  ? `${collection.title.split(' ').slice(0, -1).join(' ')} <em>${collection.title.split(' ').slice(-1)[0]}</em>`
+  : '';
+---
+
+{
+  collection ? (
+    <BaseLayout
+      title={collection.seo?.title ?? collection.title}
+      description={collection.seo?.description ?? collection.description}
+      image={collection.image?.url}
+    >
+      <ShopBody
+        products={products}
+        facets={facets}
+        heading={titleWord}
+        subtitle={collection.description || 'Curated by our editors — every piece tested and chosen with care.'}
+        crumb={collection.title}
+      />
+    </BaseLayout>
+  ) : (
+    <BaseLayout title={loadFailed ? 'Something went wrong' : 'Collection not found'}>
+      <main class="shop"><div class="container" style="padding:120px 0;text-align:center">
+        <span class="shop-eyebrow" style="justify-content:center"><span class="shop-eyebrow-dot" />{loadFailed ? 'Error 503' : 'Error 404'}</span>
+        <h1 class="shop-title" style="margin:16px 0">{loadFailed ? 'Something went wrong' : 'Collection not found'}</h1>
+        <p class="shop-sub" style="margin:0 auto 24px;max-width:420px">We couldn't find that collection.</p>
+        <a class="btn-primary" href="/collections">All collections</a>
+      </div></main>
+    </BaseLayout>
+  )
+}

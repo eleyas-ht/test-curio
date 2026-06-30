@@ -1,0 +1,53 @@
+---
+// ============================================================
+//  Journal — three editorial article cards (static config).
+// ============================================================
+import { Image } from 'astro:assets';
+import SectionHeading from '~/components/ui/SectionHeading.astro';
+import { JOURNAL } from '~/config/journal';
+import { img } from '~/lib/assets';
+---
+
+<section class="border-t border-sand-deep bg-cream-deep">
+  <div class="wrap py-20 md:py-28">
+    <SectionHeading
+      eyebrow="The Journal"
+      title="Reading for *the curious*."
+      href="/blogs/news/"
+      linkLabel="All stories"
+      class="mb-14"
+    />
+    <div class="grid gap-x-8 gap-y-12 md:grid-cols-3">
+      {
+        JOURNAL.map((post) => {
+          const cover = img(post.image);
+          return (
+            <a href={post.href} class="group block">
+              <div class="aspect-[3/2] overflow-hidden rounded-md border border-sand-deep bg-warm-white">
+                {cover && (
+                  <Image
+                    src={cover}
+                    alt={post.title}
+                    widths={[400, 640]}
+                    sizes="(min-width: 768px) 33vw, 100vw"
+                    class="h-full w-full object-cover transition-transform duration-[600ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
+                  />
+                )}
+              </div>
+              <p class="ed-label mt-5 !gap-2 before:w-3">{post.category}</p>
+              <h3 class="mt-3 font-serif text-xl leading-snug text-ink transition-fluid group-hover:text-clay">
+                {post.title}
+              </h3>
+              <p class="mt-2 text-sm leading-relaxed text-muted">{post.excerpt}</p>
+              <div class="mt-4 flex items-center gap-2 text-xs text-muted-light">
+                <em class="font-serif text-muted">{post.author}</em>
+                <span class="h-1 w-1 rounded-full bg-sand-deep"></span>
+                <span>{post.readTime} read</span>
+              </div>
+            </a>
+          );
+        })
+      }
+    </div>
+  </div>
+</section>

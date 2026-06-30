@@ -1,0 +1,28 @@
+---
+// ============================================================
+//  Logo — Curio serif wordmark with a small "The Edit" superscript,
+//  echoing the editorial masthead.
+// ============================================================
+import { SITE } from '~/config/site';
+import { cn } from '~/lib/utils';
+
+interface Props {
+  class?: string;
+  /** Hide the superscript suffix. */
+  compact?: boolean;
+}
+const { class: className, compact = false } = Astro.props;
+---
+
+<a
+  href="/"
+  class={cn('inline-flex items-baseline font-serif text-[1.5rem] font-medium leading-none tracking-[-0.01em] text-ink', className)}
+  aria-label={`${SITE.name} — home`}
+>
+  {SITE.name}
+  {!compact && (
+    <sup class="ml-0.5 font-sans text-[0.5rem] font-semibold uppercase tracking-[0.18em] text-clay">
+      {SITE.brandSuffix}
+    </sup>
+  )}
+</a>

@@ -1,0 +1,128 @@
+---
+// ============================================================
+//  Newsletter — editorial "a letter, weekly" signup band.
+//  Posts to /api/newsletter → Shopify subscribeEmailToNewsletter.
+//  All layout, typography, spacing, and animation is unchanged.
+// ============================================================
+interface Props {
+  eyebrow?: string;
+  title?: string;
+  body?: string;
+  class?: string;
+}
+const {
+  eyebrow = 'A letter, weekly',
+  title = 'Join *the Edit*.',
+  body = 'One considered email a week — buying guides, early drops, and the products our editors actually recommend. No noise.',
+  class: className = '',
+} = Astro.props;
+const titleHtml = title.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+---
+
+<section class={`bg-cocoa text-cream ${className}`}>
+  <div class="wrap flex flex-col items-center py-20 text-center md:py-28">
+    <span aria-hidden="true" class="font-serif text-5xl leading-none text-clay">&ldquo;</span>
+    <p class="ed-label is-center mt-4 text-clay">{eyebrow}</p>
+    <h2 class="masthead mt-5 max-w-2xl text-[clamp(1.9rem,4vw,3rem)] text-cream" set:html={titleHtml} />
+    <p class="mt-5 max-w-xl text-sm leading-relaxed text-cream/70">{body}</p>
+
+    <form data-newsletter class="mt-9 flex w-full max-w-md flex-col gap-3 sm:flex-row">
+      <label for="nl-email" class="sr-only">Email address</label>
+      <input
+        id="nl-email"
+        name="email"
+        type="email"
+        required
+        placeholder="you@email.com"
+        class="h-12 flex-1 rounded-md border border-cream/25 bg-transparent px-4 text-sm text-cream outline-none transition-fluid placeholder:text-cream/40 focus:border-clay"
+      />
+      <button
+        type="submit"
+        class="h-12 shrink-0 rounded-md bg-clay px-7 text-sm font-medium text-warm-white transition-fluid hover:bg-clay-deep"
+      >
+        Subscribe
+      </button>
+    </form>
+
+    <!-- Success message (hidden until subscription succeeds) -->
+    <p data-newsletter-done role="status" aria-live="polite" class="mt-3 hidden text-xs text-clay">
+      You're on the list — watch your inbox.
+    </p>
+
+    <!-- Error message (hidden until an error occurs) -->
+    <p data-newsletter-error role="alert" aria-live="assertive" class="mt-3 hidden text-xs text-red-400">
+    </p>
+
+    <p class="mt-3 text-[0.7rem] text-cream/40">No spam. Unsubscribe anytime.</p>
+  </div>
+</section>
+
+<script>
+  document.querySelectorAll<HTMLFormElement>('[data-newsletter]').forEach((form) => {
+    const submitBtn = form.querySelector<HTMLButtonElement>('[type="submit"]');
+    const emailInput = form.querySelector<HTMLInputElement>('[name="email"]');
+    const successEl = form.parentElement?.querySelector<HTMLElement>('[data-newsletter-done]');
+    const errorEl = form.parentElement?.querySelector<HTMLElement>('[data-newsletter-error]');
+
+    function setLoading(loading: boolean) {
+      if (!submitBtn) return;
+      submitBtn.disabled = loading;
+      submitBtn.textContent = loading ? 'Subscribing…' : 'Subscribe';
+      submitBtn.style.opacity = loading ? '0.65' : '';
+    }
+
+    function showError(msg: string) {
+      if (!errorEl) return;
+      errorEl.textContent = msg;
+      errorEl.classList.remove('hidden');
+      successEl?.classList.add('hidden');
+    }
+
+    function showSuccess() {
+      successEl?.classList.remove('hidden');
+      errorEl?.classList.add('hidden');
+      form.reset();
+      // Re-enable button in case the user wants to add another address.
+      setLoading(false);
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      // Clear previous messages.
+      errorEl?.classList.add('hidden');
+      successEl?.classList.add('hidden');
+
+      const email = (emailInput?.value ?? '').trim();
+
+      // Client-side email check before hitting the server.
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showError('Please enter a valid email address.');
+        emailInput?.focus();
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        const res = await fetch('/api/newsletter', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+
+        const payload = await res.json().catch(() => ({ ok: false, error: 'Unexpected response.' }));
+
+        if (payload.ok) {
+          showSuccess();
+        } else {
+          showError(payload.error ?? 'Subscription failed. Please try again.');
+          setLoading(false);
+        }
+      } catch {
+        showError('Network error — please check your connection and try again.');
+        setLoading(false);
+      }
+    });
+  });
+</script>

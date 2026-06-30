@@ -1,0 +1,140 @@
+---
+// ============================================================
+//  Bundle — SSR wrapper for the Curated Bundle section.
+//
+//  Resolves product data at request time:
+//    • shopify mode → calls getProduct() per handle and maps
+//      real variants / prices / images into BundleItemData[]
+//    • custom mode → passes static config data directly
+//
+//  Then mounts BundleSection as a React island (client:load)
+//  so the slider, item toggles, and add-to-cart are interactive.
+//
+//  Configuration: src/config/bundles.ts
+// ============================================================
+import BundleSectionReact from '~/components/react/BundleSection';
+import type { BundleItemData, BundleSlideData } from '~/components/react/BundleSection';
+import { BUNDLE } from '~/config/bundles';
+import { getProduct } from '~/lib/shopify';
+import type { Product } from '~/lib/shopify/types';
+
+// ── Helpers ──────────────────────────────────────────────────
+
+function parseAmount(amount: string): number {
+  return parseFloat(amount) || 0;
+}
+
+/**
+ * Truncate `text` to at most `wordLimit` words, appending "…" when trimmed.
+ * Pass 0 to return an empty string (hides the description row entirely).
+ */
+function truncateDesc(text: string, wordLimit: number): string {
+  if (wordLimit === 0) return '';
+  const words = text.trim().split(/\s+/);
+  if (words.length <= wordLimit) return text.trim();
+  return words.slice(0, wordLimit).join(' ') + '…';
+}
+
+function isDefaultOnly(product: Product): boolean {
+  const opts = product.options ?? [];
+  return (
+    opts.length === 0 ||
+    (opts.length === 1 &&
+      (opts[0].optionValues?.length ?? 0) <= 1 &&
+      opts[0].optionValues?.[0]?.name === 'Default Title')
+  );
+}
+
+// ── Build resolved slides ─────────────────────────────────────
+
+const resolvedSlides: BundleSlideData[] = await Promise.all(
+  BUNDLE.bundles.map(async (bundle) => {
+    let items: BundleItemData[] = [];
+
+    if (BUNDLE.mode === 'shopify' && bundle.productHandles.length > 0) {
+      // Fetch each product by handle in parallel; silently skip failures
+      const fetched = await Promise.all(
+        bundle.productHandles.map((handle) =>
+          getProduct(handle).catch(() => null),
+        ),
+      );
+      const products = fetched.filter((p): p is Product => p !== null);
+
+      // Capture the store currency from the first available variant price.
+      const slideCurrencyCode =
+        products[0]?.variants?.[0]?.price?.currencyCode ?? 'USD';
+
+      items = products.map((p) => {
+        const hasOnlyDefault = isDefaultOnly(p);
+
+        const variants = (p.variants ?? []).map((v) => ({
+          id: v.id,
+          title: v.title,
+          price: parseAmount(v.price.amount),
+          compareAtPrice: v.compareAtPrice
+            ? parseAmount(v.compareAtPrice.amount)
+            : undefined,
+          availableForSale: v.availableForSale,
+          selectedOptions: v.selectedOptions,
+          imageUrl: v.image?.url,
+        }));
+
+        const first = variants[0];
+
+        return {
+          shopifyId: p.id,
+          handle: p.handle,
+          variants,
+          hasOnlyDefaultVariant: hasOnlyDefault,
+          availableForSale: p.availableForSale,
+          image: p.featuredImage?.url ?? p.images?.[0]?.url ?? '',
+          imageAlt: p.featuredImage?.altText ?? p.title,
+          name: p.title,
+          description: truncateDesc(p.description ?? '', BUNDLE.descriptionWordLimit),
+          price: first?.price ?? 0,
+          compareAtPrice: first?.compareAtPrice,
+        } satisfies BundleItemData;
+      });
+
+      return {
+        label: bundle.label,
+        title: bundle.title,
+        intro: bundle.intro,
+        heroImage: bundle.heroImage,
+        discount: bundle.discount,
+        ctaText: bundle.ctaText ?? 'Add Setup to cart',
+        isShopifyMode: BUNDLE.mode === 'shopify',
+        discountCode: bundle.discountCode,
+        currencyCode: slideCurrencyCode,
+        items,
+      } satisfies BundleSlideData;
+    } else {
+      // Custom / fallback: use static config data
+      items = bundle.customProducts.map((cp) => ({
+        image: cp.image,
+        name: cp.name,
+        description: cp.description,
+        price: cp.price,
+        compareAtPrice: cp.compareAtPrice,
+      }));
+    }
+
+    return {
+      label: bundle.label,
+      title: bundle.title,
+      intro: bundle.intro,
+      heroImage: bundle.heroImage,
+      discount: bundle.discount,
+      ctaText: bundle.ctaText ?? 'Add Setup to cart',
+      isShopifyMode: BUNDLE.mode === 'shopify',
+      discountCode: bundle.discountCode,
+      currencyCode: 'USD',
+      items,
+    } satisfies BundleSlideData;
+  }),
+);
+---
+
+{resolvedSlides.length > 0 && (
+  <BundleSectionReact client:load slides={resolvedSlides} />
+)}

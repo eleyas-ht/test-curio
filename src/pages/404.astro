@@ -1,0 +1,133 @@
+---
+// Custom 404 — editorial.
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import '~/styles/pages/404.css';
+---
+
+<BaseLayout title="Page not found" description="The page you're looking for doesn't exist.">
+  <main class="e404">
+    <div class="container">
+
+      <!-- Hero: ghost number + copy -->
+      <div class="e404-hero">
+        <div>
+          <span class="e404-num" aria-hidden="true">404</span>
+          <span class="e404-eyebrow"><span class="e404-eyebrow-dot"></span>Error 404</span>
+          <h1 class="e404-title">Lost the <em>thread.</em></h1>
+          <p class="e404-body">
+            This page doesn't exist — the link may be broken, or the piece has sold out.
+            Let's get you back to something worth reading.
+          </p>
+          <div class="e404-actions">
+            <a class="btn-primary" href="/">
+              Back home
+              <svg viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M8.22 2.97a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06l2.97-2.97H3.75a.75.75 0 0 1 0-1.5h7.44L8.22 4.03a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd"/></svg>
+            </a>
+            <a class="btn-ghost" href="/products">Browse products</a>
+          </div>
+        </div>
+
+        <!-- Where to go map -->
+        <div class="e404-map">
+          <p class="e404-map-title">Where to go from here</p>
+          <nav class="e404-map-list">
+            <a class="e404-map-item" href="/products">
+              <div class="e404-map-left">
+                <div class="e404-map-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007Z"/></svg>
+                </div>
+                <div>
+                  <p class="e404-map-name">Shop</p>
+                  <p class="e404-map-desc">Browse all curated products</p>
+                </div>
+              </div>
+              <svg class="e404-map-arrow" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M8.22 2.97a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06l2.97-2.97H3.75a.75.75 0 0 1 0-1.5h7.44L8.22 4.03a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd"/></svg>
+            </a>
+            <a class="e404-map-item" href="/collections">
+              <div class="e404-map-left">
+                <div class="e404-map-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z"/></svg>
+                </div>
+                <div>
+                  <p class="e404-map-name">Collections</p>
+                  <p class="e404-map-desc">Shop by category</p>
+                </div>
+              </div>
+              <svg class="e404-map-arrow" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M8.22 2.97a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06l2.97-2.97H3.75a.75.75 0 0 1 0-1.5h7.44L8.22 4.03a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd"/></svg>
+            </a>
+            <a class="e404-map-item" href="/blogs/news/">
+              <div class="e404-map-left">
+                <div class="e404-map-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25"/></svg>
+                </div>
+                <div>
+                  <p class="e404-map-name">Journal</p>
+                  <p class="e404-map-desc">Buying guides & editor picks</p>
+                </div>
+              </div>
+              <svg class="e404-map-arrow" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M8.22 2.97a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06l2.97-2.97H3.75a.75.75 0 0 1 0-1.5h7.44L8.22 4.03a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd"/></svg>
+            </a>
+            <a class="e404-map-item" href="/about">
+              <div class="e404-map-left">
+                <div class="e404-map-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Zm6-10.125a1.875 1.875 0 1 1-3.75 0 1.875 1.875 0 0 1 3.75 0Zm1.294 6.336a6.721 6.721 0 0 1-3.17.789 6.721 6.721 0 0 1-3.168-.789 3.376 3.376 0 0 1 6.338 0Z"/></svg>
+                </div>
+                <div>
+                  <p class="e404-map-name">About</p>
+                  <p class="e404-map-desc">The story behind Curio</p>
+                </div>
+              </div>
+              <svg class="e404-map-arrow" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M8.22 2.97a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06l2.97-2.97H3.75a.75.75 0 0 1 0-1.5h7.44L8.22 4.03a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd"/></svg>
+            </a>
+            <a class="e404-map-item" href="/contact">
+              <div class="e404-map-left">
+                <div class="e404-map-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/></svg>
+                </div>
+                <div>
+                  <p class="e404-map-name">Contact</p>
+                  <p class="e404-map-desc">Get in touch with the team</p>
+                </div>
+              </div>
+              <svg class="e404-map-arrow" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M8.22 2.97a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06l2.97-2.97H3.75a.75.75 0 0 1 0-1.5h7.44L8.22 4.03a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd"/></svg>
+            </a>
+          </nav>
+        </div>
+      </div>
+
+      <!-- Search row -->
+      <div class="e404-search-row">
+        <span class="e404-search-label">Try searching:</span>
+        <form class="e404-search-form" action="/search" method="get">
+          <input
+            class="e404-search-input"
+            type="search"
+            name="q"
+            placeholder="Headphones, cameras, laptops…"
+            autocomplete="off"
+            aria-label="Search products"
+          />
+          <button class="e404-search-btn" type="submit" aria-label="Search">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clip-rule="evenodd"/></svg>
+          </button>
+        </form>
+      </div>
+
+      <!-- Popular topics -->
+      <div class="e404-popular">
+        <p class="e404-popular-label">Popular right now</p>
+        <div class="e404-tags">
+          <a class="e404-tag" href="/search?q=headphones">Headphones</a>
+          <a class="e404-tag" href="/search?q=laptop">Laptops</a>
+          <a class="e404-tag" href="/search?q=camera">Cameras</a>
+          <a class="e404-tag" href="/search?q=phone">Phones</a>
+          <a class="e404-tag" href="/search?q=accessories">Accessories</a>
+          <a class="e404-tag" href="/collections/editors-picks">Editor's Picks</a>
+          <a class="e404-tag" href="/collections/new-arrivals">New Arrivals</a>
+          <a class="e404-tag" href="/faq">FAQs</a>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</BaseLayout>

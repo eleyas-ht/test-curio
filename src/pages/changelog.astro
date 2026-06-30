@@ -1,0 +1,16 @@
+---
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import ChangelogBody from '~/components/pages/ChangelogBody.astro';
+import '~/styles/pages/changelog.css';
+
+if (!import.meta.env.DEV) {
+  return Astro.redirect('/404', 302);
+}
+---
+
+<BaseLayout
+  title="Changelog"
+  description="Every update to the Curio Editorial Astro theme — new features, improvements, and bug fixes."
+>
+  <ChangelogBody />
+</BaseLayout>

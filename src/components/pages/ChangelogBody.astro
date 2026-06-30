@@ -1,0 +1,284 @@
+---
+// ChangelogBody.astro — Theme version history & release notes.
+---
+
+<!-- Hero -->
+<section class="cl-hero">
+  <div class="container">
+    <div class="cl-hero-inner">
+      <div>
+        <span class="cl-eyebrow"><span class="cl-eyebrow-dot"></span>Release Notes</span>
+        <h1 class="cl-hero-title">What's <em>changed.</em></h1>
+        <p class="cl-hero-lead">Every update to the Omnix Editorial Astro theme — new features, improvements, and fixes — documented in the order they shipped.</p>
+      </div>
+      <div class="cl-hero-aside">
+        <div>
+          <span class="cl-aside-label">Latest release</span>
+          <span class="cl-version-chip">v1.3.0</span>
+        </div>
+        <div>
+          <span class="cl-aside-label">Released</span>
+          <span class="cl-aside-value">June 28, 2026</span>
+        </div>
+        <div>
+          <span class="cl-aside-label">Total releases</span>
+          <span class="cl-aside-value">7 versions</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Filter bar -->
+<div class="cl-filter-bar">
+  <div class="container">
+    <div class="cl-filter-inner">
+      <span class="cl-filter-label">Filter:</span>
+      <button class="cl-filter-btn active" data-filter="all">All</button>
+      <button class="cl-filter-btn" data-filter="feature">Features</button>
+      <button class="cl-filter-btn" data-filter="fix">Bug fixes</button>
+      <button class="cl-filter-btn" data-filter="perf">Performance</button>
+      <button class="cl-filter-btn" data-filter="breaking">Breaking</button>
+    </div>
+  </div>
+</div>
+
+<!-- Timeline -->
+<div class="cl-timeline">
+  <div class="container">
+
+    <!-- 2026 -->
+    <div class="cl-year-group" data-year="2026">
+      <div class="cl-year-divider">
+        <span class="cl-year-num">2026</span>
+        <div class="cl-year-line"></div>
+      </div>
+
+      <!-- v1.3.0 -->
+      <div class="cl-entry" data-types="feature fix perf">
+        <div class="cl-entry-meta">
+          <span class="cl-version-tag cl-version-tag--major">v1.3.0</span>
+          <span class="cl-entry-date">June 28, 2026</span>
+          <span class="cl-release-type cl-release-type--feature">Feature release</span>
+        </div>
+        <div class="cl-entry-content">
+          <h2 class="cl-entry-title">Cart drawer, promo codes &amp; <em>resilience</em></h2>
+          <p class="cl-entry-summary">A complete overhaul of the cart experience: a fully editorial cart drawer replaces the React component, real Shopify discount codes are wired end-to-end, and the Shopify data layer now retries on transient network errors automatically.</p>
+          <div class="cl-changes">
+            <div class="cl-change">
+              <span class="cl-change-icon cl-change-icon--add" aria-hidden="true">
+                <svg viewBox="0 0 12 12" fill="currentColor"><path d="M6.75 2.75a.75.75 0 0 0-1.5 0V5.5H2.75a.75.75 0 0 0 0 1.5H5.25v2.75a.75.75 0 0 0 1.5 0V7h2.5a.75.75 0 0 0 0-1.5H6.75V2.75Z"/></svg>
+              </span>
+              <p class="cl-change-text"><strong>Cart drawer</strong> — replaced React island with a pure Astro + nanostore drawer. Promo code input, free-shipping progress bar, line-item recs, and a gift-wrap add-on are now all server-rendered HTML, hydrated by a single module script.</p>
+            </div>
+            <div class="cl-change">
+              <span class="cl-change-icon cl-change-icon--add" aria-hidden="true">
+                <svg viewBox="0 0 12 12" fill="currentColor"><path d="M6.75 2.75a.75.75 0 0 0-1.5 0V5.5H2.75a.75.75 0 0 0 0 1.5H5.25v2.75a.75.75 0 0 0 1.5 0V7h2.5a.75.75 0 0 0 0-1.5H6.75V2.75Z"/></svg>
+              </span>
+              <p class="cl-change-text"><strong>Promo codes</strong> — real Shopify <code>cartDiscountCodesUpdate</code> mutation. Shows a removable chip when the code is valid (<code>applicable: true</code>), inline error otherwise. Discount shown as subtotal − total.</p>
+            </div>
+            <div class="cl-change">
+              <span class="cl-change-icon cl-change-icon--add" aria-hidden="true">
+                <svg viewBox="0 0 12 12" fill="currentColor"><path d="M6.75 2.75a.75.75 0 0 0-1.5 0V5.5H2.75a.75.75 0 0 0 0 1.5H5.25v2.75a.75.75 0 0 0 1.5 0V7h2.5a.75.75 0 0 0 0-1.5H6.75V2.75Z"/></svg>
+              </span>
+              <p class="cl-change-text"><strong>Wishlist drawer</strong> — persistent wishlist stored in <code>localStorage</code>. Nanostore syncs the badge count in the header, drawer slide-out, and PDP heart button across all React islands.</p>
+            </div>
+            <div class="cl-change">
+              <span class="cl-change-icon cl-change-icon--perf" aria-hidden="true">
+                <svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 1a5 5 0 1 0 0 10A5 5 0 0 0 6 1zm.75 2.75a.75.75 0 0 0-1.5 0v2.5c0 .199.079.39.22.53l1.75 1.75a.75.75 0 1 0 1.06-1.06L6.75 6.19V3.75z"/></svg>
+              </span>
+              <p class="cl-change-text"><strong>Network resilience</strong> — <code>shopifyFetch</code> now retries up to 3× with exponential back-off on network errors, 429, and 5xx responses. Each request has a 12-second <code>AbortController</code> timeout. Eliminates the transient "Network error" 503s during cold starts.</p>
+            </div>
+            <div class="cl-change">
+              <span class="cl-change-icon cl-change-icon--add" aria-hidden="true">
+                <svg viewBox="0 0 12 12" fill="currentColor"><path d="M6.75 2.75a.75.75 0 0 0-1.5 0V5.5H2.75a.75.75 0 0 0 0 1.5H5.25v2.75a.75.75 0 0 0 1.5 0V7h2.5a.75.75 0 0 0 0-1.5H6.75V2.75Z"/></svg>
+              </span>
+              <p class="cl-change-text"><strong>Compare bar</strong> — sticky bottom bar for side-by-side product comparison. Supports up to 4 products; clicking "Compare" navigates to <code>/compare</code> with handles in the URL.</p>
+            </div>
+            <div class="cl-change">
+              <span class="cl-change-icon cl-change-icon--fix" aria-hidden="true">
+                <svg viewBox="0 0 12 12" fill="currentColor"><path fill-rule="evenodd" d="M10.03 2.97a.75.75 0 0 1 0 1.06L6.56 7.5l3.47 3.47a.75.75 0 1 1-1.06 1.06L5.5 8.56 2.03 12.03a.75.75 0 0 1-1.06-1.06L4.44 7.5.97 4.03a.75.75 0 0 1 1.06-1.06L5.5 6.44l3.47-3.47a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd"/></svg>
+              </span>
+              <p class="cl-change-text"><strong>Header nav</strong> — "Shop" and "Shop All" links now correctly map to <code>/products</code> via the <code>navUrl()</code> helper. Fixed stale URL mapping from the boilerplate.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- v1.2.0 -->
+      <div class="cl-entry" data-types="feature perf">
+        <div class="cl-entry-meta">
+          <span class="cl-version-tag cl-version-tag--minor">v1.2.0</span>
+          <span class="cl-entry-date">June 25, 2026</span>
+          <span class="cl-release-type cl-release-type--feature">Feature release</span>
+        </div>
+        <div class="cl-entry-content">
+          <h2 class="cl-entry-title">SSR product pages &amp; <em>Showcase</em> section</h2>
+          <p class="cl-entry-summary">The product detail page was refactored to render all static content server-side, eliminating flash-of-placeholder content. The home Showcase section received its final scroll-pinning implementation.</p>
+          <div class="cl-changes">
+            <div class="cl-change">
+              <span class="cl-change-icon cl-change-icon--perf" aria-hidden="true">
+                <svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 1a5 5 0 1 0 0 10A5 5 0 0 0 6 1zm.75 2.75a.75.75 0 0 0-1.5 0v2.5c0 .199.079.39.22.53l1.75 1.75a.75.75 0 1 0 1.06-1.06L6.75 6.19V3.75z"/></svg>
+              </span>
+              <p class="cl-change-text"><strong>SSR product page</strong> — <code>ProductBody.astro</code> now receives a fully-typed <code>pd</code> prop and renders title, vendor, description HTML, images, delivery estimate, and related products server-side. The <code>#pd-data</code> JSON blob is retained for variant switching only.</p>
+            </div>
+            <div class="cl-change">
+              <span class="cl-change-icon cl-change-icon--add" aria-hidden="true">
+                <svg viewBox="0 0 12 12" fill="currentColor"><path d="M6.75 2.75a.75.75 0 0 0-1.5 0V5.5H2.75a.75.75 0 0 0 0 1.5H5.25v2.75a.75.75 0 0 0 1.5 0V7h2.5a.75.75 0 0 0 0-1.5H6.75V2.75Z"/></svg>
+              </span>
+              <p class="cl-change-text"><strong>Showcase scroll pin</strong> — sticky-pin implementation with <code>.showcase-track</code> transparent wrapper and scroll-position-driven slide cross-fade. Works for wheel, trackpad, touch, scrollbar, and keyboard navigation.</p>
+            </div>
+            <div class="cl-change">
+              <span class="cl-change-icon cl-change-icon--add" aria-hidden="true">
+                <svg viewBox="0 0 12 12" fill="currentColor"><path d="M6.75 2.75a.75.75 0 0 0-1.5 0V5.5H2.75a.75.75 0 0 0 0 1.5H5.25v2.75a.75.75 0 0 0 1.5 0V7h2.5a.75.75 0 0 0 0-1.5H6.75V2.75Z"/></svg>
+              </span>
+              <p class="cl-change-text"><strong>Related products sidebar</strong> — PDP fetches up to 8 recommendations via <code>productRecommendations</code> and renders them as "Pairs well with" (sidebar) and "You May Also Like" (below-the-fold grid) — all SSR.</p>
+            </div>
+            <div class="cl-change">
+              <span class="cl-change-icon cl-change-icon--fix" aria-hidden="true">
+                <svg viewBox="0 0 12 12" fill="currentColor"><path fill-rule="evenodd" d="M10.03 2.97a.75.75 0 0 1 0 1.06L6.56 7.5l3.47 3.47a.75.75 0 1 1-1.06 1.06L5.5 8.56 2.03 12.03a.75.75 0 0 1-1.06-1.06L4.44 7.5.97 4.03a.75.75 0 0 1 1.06-1.06L5.5 6.44l3.47-3.47a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd"/></svg>
+              </span>
+              <p class="cl-change-text"><strong>PDP interactions</strong> — removed broken <code>onclick="pdAcc(this)"</code> / <code>onclick="pdBuyNow()"</code> / <code>onclick="pdWishToggle(this)"</code> inline handlers. All wired via <code>addEventListener</code> in the module script.</p>
+            </div>
+            <div class="cl-change">
+              <span class="cl-change-icon cl-change-icon--fix" aria-hidden="true">
+                <svg viewBox="0 0 12 12" fill="currentColor"><path fill-rule="evenodd" d="M10.03 2.97a.75.75 0 0 1 0 1.06L6.56 7.5l3.47 3.47a.75.75 0 1 1-1.06 1.06L5.5 8.56 2.03 12.03a.75.75 0 0 1-1.06-1.06L4.44 7.5.97 4.03a.75.75 0 0 1 1.06-1.06L5.5 6.44l3.47-3.47a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd"/></svg>
+              </span>
+              <p class="cl-change-text"><strong>Gallery component</strong> — PDP gallery is now a pure Astro component (<code>Gallery.astro</code>). The previous React island collapsed the <code>aspect-ratio</code> container due to <code>astro-island</code>'s default <code>display:inline</code>; fixed with <code>astro-island{"{display:contents}"}</code> in <code>global.css</code>.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- v1.1.0 -->
+      <div class="cl-entry" data-types="feature">
+        <div class="cl-entry-meta">
+          <span class="cl-version-tag cl-version-tag--minor">v1.1.0</span>
+          <span class="cl-entry-date">June 20, 2026</span>
+          <span class="cl-release-type cl-release-type--feature">Feature release</span>
+        </div>
+        <div class="cl-entry-content">
+          <h2 class="cl-entry-title">Collections, filters &amp; <em>search</em></h2>
+          <p class="cl-entry-summary">Full collection pages with faceted filtering, predictive search, the blog engine, team pages, and account management — all wired to Shopify data.</p>
+          <div class="cl-changes">
+            <div class="cl-change">
+              <span class="cl-change-icon cl-change-icon--add" aria-hidden="true">
+                <svg viewBox="0 0 12 12" fill="currentColor"><path d="M6.75 2.75a.75.75 0 0 0-1.5 0V5.5H2.75a.75.75 0 0 0 0 1.5H5.25v2.75a.75.75 0 0 0 1.5 0V7h2.5a.75.75 0 0 0 0-1.5H6.75V2.75Z"/></svg>
+              </span>
+              <p class="cl-change-text"><strong>Collection pages</strong> — <code>/collections/[handle]</code> reuses <code>ShopBody</code> with native Shopify facets and cursor-pagination. <code>/collections</code> index renders the "departments" TOC layout from the home editorial mockup.</p>
+            </div>
+            <div class="cl-change">
+              <span class="cl-change-icon cl-change-icon--add" aria-hidden="true">
+                <svg viewBox="0 0 12 12" fill="currentColor"><path d="M6.75 2.75a.75.75 0 0 0-1.5 0V5.5H2.75a.75.75 0 0 0 0 1.5H5.25v2.75a.75.75 0 0 0 1.5 0V7h2.5a.75.75 0 0 0 0-1.5H6.75V2.75Z"/></svg>
+              </span>
+              <p class="cl-change-text"><strong>Faceted filters</strong> — URL scheme: <code>?f=&lt;base64url(ProductFilter JSON)&gt;</code> + <code>price_min/max</code>. Filter state serialized by <code>src/lib/filters.ts</code>, applied via native Shopify <code>filters</code> argument with counts returned per facet value.</p>
+            </div>
+            <div class="cl-change">
+              <span class="cl-change-icon cl-change-icon--add" aria-hidden="true">
+                <svg viewBox="0 0 12 12" fill="currentColor"><path d="M6.75 2.75a.75.75 0 0 0-1.5 0V5.5H2.75a.75.75 0 0 0 0 1.5H5.25v2.75a.75.75 0 0 0 1.5 0V7h2.5a.75.75 0 0 0 0-1.5H6.75V2.75Z"/></svg>
+              </span>
+              <p class="cl-change-text"><strong>Predictive search</strong> — <code>/api/search</code> endpoint powers the React search island. Debounced, with product/page/article results grouped by type.</p>
+            </div>
+            <div class="cl-change">
+              <span class="cl-change-icon cl-change-icon--add" aria-hidden="true">
+                <svg viewBox="0 0 12 12" fill="currentColor"><path d="M6.75 2.75a.75.75 0 0 0-1.5 0V5.5H2.75a.75.75 0 0 0 0 1.5H5.25v2.75a.75.75 0 0 0 1.5 0V7h2.5a.75.75 0 0 0 0-1.5H6.75V2.75Z"/></svg>
+              </span>
+              <p class="cl-change-text"><strong>Customer account</strong> — OAuth 2.0 + PKCE flow via Shopify Customer Account API. Login, authorize, logout, profile, addresses, and orders — all SSR, no external auth library.</p>
+            </div>
+            <div class="cl-change">
+              <span class="cl-change-icon cl-change-icon--add" aria-hidden="true">
+                <svg viewBox="0 0 12 12" fill="currentColor"><path d="M6.75 2.75a.75.75 0 0 0-1.5 0V5.5H2.75a.75.75 0 0 0 0 1.5H5.25v2.75a.75.75 0 0 0 1.5 0V7h2.5a.75.75 0 0 0 0-1.5H6.75V2.75Z"/></svg>
+              </span>
+              <p class="cl-change-text"><strong>Blog + CMS pages</strong> — <code>/blogs/[blog]/[article]</code> and <code>/pages/[handle]</code> fetch Shopify Storefront <code>blog</code> and <code>page</code> objects. Privacy, Terms, Cookies, and Accessibility pages resolved from Shopify's <code>pages</code> API.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- v1.0.0 -->
+      <div class="cl-entry" data-types="feature">
+        <div class="cl-entry-meta">
+          <span class="cl-version-tag cl-version-tag--major">v1.0.0</span>
+          <span class="cl-entry-date">June 14, 2026</span>
+          <span class="cl-release-type cl-release-type--major">Initial release</span>
+        </div>
+        <div class="cl-entry-content">
+          <h2 class="cl-entry-title">Initial <em>release</em></h2>
+          <p class="cl-entry-summary">The first public release of the Omnix Editorial Style Astro theme. Pixel-perfect conversion of the HTML mockups to Astro 6 SSR + React 19 islands + Shopify Storefront API 2026-04.</p>
+          <div class="cl-changes">
+            <div class="cl-change">
+              <span class="cl-change-icon cl-change-icon--add" aria-hidden="true">
+                <svg viewBox="0 0 12 12" fill="currentColor"><path d="M6.75 2.75a.75.75 0 0 0-1.5 0V5.5H2.75a.75.75 0 0 0 0 1.5H5.25v2.75a.75.75 0 0 0 1.5 0V7h2.5a.75.75 0 0 0 0-1.5H6.75V2.75Z"/></svg>
+              </span>
+              <p class="cl-change-text"><strong>Home page</strong> — verbatim editorial layout with Hero, Showcase, Picks, Journal, Promo, Departments, FAQ, and Newsletter sections. All sections configurable via <code>src/config/</code> files.</p>
+            </div>
+            <div class="cl-change">
+              <span class="cl-change-icon cl-change-icon--add" aria-hidden="true">
+                <svg viewBox="0 0 12 12" fill="currentColor"><path d="M6.75 2.75a.75.75 0 0 0-1.5 0V5.5H2.75a.75.75 0 0 0 0 1.5H5.25v2.75a.75.75 0 0 0 1.5 0V7h2.5a.75.75 0 0 0 0-1.5H6.75V2.75Z"/></svg>
+              </span>
+              <p class="cl-change-text"><strong>Shopify data layer</strong> — strictly layered: <code>client.ts</code> → <code>graphql/</code> → <code>services/</code> → pages. The browser never talks to Shopify directly. All traffic uses the private Storefront token server-side only.</p>
+            </div>
+            <div class="cl-change">
+              <span class="cl-change-icon cl-change-icon--add" aria-hidden="true">
+                <svg viewBox="0 0 12 12" fill="currentColor"><path d="M6.75 2.75a.75.75 0 0 0-1.5 0V5.5H2.75a.75.75 0 0 0 0 1.5H5.25v2.75a.75.75 0 0 0 1.5 0V7h2.5a.75.75 0 0 0 0-1.5H6.75V2.75Z"/></svg>
+              </span>
+              <p class="cl-change-text"><strong>Core pages</strong> — Home, Shop, Product, Cart, About, Contact, FAQ — all pixel-perfect to the HTML mockups with verbatim CSS extracted to per-page bundles.</p>
+            </div>
+            <div class="cl-change">
+              <span class="cl-change-icon cl-change-icon--add" aria-hidden="true">
+                <svg viewBox="0 0 12 12" fill="currentColor"><path d="M6.75 2.75a.75.75 0 0 0-1.5 0V5.5H2.75a.75.75 0 0 0 0 1.5H5.25v2.75a.75.75 0 0 0 1.5 0V7h2.5a.75.75 0 0 0 0-1.5H6.75V2.75Z"/></svg>
+              </span>
+              <p class="cl-change-text"><strong>Self-healing cart</strong> — stale or expired Shopify cart IDs are cleared and a fresh cart created transparently on the next add-to-cart action. Cart ID persisted in an <code>httpOnly</code> cookie.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /cl-year-group -->
+
+    <!-- Upcoming -->
+    <div class="cl-future">
+      <div>
+        <span class="cl-future-label">Coming up</span>
+        <h3 class="cl-future-title">What's next for v1.4</h3>
+        <p class="cl-future-body">Planned work for the next minor release. Nothing is final until it ships.</p>
+        <div class="cl-future-tags">
+          <span class="cl-future-tag">Metafield specs on PDP</span>
+          <span class="cl-future-tag">Product reviews (Shopify native)</span>
+          <span class="cl-future-tag">Bundled products / gift sets</span>
+          <span class="cl-future-tag">Klaviyo newsletter integration</span>
+          <span class="cl-future-tag">Dark mode toggle</span>
+        </div>
+      </div>
+      <div>
+        <a class="btn-ghost" href="https://github.com" target="_blank" rel="noopener" style="white-space:nowrap;">
+          Suggest a feature
+          <svg viewBox="0 0 16 16" fill="currentColor" style="width:14px;height:14px;"><path fill-rule="evenodd" d="M8.22 2.97a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06l2.97-2.97H3.75a.75.75 0 0 1 0-1.5h7.44L8.22 4.03a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd"/></svg>
+        </a>
+      </div>
+    </div>
+
+  </div><!-- /container -->
+</div><!-- /cl-timeline -->
+
+<script>
+  // Filter buttons
+  const filterBtns = document.querySelectorAll<HTMLButtonElement>('.cl-filter-btn');
+  const entries = document.querySelectorAll<HTMLElement>('.cl-entry');
+
+  filterBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const filter = btn.dataset.filter ?? 'all';
+      filterBtns.forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      entries.forEach((entry) => {
+        if (filter === 'all') {
+          entry.hidden = false;
+        } else {
+          const types = (entry.dataset.types ?? '').split(' ');
+          entry.hidden = !types.includes(filter);
+        }
+      });
+    });
+  });
+</script>

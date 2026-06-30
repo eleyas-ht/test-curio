@@ -1,0 +1,34 @@
+---
+// ============================================================
+//  Marquee — seamless horizontal scroller. Pass `items` (strings).
+//  Used for partners / "say hello" ribbons. CSS-only, pauses on
+//  hover, honors reduced-motion (see .marquee-track in global.css).
+// ============================================================
+interface Props {
+  items: string[];
+  /** Separator ornament between items. */
+  separator?: string;
+  /** Dark band (cocoa) vs. light. */
+  tone?: 'light' | 'dark';
+  class?: string;
+}
+const { items, separator = '✦', tone = 'light', class: className = '' } = Astro.props;
+// Duplicate once so the -50% translate loops seamlessly.
+const loop = [...items, ...items];
+const toneClass =
+  tone === 'dark' ? 'bg-cocoa text-cream' : 'bg-cream-deep text-ink border-y border-sand-deep';
+---
+
+<div class={`group overflow-hidden ${toneClass} ${className}`}>
+  <p class="sr-only">{items.join(`, `)}</p>
+  <div class="marquee-track items-center py-5 group-hover:[animation-play-state:paused]" aria-hidden="true">
+    {
+      loop.map((item) => (
+        <span class="flex items-center whitespace-nowrap">
+          <span class="px-7 font-serif text-lg md:text-xl">{item}</span>
+          <span class="text-clay">{separator}</span>
+        </span>
+      ))
+    }
+  </div>
+</div>

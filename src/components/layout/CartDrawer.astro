@@ -1,0 +1,363 @@
+---
+// ============================================================
+//  Cart Drawer — 1:1 verbatim markup from the editorial mockup,
+//  fully wired to the Shopify-backed nanostore: live line items,
+//  free-shipping progress, recommendations, real discount codes,
+//  subtotal/total, and checkout handoff.
+// ============================================================
+import { SITE } from '~/config/site';
+const free = SITE.freeShippingThreshold;
+const shippingCost = SITE.shippingCost;
+const recCount = SITE.cartRecommendations.count;
+---
+
+<div class="drawer-backdrop" id="cart-backdrop"></div>
+
+<aside class="cart-drawer" id="cart-drawer" aria-label="Shopping cart" role="dialog" aria-modal="true" data-free={free} data-shipping={shippingCost}>
+  <div class="cart-drawer-head">
+    <div class="cart-drawer-title">
+      Your Cart <em>(<span id="cart-head-count">0 items</span>)</em>
+    </div>
+    <button class="cart-close-btn" id="cart-close" aria-label="Close cart">
+      <svg viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" /></svg>
+    </button>
+  </div>
+
+  <div class="cart-shipping-bar" id="cart-shipping" style="display:none;">
+    <div class="cart-shipping-text" id="cart-ship-text">Add <strong>$0</strong> more for <strong>free express shipping</strong></div>
+    <div class="cart-shipping-track">
+      <div class="cart-shipping-fill" id="cart-ship-fill" style="width:0%"></div>
+    </div>
+  </div>
+
+  <div class="cart-items" id="cart-items"></div>
+
+  <div class="cart-empty show" id="cart-empty">
+    <div class="cart-empty-icon">
+      <svg viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M5 7h14l-1.5 11a2 2 0 0 1-2 1.7H8.5a2 2 0 0 1-2-1.7L5 7Z" />
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 7V5a3 3 0 0 1 6 0v2" />
+      </svg>
+    </div>
+    <h4 class="cart-empty-title">Your cart is empty</h4>
+    <p class="cart-empty-sub">Discover our editors' curated selection.</p>
+    <button class="cart-checkout-btn" id="cart-empty-shop">Continue Shopping</button>
+  </div>
+
+  <div class="cart-recs" id="cart-recs" style="display:none;" data-count={recCount}>
+    <div class="cart-recs-header">
+      <div class="cart-recs-title">You May Also Like</div>
+      <div class="cart-recs-nav" id="cart-recs-nav" style="display:none;">
+        <button class="cart-recs-prev" id="cart-recs-prev" aria-label="Previous recommendations">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <button class="cart-recs-next" id="cart-recs-next" aria-label="Next recommendations">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="cart-recs-list" id="cart-recs-list"></div>
+  </div>
+
+  <div class="cart-drawer-foot" id="cart-foot" style="display:none;">
+    <div class="cart-coupon">
+      <div class="cart-coupon-label">Promo Code</div>
+      <div class="cart-coupon-row" id="cart-coupon-row">
+        <input type="text" class="cart-coupon-input" id="cart-coupon-input" placeholder="Enter code (e.g. EDIT10)" autocomplete="off" />
+        <button class="cart-coupon-apply" id="cart-coupon-apply">Apply</button>
+      </div>
+      <div class="cart-coupon-applied" id="cart-coupon-applied" style="display:none;"></div>
+      <div class="cart-coupon-msg" id="cart-coupon-msg"></div>
+    </div>
+    <div class="cart-totals-row"><span>Subtotal</span><span id="cart-subtotal">$0</span></div>
+    <div class="cart-totals-row" id="cart-discount-row" style="display:none;"><span>Discount</span><span id="cart-discount" style="color:var(--clay);">-$0</span></div>
+    <div class="cart-totals-row"><span>Shipping</span><span id="cart-shipping-val" class="cart-ship-val">—</span></div>
+    <div class="cart-totals-row total">
+      <span>Total</span>
+      <span class="cart-total-amount" id="cart-total">$0</span>
+    </div>
+    <button class="cart-checkout-btn" id="cart-checkout">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+      </svg>
+      Secure Checkout
+    </button>
+    <a href="/cart" class="cart-view-link">View full cart</a>
+  </div>
+</aside>
+
+<style is:global>
+  /* Applied-promo chip — uses the editorial palette, matches the drawer. */
+  .cart-coupon-applied { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .cart-coupon-tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--cream-deep); border: 1px solid var(--sand-deep);
+    color: var(--ink); font-size: 12px; font-weight: 600; letter-spacing: 0.04em;
+    padding: 6px 8px 6px 12px; border-radius: var(--r-pill);
+  }
+  .cart-coupon-tag .ct-code { color: var(--clay-deep); }
+  .cart-coupon-tag button {
+    display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%;
+    background: var(--ink); color: var(--cream); font-size: 12px; line-height: 1; cursor: pointer; border: 0;
+  }
+  .cart-coupon-tag button:hover { background: var(--clay); }
+</style>
+
+<script>
+  import { $cart, $cartOpen, $busyLines, initCart, closeCart, updateItem, removeItem, applyDiscount, removeDiscount } from '~/stores/cart';
+
+  const drawer = document.getElementById('cart-drawer');
+  const backdrop = document.getElementById('cart-backdrop');
+  const FREE = Number(drawer?.dataset.free ?? 75);
+  const SHIPPING = Number(drawer?.dataset.shipping ?? 9.99);
+
+  const money = (n: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: Number.isInteger(n) ? 0 : 2 }).format(n);
+
+  const $ = (id: string) => document.getElementById(id);
+
+  // ── Open / close (driven by the shared store) ──
+  $cartOpen.subscribe((open) => {
+    drawer?.classList.toggle('open', open);
+    backdrop?.classList.toggle('open', open);
+    document.body.classList.toggle('cart-open', open);
+    if (open) loadRecs();
+  });
+  $('cart-close')?.addEventListener('click', () => closeCart());
+  $('cart-empty-shop')?.addEventListener('click', () => closeCart());
+  backdrop?.addEventListener('click', () => closeCart());
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeCart(); });
+  // Codes that the Cart API marks not-applicable may still be valid at Shopify's
+  // checkout (e.g. codes restricted to the Online Store channel). Passing
+  // ?discount= at checkout lets Shopify's native checkout page apply them.
+  let pendingCode: string | null = null;
+
+  $('cart-checkout')?.addEventListener('click', () => {
+    const url = $cart.get()?.checkoutUrl;
+    if (!url) return;
+    const hasApplied = ($cart.get()?.discountCodes ?? []).some((c: any) => c.applicable);
+    if (pendingCode && !hasApplied) {
+      window.location.href = url + (url.includes('?') ? '&' : '?') + 'discount=' + encodeURIComponent(pendingCode);
+    } else {
+      window.location.href = url;
+    }
+  });
+
+  // ── Line item template ──
+  function itemHtml(line: any) {
+    const img = line.merchandise.image ?? line.merchandise.product.featuredImage;
+    const variant = line.merchandise.selectedOptions.filter((o: any) => o.value !== 'Default Title').map((o: any) => o.value).join(' · ') || line.merchandise.product.vendor || '';
+    // Per-unit variant price from Shopify — stable regardless of quantity.
+    // (Quantity is shown by the stepper; the subtotal/total aggregate it.)
+    const unitPrice = Number(line.merchandise.price.amount);
+    return `<div class="cart-item">
+      <div class="cart-item-img"><a href="/products/${line.merchandise.product.handle}"><img src="${img?.url ?? ''}" alt="${line.merchandise.product.title}"></a></div>
+      <div class="cart-item-info">
+        <div class="cart-item-name">${line.merchandise.product.title}</div>
+        <div class="cart-item-variant">${variant}</div>
+        <div class="cart-item-qty">
+          <button class="cart-qty-btn" data-dec="${line.id}" aria-label="Decrease">&minus;</button>
+          <span class="cart-qty-val">${line.quantity}</span>
+          <button class="cart-qty-btn" data-inc="${line.id}" aria-label="Increase">+</button>
+        </div>
+      </div>
+      <div class="cart-item-right">
+        <span class="cart-item-price">${money(unitPrice)}</span>
+        <button class="cart-item-remove" data-remove="${line.id}">Remove</button>
+      </div>
+    </div>`;
+  }
+
+  // ── Render the whole drawer from cart state ──
+  function render() {
+    const cart = $cart.get();
+    const lines = cart?.lines ?? [];
+    const count = cart?.totalQuantity ?? 0;
+    const headCount = $('cart-head-count');
+    if (headCount) headCount.textContent = `${count} item${count === 1 ? '' : 's'}`;
+
+    const empty = $('cart-empty');
+    const items = $('cart-items');
+    const foot = $('cart-foot');
+    const recs = $('cart-recs');
+    const shipBar = $('cart-shipping');
+
+    if (lines.length === 0) {
+      empty?.classList.add('show');
+      if (items) items.innerHTML = '';
+      [foot, recs, shipBar].forEach((el) => el && (el.style.display = 'none'));
+      return;
+    }
+    empty?.classList.remove('show');
+    [foot, shipBar].forEach((el) => el && (el.style.display = 'block'));
+    if (recs) recs.style.display = 'block';
+
+    if (items) {
+      items.innerHTML = lines.map(itemHtml).join('');
+      items.querySelectorAll<HTMLButtonElement>('[data-dec]').forEach((b) =>
+        b.addEventListener('click', () => { const l = lines.find((x: any) => x.id === b.dataset.dec); if (l) updateItem(l.id, l.quantity - 1); }));
+      items.querySelectorAll<HTMLButtonElement>('[data-inc]').forEach((b) =>
+        b.addEventListener('click', () => { const l = lines.find((x: any) => x.id === b.dataset.inc); if (l) updateItem(l.id, l.quantity + 1); }));
+      items.querySelectorAll<HTMLButtonElement>('[data-remove]').forEach((b) =>
+        b.addEventListener('click', () => removeItem(b.dataset.remove!)));
+    }
+
+    // Totals
+    const subtotal = Number(cart!.cost.subtotalAmount.amount);
+    const total = Number(cart!.cost.totalAmount.amount);
+    const discount = Math.max(0, subtotal - total);
+    const isFreeShipping = subtotal >= FREE;
+    const displayShipping = isFreeShipping ? 0 : SHIPPING;
+    const setTxt = (id: string, v: string) => { const n = $(id); if (n) n.textContent = v; };
+    setTxt('cart-subtotal', money(subtotal));
+    setTxt('cart-total', money(total + displayShipping));
+    const dRow = $('cart-discount-row');
+    if (dRow) { dRow.style.display = discount > 0.001 ? 'flex' : 'none'; setTxt('cart-discount', `-${money(discount)}`); }
+    const shipVal = $('cart-shipping-val');
+    if (shipVal) {
+      if (isFreeShipping) {
+        shipVal.textContent = 'Free';
+        shipVal.className = 'cart-ship-val cart-ship-free';
+      } else {
+        shipVal.textContent = money(displayShipping);
+        shipVal.className = 'cart-ship-val';
+      }
+    }
+
+    // Free-shipping progress
+    const fill = $('cart-ship-fill');
+    const txt = $('cart-ship-text');
+    if (txt) txt.innerHTML = subtotal >= FREE
+      ? `<strong>You've unlocked free express shipping!</strong>`
+      : `Add <strong>${money(FREE - subtotal)}</strong> more for <strong>free express shipping</strong>`;
+    if (fill) (fill as HTMLElement).style.width = Math.min(100, (subtotal / FREE) * 100).toFixed(1) + '%';
+
+    renderDiscountUI();
+  }
+
+  // ── Promo code ──
+  const couponInput = $('cart-coupon-input') as HTMLInputElement | null;
+  const couponMsg = $('cart-coupon-msg');
+  const couponRow = $('cart-coupon-row');
+  const couponApplied = $('cart-coupon-applied');
+
+  function renderDiscountUI() {
+    const codes = ($cart.get()?.discountCodes ?? []) as { code: string; applicable: boolean }[];
+    const applied = codes.filter((c) => c.applicable);
+    if (applied.length && couponApplied && couponRow) {
+      pendingCode = null; // code is now on the cart — no need to pass it at checkout
+      couponApplied.style.display = 'flex';
+      couponRow.style.display = 'none';
+      couponApplied.innerHTML = applied
+        .map((c) => `<span class="cart-coupon-tag">✓ <span class="ct-code">${c.code}</span><button data-remove-code="${c.code}" aria-label="Remove code">✕</button></span>`)
+        .join('');
+      couponApplied.querySelectorAll<HTMLButtonElement>('[data-remove-code]').forEach((b) =>
+        b.addEventListener('click', async () => {
+          await removeDiscount();
+          pendingCode = null;
+          if (couponMsg) { couponMsg.textContent = ''; couponMsg.className = 'cart-coupon-msg'; }
+        }));
+      if (couponMsg) { couponMsg.className = 'cart-coupon-msg'; couponMsg.textContent = ''; }
+    } else if (couponApplied && couponRow) {
+      couponApplied.style.display = 'none';
+      couponRow.style.display = '';
+    }
+  }
+
+  async function applyCoupon() {
+    const code = (couponInput?.value ?? '').trim();
+    if (couponMsg) { couponMsg.className = 'cart-coupon-msg'; couponMsg.textContent = ''; }
+    if (!code) { if (couponMsg) { couponMsg.textContent = 'Please enter a promo code.'; couponMsg.classList.add('err'); } return; }
+    const apply = $('cart-coupon-apply') as HTMLButtonElement | null;
+    if (apply) { apply.disabled = true; apply.textContent = '…'; }
+    const res = await applyDiscount([code]);
+    if (apply) { apply.disabled = false; apply.textContent = 'Apply'; }
+    if (!res.cart) {
+      // Network/server error — not a code validation failure
+      if (couponMsg) { couponMsg.textContent = 'Could not process the code. Please try again.'; couponMsg.classList.add('err'); }
+      return;
+    }
+    const ok = res.cart.discountCodes.some(
+      (c: any) => c.applicable && c.code.trim().toUpperCase() === code.toUpperCase()
+    );
+    if (couponMsg) {
+      if (ok) {
+        pendingCode = null;
+        couponMsg.textContent = `✓ Code “${code.toUpperCase()}” applied!`;
+        couponMsg.classList.add('ok');
+        if (couponInput) couponInput.value = '';
+      } else {
+        // Store the code — it may still work at Shopify's checkout even if the
+        // Cart API says not-applicable (e.g. Online Store channel restriction).
+        pendingCode = code.toUpperCase();
+        couponMsg.textContent = 'Code not confirmed in cart — it will be applied automatically at checkout if valid.';
+        couponMsg.classList.add('err');
+      }
+    }
+  }
+  $('cart-coupon-apply')?.addEventListener('click', applyCoupon);
+  couponInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); applyCoupon(); } });
+
+  // ── Recommendations (lazy, once per open if cart non-empty) ──
+  let recsLoaded = false;
+  async function loadRecs() {
+    const list = $('cart-recs-list');
+    if (!list || recsLoaded) return;
+    const cart = $cart.get();
+    if (!cart?.lines.length) return;
+    recsLoaded = true;
+    try {
+      const exclude = cart.lines.map((l: any) => l.merchandise.product.handle).join(',');
+      const res = await fetch(`/api/recommendations?exclude=${encodeURIComponent(exclude)}`);
+      const data = await res.json();
+      const recs: any[] = data.recs ?? [];
+      if (!recs.length) return;
+
+      const recsEl = $('cart-recs');
+      const COUNT = parseInt((recsEl as HTMLElement)?.dataset.count ?? '3', 10);
+      // Show fewer columns when there are fewer products than requested
+      const displayCount = Math.min(COUNT, recs.length);
+      const hasSlider = recs.length > COUNT;
+
+      const cardHtml = (r: any) => `<div class="cart-rec-card">
+        <a class="cart-rec-img" href="/products/${r.handle}" tabindex="-1">
+          <img src="${r.image}" alt="${r.title}" loading="lazy">
+        </a>
+        <div class="cart-rec-body">
+          <a class="cart-rec-name" href="/products/${r.handle}">${r.title}</a>
+          <div class="cart-rec-price">${r.price}</div>
+        </div>
+        <button class="cart-rec-add" data-qv-handle="${r.handle}" aria-label="Add ${r.title}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          Add
+        </button>
+      </div>`;
+
+      list.innerHTML = `<div class="cart-recs-track${hasSlider ? ' has-slider' : ''}" id="cart-recs-track" style="--rec-count:${displayCount}">
+        ${recs.map(cardHtml).join('')}
+      </div>`;
+
+      // Show nav arrows and wire slider when there are extra cards
+      if (hasSlider) {
+        const nav = $('cart-recs-nav');
+        if (nav) nav.style.display = 'flex';
+        const track = $('cart-recs-track') as HTMLElement | null;
+        const scrollByCard = () => {
+          const card = track?.querySelector<HTMLElement>('.cart-rec-card');
+          return card ? card.offsetWidth + 10 : 0; // 10 = gap
+        };
+        $('cart-recs-prev')?.addEventListener('click', () =>
+          track?.scrollBy({ left: -scrollByCard(), behavior: 'smooth' }));
+        $('cart-recs-next')?.addEventListener('click', () =>
+          track?.scrollBy({ left: scrollByCard(), behavior: 'smooth' }));
+      }
+      // data-qv-handle on each button is caught by QuickView's global click listener.
+    } catch {
+      /* recommendations are non-critical */
+    }
+  }
+
+  $cart.subscribe(render);
+  $busyLines.subscribe(() => {});
+  void initCart();
+</script>

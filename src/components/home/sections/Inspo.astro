@@ -1,0 +1,595 @@
+﻿---
+// ============================================================
+// SHOP BY LIFESTYLE — Inspo section
+// Lifestyle image scene with hoverable product hotspot pins
+// and a tab strip to switch between room categories.
+// ============================================================
+//
+// HOW TO CONFIGURE
+// Edit the TABS array below. Each tab is an independent lifestyle scene.
+//
+// TAB FIELDS:
+//   label     — Text shown on the tab button (e.g. "Living room")
+//   image     — Path to the full-width lifestyle/room image
+//   imageAlt  — Accessible alt text for the image
+//   pins      — Array of product hotspot pins positioned over the image
+//
+// PIN FIELDS:
+//   left      — Horizontal position as % from left edge (e.g. "13%")
+//   top       — Vertical position as % from top edge  (e.g. "62%")
+//   cardSide  — Which side the product card pops out on hover:
+//               "right" → card appears to the right of the dot (default)
+//               "left"  → card appears to the left  (use for pins near the right edge)
+//   name      — Static fallback product name  (used when `handle` is empty)
+//   price     — Static fallback price string  (e.g. "$649.00")
+//   image     — Static fallback product image path
+//   href      — Static fallback link URL      (used when `handle` is empty)
+//   handle    — Shopify product handle (e.g. "omnix-tower-l1").
+//               When set, the product name, price, image, and URL are pulled
+//               live from Shopify and override the static fallback values above.
+//               Leave as "" to keep the static values.
+// ============================================================
+
+import { getProductsByHandles } from '~/lib/shopify';
+
+// ── Section configuration ─────────────────────────────────────────────────────
+const TABS = [
+
+  // ── Tab 1: Living room ──────────────────────────────────────────────────────
+  {
+    label: 'Living room',
+    image: '/images/modern-living-room-with-home-theater-system-natural-light.jpg',
+    imageAlt: 'Modern living room with home theater system',
+    pins: [
+      // Left tower speaker
+      {
+        left: '13%', top: '62%', cardSide: 'right',
+        name: 'Curio Tower L1',    price: '$649.00',
+        image: '/images/mp51zp5u-speaker.jpg',
+        href: '#',
+        handle: 'kb-phone-15-pro', // Set to Shopify product handle to load live data, e.g. "omnix-tower-l1"
+      },
+      // TV on the wall
+      {
+        left: '50%', top: '38%', cardSide: 'left',
+        name: 'Curio Vision 65"', price: '$1,299.00',
+        image: '/images/mp51zp5u-speaker.jpg',
+        href: '#',
+        handle: 'zpad-pro-m-2',
+      },
+      // Right tower speaker
+      {
+        left: '84%', top: '62%', cardSide: 'left',
+        name: 'Curio Tower R1',    price: '$649.00',
+        image: '/images/mp51zp5u-speaker.jpg',
+        href: '#',
+        handle: 'zackpot-speaker-1',
+      },
+    ],
+  },
+
+  // ── Tab 2: Gaming room ──────────────────────────────────────────────────────
+  {
+    label: 'Gaming room',
+    image: '/images/gaming-room.jpg',
+    imageAlt: 'Gaming room with RGB PC setup and monitor',
+    pins: [
+      // VR headset on top of PC
+      {
+        left: '53%', top: '24%', cardSide: 'left',
+        name: 'Curio VR Pro',    price: '$399.00',
+        image: '/images/mpamvm7d-vr-glasses-gaming.jpg',
+        href: '#',
+        handle: 'smart-phone-12',
+      },
+      // Gaming monitor
+      {
+        left: '27%', top: '43%', cardSide: 'right',
+        name: 'Curio Monitor 27', price: '$459.00',
+        image: '/images/laptop-dark-with-screen.jpg',
+        href: '#',
+        handle: 'packbook-pro-15inch',
+      },
+      // Keyboard on desk
+      {
+        left: '43%', top: '75%', cardSide: 'right',
+        name: 'Curio Keys RGB',  price: '$129.00',
+        image: '/images/high-tech-elegance-illuminated-keyboard-three.jpg',
+        href: '#',
+        handle: 'mango-router',
+      },
+    ],
+  },
+
+  // ── Tab 3: Kitchen room ─────────────────────────────────────────────────────
+  {
+    label: 'Kitchen room',
+    image: '/images/kitchen-appliances.jpg',
+    imageAlt: 'Smart kitchen appliances on wooden counter',
+    pins: [
+      // Stand mixer — left side of counter
+      {
+        left: '20%', top: '48%', cardSide: 'right',
+        name: 'Curio Mix Pro',   price: '$329.00',
+        image: '/images/rendering-smart-home-device.jpg',
+        href: '#',
+        handle: 'maxoni-microwave-oven',
+      },
+      // Air fryer / toaster oven — center
+      {
+        left: '44%', top: '44%', cardSide: 'right',
+        name: 'Curio AirFry 6L', price: '$189.00',
+        image: '/images/rendering-smart-home-device.jpg',
+        href: '#',
+        handle: 'lf-7-pro',
+      },
+      // Electric kettle — right of center
+      {
+        left: '67%', top: '42%', cardSide: 'left',
+        name: 'Curio Kettle Pro', price: '$99.00',
+        image: '/images/rendering-smart-home-device.jpg',
+        href: '#',
+        handle: 'xonic-cc-camera',
+      },
+      // Blender — far right
+      {
+        left: '84%', top: '44%', cardSide: 'left',
+        name: 'Curio Blend Pro',  price: '$159.00',
+        image: '/images/rendering-smart-home-device.jpg',
+        href: '#',
+        handle: 'lf-7-pro',
+      },
+    ],
+  },
+
+];
+
+// ── View Product button behavior ─────────────────────────────────────────────
+//
+//   'pdp'        → Navigate directly to the product detail page (PDP).
+//                  Works for every pin, including pins with only static data.
+//
+//   'quick-view' → Open a Quick View modal powered by the Shopify Storefront API.
+//                  Shows a full product gallery, title, price, variant selector,
+//                  quantity stepper, and Add to Cart — without leaving the page.
+//                  Requires a Shopify `handle` on the pin. Pins without a handle
+//                  automatically fall back to PDP navigation.
+//
+const VIEW_PRODUCT_ACTION: 'pdp' | 'quick-view' = 'quick-view';
+
+// ── Shopify data fetch ────────────────────────────────────────────────────────
+// Collect every unique Shopify handle that has been configured across all tabs.
+const allHandles = [...new Set(
+  TABS.flatMap(tab => tab.pins.map(p => p.handle).filter(Boolean))
+)];
+
+// Batch-fetch from Shopify in a single request (no-op when no handles are set).
+const shopifyProducts = allHandles.length > 0
+  ? await getProductsByHandles(allHandles)
+  : [];
+
+// Build a fast lookup: handle → ProductCard
+const productMap = new Map(shopifyProducts.map(p => [p.handle, p]));
+
+// Helper: format a Shopify Money amount into a display string ("$649.00")
+function formatPrice(amount: string): string {
+  const n = parseFloat(amount);
+  return isNaN(n) ? amount : `$${n.toFixed(2)}`;
+}
+
+// Merge Shopify data into each pin, falling back to static values when no handle
+// is configured or the product isn't found in the store.
+const tabs = TABS.map(tab => ({
+  ...tab,
+  pins: tab.pins.map(pin => {
+    const sp = pin.handle ? productMap.get(pin.handle) : undefined;
+    if (!sp) return pin; // no handle or product not found → use static data
+    return {
+      ...pin,
+      name:  sp.title                                  ?? pin.name,
+      price: sp.priceRange?.minVariantPrice?.amount
+               ? formatPrice(sp.priceRange.minVariantPrice.amount)
+               : pin.price,
+      image: sp.featuredImage?.url                     ?? pin.image,
+      href:  `/products/${sp.handle}`,
+    };
+  }),
+}));
+---
+
+<!-- ============================================================
+   SHOP BY LIFESTYLE — Clean split with product card overlay
+============================================================ -->
+<section class="section-inspo">
+  <div class="container">
+
+    <!-- Slide scene -->
+    <div class="inspo-scene" id="inspoScene">
+
+      {tabs.map((tab, tabIdx) => (
+        /* Each tab gets one full-width slide. Only the first is visible on load. */
+        <div class={`inspo-slide${tabIdx === 0 ? ' is-active' : ''}`} data-idx={tabIdx}>
+
+          {/* Lifestyle / room image */}
+          <img src={tab.image} alt={tab.imageAlt} />
+
+          {/* Product hotspot pins */}
+          {tab.pins.map(pin => (
+            <div
+              class={`inspo-pin${pin.cardSide === 'left' ? ' card-left' : ''}`}
+              style={`left:${pin.left};top:${pin.top};`}
+            >
+              {/* Pulsing dot — plus icon */}
+              <div class="inspo-dot">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19"/>
+                  <line x1="5"  y1="12" x2="19" y2="12"/>
+                </svg>
+              </div>
+
+              {/* Product card — shown on hover */}
+              <div class="inspo-pin-card">
+                <img src={pin.image} alt={pin.name} />
+                <div class="inspo-pin-card-body">
+                  <div class="inspo-pin-name">{pin.name}</div>
+                  <div class="inspo-pin-price">{pin.price}</div>
+                  {/* VIEW_PRODUCT_ACTION controls button behavior:
+                      'pdp'        → link to product page
+                      'quick-view' → open Quick View modal
+                  Handle resolution order for quick-view:
+                    1. pin.handle — explicit Shopify product handle
+                    2. Extracted from a /products/[handle] href — fallback when
+                       `handle` is empty but `href` points to a product page
+                    3. '' — no handle available → falls back to PDP link */}
+                  {(() => {
+                    const qvHandle =
+                      pin.handle ||
+                      pin.href?.match(/\/products\/([^/?#]+)/)?.[1] ||
+                      '';
+                    return VIEW_PRODUCT_ACTION === 'quick-view' && qvHandle
+                      ? (
+                        <button
+                          type="button"
+                          class="inspo-pin-btn"
+                          data-qv-handle={qvHandle}
+                        >
+                          View Product
+                        </button>
+                      )
+                      : (
+                        <a href={pin.href} class="inspo-pin-btn">
+                          View Product
+                        </a>
+                      );
+                  })()}
+                </div>
+              </div>
+            </div>
+          ))}
+
+        </div>
+      ))}
+
+    </div><!-- /inspo-scene -->
+
+    <!-- Tab strip below image -->
+    <div class="inspo-tabs-strip">
+      {tabs.map((tab, tabIdx) => (
+        <button
+          class={`inspo-tab-btn${tabIdx === 0 ? ' is-active' : ''}`}
+          data-slide={tabIdx}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================================================
+   STYLES
+============================================================ -->
+<style is:global>
+  /* ── Section shell ────────────────────────────────────────── */
+  .section-inspo {
+    padding: 80px 0 60px;
+    background: var(--color-cream-deep, #efe8dc);
+  }
+
+  /* ── Scene (image viewport) ───────────────────────────────── */
+  .inspo-scene {
+    position: relative;
+    width: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+    height: 700px;
+  }
+
+  /* ── Slides ───────────────────────────────────────────────── */
+  .inspo-slide {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.55s ease;
+    pointer-events: none;
+  }
+
+  .inspo-slide.is-active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .inspo-slide > img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  /* ── Hotspot pin wrapper ──────────────────────────────────── */
+  .inspo-pin {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    z-index: 4;
+    cursor: pointer;
+  }
+
+  /* ── Pulsing dot ──────────────────────────────────────────── */
+  .inspo-dot {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1.5px solid rgba(255, 255, 255, 0.7);
+    box-shadow: 0 2px 18px rgba(0, 0, 0, 0.22);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    z-index: 2;
+    transition: transform 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
+  }
+
+  .inspo-pin:hover .inspo-dot {
+    transform: scale(1.18);
+    background: var(--color-ink, #111111);
+    box-shadow: 0 4px 22px rgba(0, 0, 0, 0.32);
+  }
+
+  .inspo-pin:hover .inspo-dot svg {
+    stroke: var(--color-warm-white, #fffcf7);
+  }
+
+  /* Pulse ring animation */
+  .inspo-dot::before {
+    content: '';
+    position: absolute;
+    inset: -7px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.38);
+    animation: inspo-pin-pulse 2.4s ease-out infinite;
+  }
+
+  @keyframes inspo-pin-pulse {
+    0%   { transform: scale(0.8); opacity: 0.9; }
+    100% { transform: scale(2.1); opacity: 0;   }
+  }
+
+  .inspo-dot svg {
+    width: 13px;
+    height: 13px;
+    stroke: var(--color-ink, #111111);
+    stroke-width: 2.6;
+    flex-shrink: 0;
+    transition: stroke 0.22s ease;
+  }
+
+  /* ── Product card — slides in from RIGHT by default ─────── */
+  .inspo-pin-card {
+    position: absolute;
+    top: 50%;
+    left: calc(100% + 20px);
+    transform: translateY(-50%) translateX(-10px) scale(0.94);
+    width: 210px;
+    background: #fff;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow:
+      0 20px 56px rgba(0, 0, 0, 0.18),
+      0 2px 10px rgba(0, 0, 0, 0.08);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.24s ease, transform 0.24s ease;
+    z-index: 10;
+  }
+
+  .inspo-pin:hover .inspo-pin-card {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(-50%) translateX(0) scale(1);
+  }
+
+  /* ── Card slides in from the LEFT ────────────────────────── */
+  .inspo-pin.card-left .inspo-pin-card {
+    left: auto;
+    right: calc(100% + 20px);
+    transform: translateY(-50%) translateX(10px) scale(0.94);
+  }
+
+  .inspo-pin.card-left:hover .inspo-pin-card {
+    transform: translateY(-50%) translateX(0) scale(1);
+  }
+
+  /* Card product image */
+  .inspo-pin-card > img {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    display: block;
+  }
+
+  /* Card text body */
+  .inspo-pin-card-body {
+    padding: 11px 13px 13px;
+  }
+
+  .inspo-pin-name {
+    font-family: var(--font-sans, "Inter", system-ui, sans-serif);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-ink, #111111);
+    line-height: 1.3;
+    margin-bottom: 3px;
+  }
+
+  .inspo-pin-price {
+    font-family: var(--font-sans, "Inter", system-ui, sans-serif);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--color-clay, #9a6b4f);
+    margin-bottom: 10px;
+  }
+
+  .inspo-pin-btn {
+    display: block;
+    text-align: center;
+    padding: 8px 12px;
+    background: var(--color-ink, #111111);
+    border-radius: 999px;
+    font-family: var(--font-sans, "Inter", system-ui, sans-serif);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-warm-white, #fffcf7);
+    text-decoration: none;
+    transition: opacity 0.18s ease;
+  }
+
+  .inspo-pin-btn:hover {
+    opacity: 0.78;
+  }
+
+  /* Reset <button> browser defaults when used as the Quick View trigger */
+  button.inspo-pin-btn {
+    width: 100%;
+    border: none;
+    cursor: pointer;
+  }
+
+  /* ── Tab strip below image ────────────────────────────────── */
+  .inspo-tabs-strip {
+    display: flex;
+    justify-content: center;
+    gap: 56px;
+    margin-top: 28px;
+  }
+
+  .inspo-tab-btn {
+    font-family: var(--font-sans, "Inter", system-ui, sans-serif);
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--color-muted, #6f6a64);
+    background: none;
+    border: none;
+    border-bottom: 1.5px solid transparent;
+    padding: 4px 0 6px;
+    cursor: pointer;
+    transition: color 0.18s ease, border-color 0.18s ease;
+    letter-spacing: 0.01em;
+  }
+
+  .inspo-tab-btn:hover {
+    color: var(--color-ink, #111111);
+  }
+
+  .inspo-tab-btn.is-active {
+    color: var(--color-ink, #111111);
+    font-weight: 700;
+    border-bottom-color: var(--color-ink, #111111);
+  }
+
+  /* ── Responsive ───────────────────────────────────────────── */
+  @media (max-width: 1024px) {
+    .inspo-scene {
+      height: 520px;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .section-inspo {
+      padding: 52px 0 40px;
+    }
+
+    .inspo-scene {
+      height: 320px;
+      border-radius: 10px;
+    }
+
+    .inspo-tabs-strip {
+      gap: 28px;
+    }
+
+    .inspo-tab-btn {
+      font-size: 13px;
+    }
+
+    .inspo-pin-card {
+      width: 170px;
+    }
+  }
+</style>
+
+<!-- ============================================================
+   TAB SWITCHING + AUTO-PLAY
+   Tabs cycle automatically every 3.5 s. Hovering the scene
+   pauses auto-play; leaving resumes it. Clicking a tab also
+   resets the interval so the clicked tab gets a full dwell.
+============================================================ -->
+<script>
+  (function () {
+    var slides  = document.querySelectorAll<HTMLElement>('.inspo-slide');
+    var tabBtns = document.querySelectorAll<HTMLElement>('.inspo-tab-btn');
+    var scene   = document.getElementById('inspoScene');
+    if (!slides.length || !scene) return;
+
+    var current  = 0;
+    var total    = slides.length;
+    var INTERVAL = 3500;
+    var timer: ReturnType<typeof setInterval> | null = null;
+
+    function goTo(idx: number) {
+      slides[current].classList.remove('is-active');
+      tabBtns[current].classList.remove('is-active');
+      current = ((idx % total) + total) % total;
+      slides[current].classList.add('is-active');
+      tabBtns[current].classList.add('is-active');
+    }
+
+    function startAuto() {
+      if (timer !== null) clearInterval(timer);
+      timer = setInterval(function () { goTo(current + 1); }, INTERVAL);
+    }
+
+    // Tab click handler
+    tabBtns.forEach(function (btn, i) {
+      btn.addEventListener('click', function () {
+        goTo(i);
+        startAuto(); // reset the interval so clicked tab stays visible for a full dwell
+      });
+    });
+
+    // Pause auto-play while the user is hovering the scene
+    scene.addEventListener('mouseenter', function () {
+      if (timer !== null) clearInterval(timer);
+    });
+    scene.addEventListener('mouseleave', startAuto);
+
+    // Kick off auto-play on load
+    startAuto();
+  })();
+</script>

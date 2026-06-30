@@ -1,0 +1,216 @@
+---
+// ============================================================
+//  CompareBar — fixed bottom bar that appears when ≥1 product
+//  is queued for comparison. Driven by the compare nanostore
+//  via a delegated vanilla-JS script (no React island needed).
+// ============================================================
+---
+
+<div class="compare-bar" id="compare-bar" aria-live="polite" aria-label="Compare products">
+  <div class="compare-bar-inner">
+    <div class="compare-bar-slots" id="compare-slots"></div>
+    <div class="compare-bar-actions">
+      <span class="compare-bar-count" id="compare-count">0 products</span>
+      <a class="compare-bar-btn" id="compare-go" href="/compare">Compare now</a>
+      <button class="compare-bar-clear" id="compare-clear" aria-label="Clear comparison">Clear all</button>
+    </div>
+  </div>
+</div>
+
+<style is:global>
+  .compare-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 900;
+    background: var(--ink);
+    color: var(--warm-white);
+    transform: translateY(100%);
+    transition: transform 0.3s var(--ease);
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.18);
+  }
+  .compare-bar.visible { transform: translateY(0); }
+  .compare-bar-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .compare-bar-slots {
+    display: flex;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+  }
+  .compare-slot {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: var(--r-sm, 4px);
+    padding: 6px 10px 6px 8px;
+    font-size: 12px;
+    max-width: 160px;
+  }
+  .compare-slot img {
+    width: 32px;
+    height: 32px;
+    object-fit: cover;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .compare-slot-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--warm-white);
+  }
+  .compare-slot-remove {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    display: grid;
+    place-items: center;
+    background: rgba(255,255,255,0.15);
+    border-radius: 50%;
+    font-size: 10px;
+    cursor: pointer;
+    line-height: 1;
+    transition: background 0.15s;
+    border: none;
+    color: var(--warm-white);
+    padding: 0;
+  }
+  .compare-slot-remove:hover { background: var(--clay); }
+  .compare-bar-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  .compare-bar-count {
+    font-size: 12px;
+    color: rgba(255,255,255,0.55);
+    white-space: nowrap;
+  }
+  .compare-bar-btn {
+    background: var(--clay);
+    color: var(--warm-white);
+    border: none;
+    border-radius: var(--r-sm, 4px);
+    padding: 9px 20px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    text-decoration: none;
+    transition: opacity 0.15s;
+  }
+  .compare-bar-btn:hover { opacity: 0.85; }
+  .compare-bar-clear {
+    background: none;
+    border: 1px solid rgba(255,255,255,0.25);
+    color: rgba(255,255,255,0.6);
+    border-radius: var(--r-sm, 4px);
+    padding: 8px 14px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .compare-bar-clear:hover { border-color: rgba(255,255,255,0.5); color: var(--warm-white); }
+
+  /* Limit tooltip on compare button */
+  .feat-compare { position: relative; }
+  .compare-limit-tip {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--ink);
+    color: var(--warm-white);
+    font-size: 10px;
+    white-space: nowrap;
+    padding: 3px 8px;
+    border-radius: var(--r-pill, 99px);
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  /* Compare button active state (mirrors wishlist active) */
+  .feat-compare.active {
+    background: var(--clay);
+    border-color: var(--clay);
+  }
+  .feat-compare.active svg {
+    stroke: var(--warm-white);
+  }
+</style>
+
+<script>
+  import { $compare, initCompare, removeFromCompare, clearCompare } from '~/stores/compare';
+
+  const bar = document.getElementById('compare-bar');
+  const slotsEl = document.getElementById('compare-slots');
+  const countEl = document.getElementById('compare-count');
+  const goBtn = document.getElementById('compare-go') as HTMLAnchorElement | null;
+
+  function renderBar() {
+    const products = $compare.get();
+    const count = products.length;
+
+    bar?.classList.toggle('visible', count > 0);
+    if (countEl) countEl.textContent = `${count} product${count === 1 ? '' : 's'}`;
+
+    if (goBtn) {
+      const handles = products.map((p) => p.handle).join(',');
+      goBtn.href = `/compare?handles=${encodeURIComponent(handles)}`;
+    }
+
+    if (!slotsEl) return;
+    slotsEl.innerHTML = products
+      .map(
+        (p) => `<div class="compare-slot">
+          ${p.image ? `<img src="${p.image}" alt="${p.title}" />` : ''}
+          <span class="compare-slot-name">${p.title}</span>
+          <button class="compare-slot-remove" data-remove-id="${p.id}" aria-label="Remove ${p.title}">✕</button>
+        </div>`,
+      )
+      .join('');
+
+    slotsEl.querySelectorAll<HTMLButtonElement>('[data-remove-id]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.removeId!;
+        removeFromCompare(id);
+        // Sync button state on cards still in DOM
+        document
+          .querySelectorAll<HTMLButtonElement>(
+            `.feat-card[data-product-id="${id}"] .feat-compare`,
+          )
+          .forEach((b) => {
+            b.classList.remove('active');
+            b.setAttribute('aria-label', 'Compare product');
+          });
+      });
+    });
+  }
+
+  initCompare();
+  $compare.subscribe(renderBar);
+
+  document.getElementById('compare-clear')?.addEventListener('click', () => {
+    clearCompare();
+    // Reset all active compare buttons on page
+    document.querySelectorAll<HTMLButtonElement>('.feat-compare.active').forEach((b) => {
+      b.classList.remove('active');
+      b.setAttribute('aria-label', 'Compare product');
+    });
+  });
+</script>

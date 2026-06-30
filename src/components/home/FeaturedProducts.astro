@@ -1,0 +1,80 @@
+---
+// ============================================================
+//  Featured Products — tabbed grid filtered by real productType.
+//  Tabs derive from the loaded products; filtering is client-side
+//  (vanilla JS, progressive — all products render server-side).
+// ============================================================
+import type { ProductCard as ProductCardType } from '~/lib/shopify/types';
+import SectionHeading from '~/components/ui/SectionHeading.astro';
+import ProductCard from '~/components/product/ProductCard.astro';
+
+interface Props {
+  products: ProductCardType[];
+}
+const { products } = Astro.props;
+const items = products.slice(0, 8);
+
+// Build the tab list from distinct product types present.
+const types = Array.from(
+  new Set(items.map((p) => p.productType).filter((t): t is string => !!t)),
+).slice(0, 5);
+const tabs = ['All', ...types];
+
+// data-type slug for filtering.
+const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+---
+
+{
+  items.length > 0 && (
+    <section id="featured" class="wrap py-20 md:py-28">
+      <SectionHeading
+        eyebrow="The Catalogue"
+        title="Featured this *issue*."
+        href="/products"
+        linkLabel="Shop all"
+        class="mb-10"
+      />
+
+      {tabs.length > 1 && (
+        <div class="mb-12 flex flex-wrap gap-2" role="tablist" data-feat-tabs>
+          {tabs.map((t, i) => (
+            <button
+              type="button"
+              role="tab"
+              data-feat-tab={t === 'All' ? 'all' : slug(t)}
+              aria-selected={i === 0 ? 'true' : 'false'}
+              class="rounded-full border border-sand-deep px-4 py-2 text-xs font-medium tracking-wide text-muted transition-fluid hover:border-clay hover:text-clay aria-selected:border-ink aria-selected:bg-ink aria-selected:text-cream"
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div class="grid grid-cols-2 gap-x-6 gap-y-12 lg:grid-cols-4" data-feat-grid>
+        {items.map((product, i) => (
+          <div data-feat-item={product.productType ? slug(product.productType) : 'other'}>
+            <ProductCard product={product} index={i} kicker={product.productType} class="reveal" />
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+<script>
+  const tabsRoot = document.querySelector('[data-feat-tabs]');
+  const items = Array.from(document.querySelectorAll<HTMLElement>('[data-feat-item]'));
+  tabsRoot?.querySelectorAll<HTMLButtonElement>('[data-feat-tab]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const type = btn.dataset.featTab;
+      tabsRoot.querySelectorAll('[data-feat-tab]').forEach((b) =>
+        b.setAttribute('aria-selected', b === btn ? 'true' : 'false'),
+      );
+      items.forEach((el) => {
+        const show = type === 'all' || el.dataset.featItem === type;
+        el.style.display = show ? '' : 'none';
+      });
+    });
+  });
+</script>

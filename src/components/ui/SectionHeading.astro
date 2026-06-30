@@ -1,0 +1,40 @@
+---
+// ============================================================
+//  Section heading — editorial label (rule + tracked caps) over a
+//  serif title, with an optional "view all" link.
+//  `title` supports *italic* accent words via *asterisks*.
+// ============================================================
+import Icon from '~/components/ui/Icon.astro';
+
+interface Props {
+  eyebrow?: string;
+  title: string;
+  href?: string;
+  linkLabel?: string;
+  class?: string;
+  /** Center the label + title (no inline link). */
+  center?: boolean;
+}
+const { eyebrow, title, href, linkLabel = 'See full edit', class: className = '', center = false } = Astro.props;
+
+// Convert *word* → <em>word</em> for the editorial italic accent.
+const titleHtml = title.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+---
+
+<div class={`flex flex-col gap-6 ${center ? 'items-center text-center' : ''} ${className}`}>
+  {eyebrow && <span class={`ed-label ${center ? 'is-center' : ''}`}>{eyebrow}</span>}
+  <div class={`flex w-full items-end justify-between gap-10 ${center ? 'justify-center' : ''}`}>
+    <h2 class="masthead max-w-3xl text-[clamp(1.9rem,4vw,3rem)]" set:html={titleHtml} />
+    {
+      href && !center && (
+        <a
+          href={href}
+          class="group hidden shrink-0 items-center gap-2 border-b border-clay/40 pb-1 text-sm text-clay transition-fluid hover:gap-3 hover:text-clay-deep sm:inline-flex"
+        >
+          {linkLabel}
+          <Icon name="arrowRight" size={15} class="transition-transform group-hover:translate-x-0.5" />
+        </a>
+      )
+    }
+  </div>
+</div>

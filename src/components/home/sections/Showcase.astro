@@ -1,0 +1,409 @@
+---
+// ============================================================
+//  Product Showcase — full-bleed "Most Demanding" scroll hero.
+//
+//  Scroll-driven product switching, ported 1:1 from the HTML
+//  reference (home-editorial.html): as the visitor scrolls inside
+//  the section, the featured product cross-fades to the next one;
+//  at the first/last product the page releases to the neighbouring
+//  section. Design/markup are unchanged — only the data source and
+//  the behaviour knobs are configurable.
+//
+//  All content + behaviour is controlled from SHOWCASE in
+//  src/config/showcase.ts. Two product sources (SHOWCASE.mode):
+//
+//  'shopify' → products fetched from the Storefront API by handle.
+//  'custom'  → manually defined slides from SHOWCASE.customItems.
+// ============================================================
+import type { ProductCard } from '~/lib/shopify/types';
+import type {
+  ShowcaseCustomItem,
+  ShowcaseMode,
+  ShowcaseSettings,
+  ShowcaseShopifyConfig,
+} from '~/config/showcase';
+import { formatMoney } from '~/lib/utils';
+
+interface Props {
+  mode: ShowcaseMode;                     // → SHOWCASE.mode
+  settings: ShowcaseSettings;             // → SHOWCASE.settings
+  // shopify mode
+  shopifyProducts?: ProductCard[];        // resolved live products (by handle, in order)
+  shopifyConfig?: ShowcaseShopifyConfig;  // → SHOWCASE.shopifyConfig
+  // custom mode
+  customItems?: ShowcaseCustomItem[];     // → SHOWCASE.customItems
+}
+
+const {
+  mode,
+  settings,
+  shopifyProducts = [],
+  shopifyConfig,
+  customItems = [],
+} = Astro.props;
+
+// ── Unified slide shape consumed by both the SSR markup and the script ────────
+interface ShowcaseSlide {
+  img: string;
+  imageAlt: string;
+  kicker: string;
+  nameHtml: string; // safe HTML — escaped, with *accent* → <em> applied
+  desc: string;
+  price: string;    // preformatted, '' to hide
+  href: string;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Escape HTML so untrusted text can't inject markup when set via innerHTML. */
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/** Escape, then turn *word* into <em>word</em> (the italic clay accent). */
+function nameToHtml(title: string): string {
+  return escapeHtml(title).replace(/\*([^*]+)\*/g, '<em>$1</em>');
+}
+
+/** Truncate by character or word count, appending "…" when cut. length<=0 = no limit. */
+function truncate(text: string, length: number, unit: 'chars' | 'words'): string {
+  if (!text || length <= 0) return text;
+  if (unit === 'words') {
+    const words = text.trim().split(/\s+/);
+    return words.length > length ? words.slice(0, length).join(' ') + '…' : text;
+  }
+  return text.length > length ? text.slice(0, length).trimEnd() + '…' : text;
+}
+
+/** Resolve a Shopify product's kicker: per-handle override → fallback rule. */
+function resolveKicker(p: ProductCard, cfg: ShowcaseShopifyConfig): string {
+  if (cfg.kickers[p.handle]) return cfg.kickers[p.handle];
+  if (cfg.kickerFallback === 'product-type') return p.productType ?? '';
+  if (cfg.kickerFallback === 'vendor') return p.vendor ?? '';
+  return '';
+}
+
+// ── Build the slide list from the active source ──────────────────────────────
+let slides: ShowcaseSlide[] =
+  mode === 'shopify' && shopifyConfig
+    ? shopifyProducts.slice(0, shopifyConfig.productLimit).map((p) => ({
+        // image  → product featured image from Shopify
+        img: p.featuredImage?.url ?? '',
+        imageAlt: p.featuredImage?.altText ?? p.title,
+        // kicker → SHOWCASE.shopifyConfig.kickers[handle] or kickerFallback
+        kicker: resolveKicker(p, shopifyConfig),
+        // title  → product title (plain text, escaped)
+        nameHtml: nameToHtml(p.title),
+        // desc   → product description, truncated per descriptionLength/Unit
+        //          (descriptionLength === 0 hides the description entirely)
+        desc:
+          shopifyConfig.descriptionLength === 0
+            ? ''
+            : truncate(
+                p.description ?? '',
+                shopifyConfig.descriptionLength,
+                shopifyConfig.descriptionUnit,
+              ),
+        // price  → lowest variant price, formatted
+        price: p.priceRange?.minVariantPrice
+          ? formatMoney(p.priceRange.minVariantPrice.amount, p.priceRange.minVariantPrice.currencyCode)
+          : '',
+        // href   → /products/<handle>
+        href: `/products/${p.handle}`,
+      }))
+    : customItems.map((item) => ({
+        // image  → SHOWCASE.customItems[i].image + .imageAlt
+        img: item.image,
+        imageAlt: item.imageAlt,
+        // kicker → SHOWCASE.customItems[i].kicker
+        kicker: item.kicker,
+        // title  → SHOWCASE.customItems[i].title  (*word* = italic accent)
+        nameHtml: nameToHtml(item.title),
+        // desc   → SHOWCASE.customItems[i].description (capped by customDescriptionLimit)
+        desc: truncate(item.description, settings.customDescriptionLimit, 'chars'),
+        // price  → SHOWCASE.customItems[i].price  (omit to hide)
+        price: item.price ?? '',
+        // href   → SHOWCASE.customItems[i].href
+        href: item.href,
+      }));
+
+// Drop slides with no image so the scroll sequence never shows a blank stage.
+slides = slides.filter((s) => s.img);
+
+// First slide is rendered server-side (SSR + no-JS fallback); the rest are
+// switched client-side by the script below.
+const first = slides[0];
+
+// Watermark is duplicated so the marquee loops seamlessly.
+const watermark = settings.watermark?.trim() ?? '';
+---
+
+{
+  first && (
+    /* The <section> is a tall scroll "track" (height set by JS) that gives the
+       sequence its scroll distance. Inside, .showcase-pin is a full-viewport
+       sticky layer that keeps the cocoa spread fixed in the viewport while the
+       products switch — the section only scrolls away once EVERY product has
+       been shown. The cocoa fills the pinned viewport below the sticky header
+       (no blank band above/below). Everything else is styled by editorial.css. */
+    <section
+      class="section-showcase showcase-track"
+      id="showcase"
+      data-fade-duration={settings.fadeDuration}
+      data-scroll-per-product={settings.scrollPerProductVh}
+      data-count={slides.length}
+    >
+      <div class="showcase-pin">
+        {watermark && (
+          <div class="showcase-watermark-wrap">
+            <div class="showcase-watermark-track">
+              <span class="showcase-watermark">{watermark}</span>
+              <span class="showcase-watermark">{watermark}</span>
+            </div>
+          </div>
+        )}
+
+        <div class="showcase-inner">
+          <div class="showcase-stage">
+            <div class="showcase-slide">
+              <div class="showcase-image-wrap">
+                <img id="showcase-img" src={first.img} alt={first.imageAlt} class="fade-in" />
+              </div>
+            </div>
+          </div>
+
+          <div class="showcase-meta fade-in" id="showcase-meta">
+            {first.kicker && (
+              <span class="showcase-kicker" id="showcase-kicker">
+                {first.kicker}
+              </span>
+            )}
+            <h2 class="showcase-name" id="showcase-name" set:html={first.nameHtml} />
+            <p class="showcase-desc" id="showcase-desc">
+              {first.desc}
+            </p>
+            {first.price && (
+              <span class="showcase-price" id="showcase-price">
+                {first.price}
+              </span>
+            )}
+            <a href={first.href} class="showcase-cta" id="showcase-cta">
+              View Details
+              <svg viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      {/* Slide data for the client-side scroll switcher */}
+      <script type="application/json" id="showcase-data" set:html={JSON.stringify(slides)} />
+    </section>
+  )
+}
+
+<style>
+  /* ── Sticky-pin scaffold ──
+     The section is a tall scroll "track" (height set by JS) that provides the
+     scroll distance for the switching sequence. The cocoa background is NOT on
+     the track itself — it lives on the sticky .showcase-pin — so the track is
+     transparent and `overflow: visible` (an overflow-hidden ancestor would
+     break position: sticky). */
+  .section-showcase.showcase-track {
+    background: transparent;
+    overflow: visible;
+    padding: 0;
+  }
+
+  /* Sticky layer pinned just below the sticky site header. The cocoa FILLS the
+     viewport from the header down to the bottom (no blank band above/below) and
+     stays fixed while the products switch; the section only scrolls away after
+     the last product. Height is responsive — `calc(100vh - offset)` instead of a
+     fixed 100vh — and the offset shrinks on smaller (shorter-header) screens.
+     `overflow: hidden` clips the watermark marquee and is safe on the sticky
+     element itself (only an overflow-hidden ANCESTOR would break stickiness). */
+  .showcase-pin {
+    --sc-offset: 150px; /* ≈ sticky header height (127px) + breathing room */
+    position: sticky;
+    top: var(--sc-offset);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+    background: var(--cocoa);
+  }
+
+  @media (max-width: 900px) {
+    .showcase-pin {
+      --sc-offset: 100px; /* shorter mobile header (≈89px) */
+    }
+  }
+
+  /* The spread keeps the reference HTML's content height/padding
+     (.showcase-inner min-height: calc(85vh - 140px)), centred in the cocoa
+     viewport. */
+  .showcase-pin .showcase-inner {
+    width: 100%;
+  }
+
+  /* Before JS runs (or if disabled) the track is just one panel tall, so the
+     section behaves like a normal hero showing the first product. */
+  .showcase-track:not([data-pin-ready]) {
+    height: auto;
+  }
+
+  /* ── Product image sizing ──
+     Cap the image so large Shopify catalogue photos (often 1200²+) don't
+     stretch top-to-bottom or dominate the spread; small product renders sit
+     well under these caps and are unaffected. */
+  .showcase-image-wrap img {
+    max-height: calc((85vh - 140px) * 0.78);
+    max-width: 86%;
+  }
+</style>
+
+<script>
+  // ============================================================
+  //  PRODUCT SHOWCASE — pinned, scroll-position-driven switcher
+  //
+  //  The section is a tall scroll "track"; the inner .showcase-pin
+  //  stays pinned (position: sticky) in the viewport. As the visitor
+  //  scrolls THROUGH the track, the featured product is chosen from
+  //  the current scroll progress — so the section stays put until
+  //  every product has been shown, then scrolls away normally.
+  //
+  //  Position-driven (not wheel-trapping) so the section can never be
+  //  scrolled past mid-sequence: it works identically for mouse wheel,
+  //  trackpad, touch, scrollbar and keyboard, and only releases once
+  //  the last product has been reached.
+  // ============================================================
+  interface ShowcaseSlide {
+    img: string;
+    imageAlt: string;
+    kicker: string;
+    nameHtml: string;
+    desc: string;
+    price: string;
+    href: string;
+  }
+
+  function initShowcase() {
+    const section = document.getElementById('showcase');
+    const dataEl = document.getElementById('showcase-data');
+    if (!section || !dataEl) return;
+    // Guard against double-binding (initial run + astro:page-load re-fire).
+    if (section.dataset.scInit) return;
+    section.dataset.scInit = '1';
+
+    let products: ShowcaseSlide[] = [];
+    try {
+      products = JSON.parse(dataEl.textContent || '[]');
+    } catch {
+      return;
+    }
+    if (products.length === 0) return;
+
+    // ── Behaviour knobs (from data-* attributes → SHOWCASE.settings) ──────────
+    const FADE = Number(section.dataset.fadeDuration) || 700; // cross-fade duration (ms)
+    const PER_PRODUCT_VH = Number(section.dataset.scrollPerProduct) || 0.9; // scroll per product (viewport-heights)
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const imgEl = document.getElementById('showcase-img') as HTMLImageElement | null;
+    const metaEl = document.getElementById('showcase-meta');
+    const kickerEl = document.getElementById('showcase-kicker');
+    const nameEl = document.getElementById('showcase-name');
+    const descEl = document.getElementById('showcase-desc');
+    const priceEl = document.getElementById('showcase-price');
+    const ctaEl = document.getElementById('showcase-cta') as HTMLAnchorElement | null;
+    if (!imgEl || !metaEl || !nameEl || !descEl) return;
+
+    // Single-product sections need no pinning — leave the static markup as-is.
+    if (products.length < 2) return;
+
+    let current = 0; // product currently shown
+    let target = 0; // product the scroll position wants
+    let isAnimating = false;
+
+    // Cross-fade to the latest `target` (re-read after the fade so fast scrolls
+    // jump straight to the right product without stepping through each one).
+    function settle() {
+      if (isAnimating || target === current) return;
+      isAnimating = true;
+
+      imgEl!.classList.remove('fade-in');
+      imgEl!.classList.add('fade-out');
+      metaEl!.classList.remove('fade-in');
+      metaEl!.classList.add('fade-out');
+
+      const swap = () => {
+        current = target;
+        const p = products[current];
+        imgEl!.src = p.img;
+        imgEl!.alt = p.imageAlt;
+        if (kickerEl) kickerEl.textContent = p.kicker;
+        nameEl!.innerHTML = p.nameHtml;
+        descEl!.textContent = p.desc;
+        if (priceEl) priceEl.textContent = p.price;
+        if (ctaEl) ctaEl.href = p.href;
+
+        imgEl!.classList.remove('fade-out');
+        imgEl!.classList.add('fade-in');
+        metaEl!.classList.remove('fade-out');
+        metaEl!.classList.add('fade-in');
+
+        const done = () => {
+          isAnimating = false;
+          settle(); // a newer target may have arrived during the fade
+        };
+        reduceMotion ? done() : setTimeout(done, FADE);
+      };
+
+      reduceMotion ? swap() : setTimeout(swap, FADE);
+    }
+
+    // Size the track so each product gets PER_PRODUCT_VH of scroll. The extra
+    // 100vh is the pinned panel itself; the rest is the switching distance.
+    function sizeTrack() {
+      const stepPx = window.innerHeight * PER_PRODUCT_VH;
+      section!.style.height = window.innerHeight + products.length * stepPx + 'px';
+      section!.setAttribute('data-pin-ready', '');
+    }
+
+    // Map the current scroll progress through the track → product index.
+    let ticking = false;
+    function onScroll() {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        ticking = false;
+        const rect = section!.getBoundingClientRect();
+        const pinnedRange = section!.offsetHeight - window.innerHeight; // scrollable distance while pinned
+        if (pinnedRange <= 0) return;
+        // How far we've scrolled into the pinned phase, 0 → 1.
+        const progress = Math.min(1, Math.max(0, -rect.top / pinnedRange));
+        const idx = Math.min(products.length - 1, Math.floor(progress * products.length));
+        if (idx !== target) {
+          target = idx;
+          settle();
+        }
+      });
+    }
+
+    sizeTrack();
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', () => {
+      sizeTrack();
+      onScroll();
+    });
+  }
+
+  // Run now (module scripts execute after DOM parse) and survive Astro view transitions.
+  initShowcase();
+  document.addEventListener('astro:page-load', initShowcase);
+</script>

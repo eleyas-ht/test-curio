@@ -1,0 +1,168 @@
+---
+// ============================================================
+//  ProductFilters — editorial faceted filter panel (§5.1).
+//  Server-rendered from Shopify `collection.filters` (real facets +
+//  counts). A <form method="get"> is the source of truth; a small
+//  script toggles the panel and submits on change (progressive —
+//  works with JS off via the Apply button).
+// ============================================================
+import type { CollectionFilter } from '~/lib/shopify/types';
+import { encodeFilter, selectedTokens, activeFilterCount } from '~/lib/filters';
+import Icon from '~/components/ui/Icon.astro';
+
+interface Props {
+  filters: CollectionFilter[];
+  url: URL;
+  action: string;
+  sortValue?: string;
+}
+const { filters, url, action, sortValue } = Astro.props;
+
+const selected = selectedTokens(url);
+const activeCount = activeFilterCount(url);
+
+// Split price-range facets from list facets.
+const listFilters = filters.filter((f) => f.type !== 'PRICE_RANGE' && f.values.length > 0);
+const priceFilter = filters.find((f) => f.type === 'PRICE_RANGE');
+
+// Derive price bounds from the price facet's input, if present.
+let priceBounds: { min?: number; max?: number } = {};
+if (priceFilter?.values[0]?.input) {
+  try {
+    const parsed = JSON.parse(priceFilter.values[0].input) as { price?: { min?: number; max?: number } };
+    priceBounds = parsed.price ?? {};
+  } catch {
+    /* ignore */
+  }
+}
+const curMin = url.searchParams.get('price_min') ?? '';
+const curMax = url.searchParams.get('price_max') ?? '';
+const hasFacets = listFilters.length > 0 || !!priceFilter;
+---
+
+{
+  hasFacets && (
+    <div class="mb-8" data-filters-root>
+      {/* Toggle + active count */}
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <button
+          type="button"
+          data-filters-toggle
+          aria-expanded="false"
+          class="inline-flex items-center gap-2.5 rounded-full border border-sand-deep px-4 py-2 text-xs font-medium tracking-wide text-ink transition-fluid hover:border-clay hover:text-clay"
+        >
+          <Icon name="filter" size={15} />
+          Filters
+          {activeCount > 0 && (
+            <span class="grid h-5 min-w-5 place-items-center rounded-full bg-clay px-1 text-[0.65rem] text-warm-white">
+              {activeCount}
+            </span>
+          )}
+        </button>
+        {activeCount > 0 && (
+          <a href={action} class="text-xs text-muted underline-offset-4 transition-fluid hover:text-clay hover:underline">
+            Clear all
+          </a>
+        )}
+      </div>
+
+      {/* Panel */}
+      <form
+        method="get"
+        action={action}
+        data-filters-panel
+        class="mt-5 hidden rounded-md border border-sand-deep bg-warm-white p-6"
+      >
+        {sortValue && <input type="hidden" name="sort" value={sortValue} />}
+
+        <div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+          {listFilters.map((group) => (
+            <fieldset>
+              <legend class="ed-label !gap-2 before:w-3">{group.label}</legend>
+              <ul class="mt-4 flex flex-col gap-2.5">
+                {group.values.map((v) => {
+                  const token = encodeFilter(v.input);
+                  return (
+                    <li>
+                      <label class="flex cursor-pointer items-center gap-2.5 text-sm text-ink">
+                        <input
+                          type="checkbox"
+                          name="f"
+                          value={token}
+                          checked={selected.has(token)}
+                          class="h-4 w-4 shrink-0 accent-clay"
+                        />
+                        <span class="flex-1">{v.label}</span>
+                        <span class="text-xs text-muted-light tabular">{v.count}</span>
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+            </fieldset>
+          ))}
+
+          {priceFilter && (
+            <fieldset>
+              <legend class="ed-label !gap-2 before:w-3">Price</legend>
+              <div class="mt-4 flex items-center gap-3">
+                <label class="flex-1">
+                  <span class="sr-only">Min price</span>
+                  <input
+                    type="number"
+                    name="price_min"
+                    inputmode="numeric"
+                    min={priceBounds.min ?? 0}
+                    max={priceBounds.max}
+                    placeholder={priceBounds.min != null ? String(Math.floor(priceBounds.min)) : 'Min'}
+                    value={curMin}
+                    class="h-10 w-full rounded-md border border-sand-deep bg-cream px-3 text-sm outline-none focus:border-clay"
+                  />
+                </label>
+                <span class="text-muted-light">—</span>
+                <label class="flex-1">
+                  <span class="sr-only">Max price</span>
+                  <input
+                    type="number"
+                    name="price_max"
+                    inputmode="numeric"
+                    min={priceBounds.min ?? 0}
+                    max={priceBounds.max}
+                    placeholder={priceBounds.max != null ? String(Math.ceil(priceBounds.max)) : 'Max'}
+                    value={curMax}
+                    class="h-10 w-full rounded-md border border-sand-deep bg-cream px-3 text-sm outline-none focus:border-clay"
+                  />
+                </label>
+              </div>
+            </fieldset>
+          )}
+        </div>
+
+        <div class="mt-7 flex items-center gap-3 border-t border-sand-deep pt-5">
+          <button
+            type="submit"
+            class="inline-flex h-10 items-center rounded-md bg-cocoa px-6 text-sm font-medium text-cream transition-fluid hover:bg-clay"
+          >
+            Apply filters
+          </button>
+          <a href={action} class="text-sm text-muted transition-fluid hover:text-ink">Reset</a>
+        </div>
+      </form>
+    </div>
+  )
+}
+
+<script>
+  document.querySelectorAll('[data-filters-root]').forEach((root) => {
+    const toggle = root.querySelector('[data-filters-toggle]');
+    const panel = root.querySelector('[data-filters-panel]');
+    toggle?.addEventListener('click', () => {
+      const open = panel?.classList.toggle('hidden') === false;
+      toggle.setAttribute('aria-expanded', String(open));
+    });
+    // Auto-submit on checkbox change for instant filtering.
+    panel?.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+      cb.addEventListener('change', () => (panel as HTMLFormElement).submit());
+    });
+  });
+</script>

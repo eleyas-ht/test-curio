@@ -1,0 +1,91 @@
+---
+// ─── FAQ Content ─────────────────────────────────────────────────────────────
+// Update the values below to change the FAQ section without touching the markup.
+
+const faqSection = {
+  eyebrow: "Questions, answered",
+  title: "The honest",
+  titleEmphasis: "fine print",
+  body: "No call-centre script. These are the questions our team actually answers most often — and the answers we'd give a friend.",
+  ctaLabel: "Talk to a human",
+  ctaHref: "#",
+};
+
+const faqs = [
+  {
+    question: "How long does shipping actually take?",
+    answer:
+      "Most US orders arrive in 2–4 business days. Express orders ship same-day if placed before 2pm ET. International shipping ranges from 5–10 business days. We don't charge a \"handling fee\" — what you see at checkout is what we send out, no surcharge surprises.",
+  },
+  {
+    question: "What's your return policy?",
+    answer:
+      "30 days, no questions. Just open the box, decide it's not for you, and we'll send you a return label — no restocking fees, no \"must be unworn\" clauses. Audio gear especially needs to be lived with to know.",
+  },
+  {
+    question: "Are these the same products as the big retailers?",
+    answer:
+      "Identical SKUs, authorised distribution, full manufacturer warranty. What's different is the curation — we don't carry everything. We carry the products our editors would buy themselves.",
+  },
+  {
+    question: "Do you do trade-ins or pay-in-installments?",
+    answer:
+      "Pay in 4 with Klarna or Afterpay at checkout, interest-free. Trade-in program for laptops and tablets is launching in late Spring — drop your email below and we'll let you know.",
+  },
+  {
+    question: "What does the 2-year warranty actually cover?",
+    answer:
+      "Manufacturing defects, hardware failures, and battery degradation beyond reasonable wear. Doesn't cover drops, water damage, or \"the dog ate it\" — but our concierge team is honest about edge cases. Reach out and we'll do our best.",
+  },
+  {
+    question: "Can I get product advice from a real editor?",
+    // Use HTML strings here when you need inline tags like <em> or <a>
+    answerHtml:
+      'Yes — and we recommend it. Email <em>editors@amaraakhon.com</em> with what you\'re looking for, what you\'ve ruled out, and roughly your budget. We\'ll write back with one or two specific suggestions, not a catalogue.',
+  },
+];
+
+// Roman numeral labels auto-generated — no need to change them when reordering.
+const numerals = ["i","ii","iii","iv","v","vi","vii","viii","ix","x"];
+---
+
+  <section class="section-faq">
+    <div class="container faq-inner">
+      <div class="faq-left">
+        <span class="label faq-eyebrow">{faqSection.eyebrow}</span>
+        <h2 class="faq-title">{faqSection.title} <em>{faqSection.titleEmphasis}</em>.</h2>
+        <p class="faq-body">{faqSection.body}</p>
+        <a href={faqSection.ctaHref} class="btn-link">{faqSection.ctaLabel}
+          <svg viewBox="0 0 16 16" fill="currentColor">
+            <path fill-rule="evenodd"
+              d="M8.22 2.97a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06l2.97-2.97H3.75a.75.75 0 0 1 0-1.5h7.44L8.22 4.03a.75.75 0 0 1 0-1.06Z"
+              clip-rule="evenodd" />
+          </svg>
+        </a>
+      </div>
+      <div class="faq-list">
+        {faqs.map((item, i) => (
+          <div class={`faq-item${i === 0 ? " open" : ""}`}>
+            <button class="faq-q">
+              <span class="faq-q-num">{numerals[i]}.</span>
+              <span class="faq-q-text">{item.question}</span>
+              <span class="faq-q-icon"><svg viewBox="0 0 24 24">
+                  <path d="M12 5v14M5 12h14" />
+                </svg></span>
+            </button>
+            <div class="faq-a">
+              <div class="faq-a-inner">
+                {item.answerHtml
+                  ? <Fragment set:html={item.answerHtml} />
+                  : item.answer}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+     INSTAGRAM — Shoppable card carousel
+============================================================ -->

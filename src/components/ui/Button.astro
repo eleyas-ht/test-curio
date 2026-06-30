@@ -1,0 +1,66 @@
+---
+// ============================================================
+//  Button — shared CTA primitive. Renders <a> when href is set,
+//  otherwise <button>. Variants encode the action hierarchy:
+//  primary = cocoa fill (hover clay), accent = clay, outline/link.
+// ============================================================
+import { cn } from '~/lib/utils';
+
+type Variant = 'primary' | 'accent' | 'outline' | 'ghost' | 'link' | 'ink';
+type Size = 'sm' | 'md' | 'lg';
+
+interface Props {
+  href?: string;
+  variant?: Variant;
+  size?: Size;
+  block?: boolean;
+  type?: 'button' | 'submit';
+  class?: string;
+  disabled?: boolean;
+  [key: string]: unknown;
+}
+
+const {
+  href,
+  variant = 'primary',
+  size = 'md',
+  block = false,
+  type = 'button',
+  class: className,
+  disabled = false,
+  ...rest
+} = Astro.props;
+
+const base =
+  'inline-flex items-center justify-center gap-2.5 font-sans font-medium transition-fluid select-none disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap';
+
+const variants: Record<Variant, string> = {
+  ink: 'rounded-md border border-cocoa bg-cocoa text-cream hover:bg-clay hover:border-clay',
+  primary: 'rounded-md border border-cocoa bg-cocoa text-cream hover:bg-clay hover:border-clay',
+  accent: 'rounded-md border border-clay bg-clay text-warm-white hover:bg-clay-deep hover:border-clay-deep',
+  outline: 'rounded-md border border-ink/20 text-ink hover:border-ink hover:bg-ink/[0.03]',
+  ghost: 'rounded-md text-ink hover:bg-ink/[0.05]',
+  link: 'gap-2 border-b border-clay/40 pb-0.5 font-sans text-sm text-clay hover:gap-3 hover:text-clay-deep hover:border-clay rounded-none',
+};
+
+const sizes: Record<Size, string> = {
+  sm: 'h-9 px-4 text-[0.8125rem]',
+  md: 'h-11 px-7 text-sm',
+  lg: 'h-14 px-9 text-base',
+};
+
+// The link variant ignores fixed sizing (it's inline text).
+const sizeClass = variant === 'link' ? '' : sizes[size];
+const classes = cn(base, variants[variant], sizeClass, block && 'w-full', className);
+const Tag = href ? 'a' : 'button';
+---
+
+<Tag
+  class={classes}
+  href={href}
+  type={href ? undefined : type}
+  aria-disabled={disabled ? 'true' : undefined}
+  {...rest}
+>
+  <slot />
+</Tag>

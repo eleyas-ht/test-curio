@@ -1,0 +1,218 @@
+---
+// ============================================================
+//  Guide — BUYING GUIDE 55/45 split with cycling arrows
+//
+//  Configuration options:
+//    buttonHref  — URL the "Read the full guide" button links to.
+//                  Defaults to "#" if not provided.
+//    slides      — Optional override array. Each slide:
+//                    img, alt, tag, readtime, date, title, lede, body, items[]
+//                  Defaults to the built-in 5-slide dataset below.
+// ============================================================
+
+interface GuideSlide {
+  img: string;
+  alt: string;
+  tag: string;
+  readtime: string;
+  date: string;
+  title: string;    // may contain <em> tags
+  lede: string;
+  body: string;
+  items: string[];
+}
+
+interface Props {
+  /** URL for the "Read the full guide" CTA button. Default: "#" */
+  buttonHref?: string;
+  /** Override the default slide dataset. */
+  slides?: GuideSlide[];
+}
+
+const { buttonHref = '#', slides } = Astro.props;
+
+// Built-in 5-slide buying-guide dataset (matches home-editorial.html exactly).
+const defaultSlides: GuideSlide[] = [
+  {
+    img: '/images/buying-guide-01.jpg',
+    alt: 'Beige over-ear headphones on a warm surface',
+    tag: 'The Buying Guide',
+    readtime: '12 min read',
+    date: 'Updated May 2026',
+    title: 'How to choose your first <em>noise-cancelling</em> headphones.',
+    lede: 'The perfect pair doesn’t exist. But the right pair for how you actually listen does — and we’ll help you find yours with four practical questions.',
+    body: 'Before driver size and codec support enter the conversation, three honest answers decide whether you’ll actually wear them daily. Comfort, context, and cable philosophy matter more than any spec sheet.',
+    items: [
+      'Comfort is king beyond hour four. Clamping force and pad material matter most.',
+      'Where you listen changes everything — ANC priorities are completely different on a train vs in a home office.',
+      'Wireless is liberating until the battery dies. A wired backup saves every commute.',
+      'Good sound is subjective. Ignore the audiophile forums and trust your own ears.',
+    ],
+  },
+  {
+    img: '/images/mp98vida-02.earbuds.jpg',
+    alt: 'Wireless earbuds in charging case on textured surface',
+    tag: 'Buying Guide',
+    readtime: '10 min read',
+    date: 'Updated May 2026',
+    title: 'The best wireless earbuds for <em>every budget</em> in 2026.',
+    lede: 'We tested 32 pairs across every price tier to find the ones that actually deliver on sound, fit, and battery — not just the ones with the biggest marketing budget.',
+    body: 'The earbud market has never been more competitive. The good news: even budget options now punch well above their weight. The hard part: finding the pair that stays comfortable for hours and fits your ear shape.',
+    items: [
+      'Under $100: surprisingly competent ANC and a soundstage that rivals last year’s flagships.',
+      '$100–$250: the sweet spot — premium drivers and spatial audio without the premium tax.',
+      '$250+: flagship ANC, multi-device switching, and build quality that weathers years of daily use.',
+      'Battery is the spec brands fudge most. We test real-world endurance, not the asterisked claims.',
+    ],
+  },
+  {
+    img: '/images/mp98vz3p-03.smartwatch.jpg',
+    alt: 'Modern smartwatch on a wrist in natural light',
+    tag: 'Buying Guide',
+    readtime: '9 min read',
+    date: 'Updated April 2026',
+    title: 'Smartwatch or classic? <em>Which one</em> actually fits your life.',
+    lede: 'The line between fitness tracker and luxury timepiece has blurred. Here’s how to decide which screen — or hand — deserves your wrist real estate.',
+    body: 'Modern smartwatches pack ECG readers, dive computers, and sleep tracking into a single case. Yet most people only use three features daily. We cut through the noise to what actually improves your day.',
+    items: [
+      'Battery life is the real differentiator: daily charging works for some, weekly charging changes everything.',
+      'Health sensors are only useful if they change behaviour. A step counter alone won’t make you fitter.',
+      'Case size matters more than you think — a 44mm watch looks radically different on a slim wrist.',
+      'Cellular adds cost and battery drain. Only worth it if you run phone-free regularly.',
+    ],
+  },
+  {
+    img: '/images/mp977ng6-Rectangle-17.jpg',
+    alt: 'Mirrorless camera with lens on studio background',
+    tag: 'Buying Guide',
+    readtime: '14 min read',
+    date: 'Updated April 2026',
+    title: 'Mirrorless or DSLR: <em>the 2026</em> camera guide for creators.',
+    lede: 'The industry has shifted decisively to mirrorless. But your next camera depends on what you actually shoot — not what’s trending on YouTube or Reddit.',
+    body: 'Every major manufacturer has now bet their future on mirrorless. Yet DSLRs remain exceptional value on the used market, and phone cameras keep closing the gap. Here’s how to decide where your money goes.',
+    items: [
+      'Mirrorless: lighter bodies, faster eye-tracking AF, superior video — the clear future of the format.',
+      'DSLR: bargain used prices, optical viewfinders that never lag, and a lens library decades deep.',
+      'Sensor size matters, but APS-C delivers 90% of full-frame quality for half the cost and weight.',
+      'Lenses outlast bodies by decades. Invest in great glass first; the camera body is temporary.',
+    ],
+  },
+];
+
+const guideSlides = slides ?? defaultSlides;
+
+// Server-render the first slide so there is no flash of empty content.
+const first = guideSlides[0];
+const numerals = ['i', 'ii', 'iii', 'iv', 'v', 'vi'];
+---
+
+<section class="section-guide" id="guide-section">
+  <div class="container guide-inner">
+    <div class="guide-image" id="guide-image-wrap">
+      <span class="guide-image-tag" id="guide-tag">{first.tag}</span>
+      <img id="guide-img" src={first.img} alt={first.alt} />
+      <div class="guide-arrows">
+        <button class="guide-arrow" id="guide-prev" aria-label="Previous guide" disabled>
+          <svg viewBox="0 0 24 24">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </button>
+        <button class="guide-arrow" id="guide-next" aria-label="Next guide">
+          <svg viewBox="0 0 24 24">
+            <path d="M9 18l6-6-6-6" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="guide-content">
+      <div class="guide-meta">
+        <span>Buying Guide</span>
+        <span class="dot"></span>
+        <span id="guide-readtime"><em>{first.readtime}</em></span>
+        <span class="dot"></span>
+        <span id="guide-date">{first.date}</span>
+      </div>
+      <h2 class="guide-title" id="guide-title" set:html={first.title} />
+      <p class="guide-lede" id="guide-lede">{first.lede}</p>
+      <p class="guide-body" id="guide-body">{first.body}</p>
+      <div class="guide-list" id="guide-list">
+        {first.items.map((item, i) => (
+          <div class="guide-list-item">
+            <span class="guide-list-num">{numerals[i]}.</span>
+            <span>{item}</span>
+          </div>
+        ))}
+      </div>
+      <!-- buttonHref: set to a URL to make the button navigate to that page -->
+      <a href={buttonHref} class="btn-primary" id="guide-cta">
+        Read the full guide
+        <svg viewBox="0 0 16 16" fill="currentColor">
+          <path
+            fill-rule="evenodd"
+            d="M8.22 2.97a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06l2.97-2.97H3.75a.75.75 0 0 1 0-1.5h7.44L8.22 4.03a.75.75 0 0 1 0-1.06Z"
+            clip-rule="evenodd"
+          />
+        </svg>
+      </a>
+    </div>
+  </div>
+</section>
+
+<script define:vars={{ guideSlides }} is:inline>
+  /* ============================================================
+     BUYING GUIDE SLIDER
+     Cycles through guideSlides with prev/next arrow buttons.
+     State is local to this component instance.
+  ============================================================ */
+  (function () {
+    var idx = 0;
+    var numerals = ['i', 'ii', 'iii', 'iv', 'v', 'vi'];
+
+    var imgEl   = document.getElementById('guide-img');
+    var tagEl   = document.getElementById('guide-tag');
+    var timeEl  = document.getElementById('guide-readtime');
+    var dateEl  = document.getElementById('guide-date');
+    var titleEl = document.getElementById('guide-title');
+    var ledeEl  = document.getElementById('guide-lede');
+    var bodyEl  = document.getElementById('guide-body');
+    var listEl  = document.getElementById('guide-list');
+    var prevBtn = document.getElementById('guide-prev');
+    var nextBtn = document.getElementById('guide-next');
+
+    function render(i) {
+      var d = guideSlides[i];
+
+      imgEl.src = d.img;
+      imgEl.alt = d.alt;
+      tagEl.textContent = d.tag;
+      timeEl.innerHTML = '<em>' + d.readtime + '</em>';
+      dateEl.textContent = d.date;
+      titleEl.innerHTML = d.title;
+      ledeEl.textContent = d.lede;
+      bodyEl.textContent = d.body;
+
+      var html = '';
+      for (var j = 0; j < d.items.length; j++) {
+        html += '<div class="guide-list-item"><span class="guide-list-num">' +
+          (numerals[j] || (j + 1)) + '.</span><span>' + d.items[j] + '</span></div>';
+      }
+      listEl.innerHTML = html;
+
+      prevBtn.disabled = (i === 0);
+      nextBtn.disabled = (i === guideSlides.length - 1);
+    }
+
+    prevBtn.addEventListener('click', function () {
+      if (idx > 0) { idx--; render(idx); }
+    });
+
+    nextBtn.addEventListener('click', function () {
+      if (idx < guideSlides.length - 1) { idx++; render(idx); }
+    });
+
+    // Initialise (first slide already server-rendered; just sync button states).
+    prevBtn.disabled = true;
+    nextBtn.disabled = (guideSlides.length <= 1);
+  })();
+</script>

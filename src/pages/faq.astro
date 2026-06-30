@@ -1,0 +1,40 @@
+---
+// FAQ — Editorial accordion layout.
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import FAQBody from '~/components/pages/FAQBody.astro';
+import '~/styles/pages/faq.css';
+---
+
+<BaseLayout title="FAQ" description="Answers to the questions our editors get asked most — orders, returns, curation, and compatibility.">
+  <FAQBody />
+</BaseLayout>
+
+<script>
+  // Category filter tabs.
+  const tabs = document.querySelectorAll<HTMLButtonElement>('.faq-tab');
+  const sections = document.querySelectorAll<HTMLElement>('.faq-section');
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      const cat = tab.dataset.cat;
+      tabs.forEach((t) => t.classList.toggle('active', t === tab));
+      sections.forEach((s) => {
+        if (cat === 'all') {
+          s.hidden = false;
+        } else {
+          s.hidden = s.dataset.cat !== cat;
+        }
+      });
+    });
+  });
+
+  // Accordion — single open per section.
+  document.querySelectorAll<HTMLButtonElement>('.faq-q').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const item = btn.closest<HTMLElement>('.faq-item');
+      const section = item?.closest<HTMLElement>('.faq-section');
+      const isOpen = item?.classList.contains('open');
+      section?.querySelectorAll('.faq-item.open').forEach((el) => el.classList.remove('open'));
+      if (!isOpen) item?.classList.add('open');
+    });
+  });
+</script>

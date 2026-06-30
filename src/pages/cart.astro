@@ -1,0 +1,299 @@
+---
+// Cart — 1:1 verbatim editorial layout (CartBody), bound to the
+// shared nanostore ($cart). Checkout hands off to Shopify.
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import CartBody from '~/components/pages/CartBody.astro';
+import '~/styles/pages/cart.css';
+import { SITE } from '~/config/site';
+import { getProductsByHandles } from '~/lib/shopify';
+import { formatMoney } from '~/lib/utils';
+
+export const prerender = false;
+const free = SITE.freeShippingThreshold;
+const shippingCost = SITE.shippingCost;
+
+// Gift wrap — fetch the configured product to get its live variant ID and price.
+const giftHandle = SITE.giftWrap.handle;
+let giftVariantId = '';
+let giftPrice = 0;
+let giftPriceDisplay = '';
+if (giftHandle) {
+  const [giftProduct] = await getProductsByHandles([giftHandle]);
+  if (giftProduct?.variantId && giftProduct.availableForSale) {
+    giftVariantId = giftProduct.variantId;
+    giftPrice = Number(giftProduct.priceRange.minVariantPrice.amount);
+    giftPriceDisplay = '+' + formatMoney(
+      giftProduct.priceRange.minVariantPrice.amount,
+      giftProduct.priceRange.minVariantPrice.currencyCode,
+    );
+  }
+}
+const giftEnabled = !!giftVariantId;
+---
+
+<BaseLayout title="Your cart" description="Review your bag and check out securely.">
+  <CartBody giftEnabled={giftEnabled} giftPriceDisplay={giftPriceDisplay} />
+  <script type="application/json" id="cart-config" set:html={JSON.stringify({ free, shipping: shippingCost, giftHandle, giftVariantId, giftPrice })} is:inline />
+</BaseLayout>
+
+<script>
+  import {
+    $cart, $busyLines, initCart,
+    updateItem, removeItem, addItem,
+    applyDiscount, removeDiscount,
+    updateNote,
+  } from '~/stores/cart';
+
+  const cfg = JSON.parse(document.getElementById('cart-config')?.textContent || '{}');
+  const FREE = cfg.free ?? 75;
+  const SHIPPING = cfg.shipping ?? 9.99;
+  const GIFT_HANDLE: string = cfg.giftHandle ?? '';
+  const GIFT_VARIANT_ID: string = cfg.giftVariantId ?? '';
+  const GIFT_PRICE: number = cfg.giftPrice ?? 0;
+  const money = (n: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: Number.isInteger(n) ? 0 : 2 }).format(n);
+
+  // DOM refs used by render() and handlers
+  const layout = document.getElementById('cart-layout');
+  const empty = document.getElementById('cart-empty');
+  const list = document.getElementById('cart-page-list');
+
+  // Codes that the Cart API marks not-applicable may still work at Shopify's
+  // hosted checkout (e.g. Online Store channel restriction). We pass them via
+  // the ?discount= URL parameter so Shopify's checkout page can apply them.
+  let pendingCode: string | null = null;
+
+  // ── Inline onclick globals ──────────────────────────────────────────────────
+
+  (window as any).cpQty = (id: string, delta: number) => {
+    const line = $cart.get()?.lines.find((l) => l.id === id);
+    if (line) updateItem(id, line.quantity + delta);
+  };
+  (window as any).cpRemove = (id: string) => removeItem(id);
+
+  // Remove the applied discount code — clears chip, shows promo input again
+  async function cartRemoveDiscount() {
+    pendingCode = null;
+    await removeDiscount();
+    const promoSection = document.querySelector<HTMLElement>('.cart-promo');
+    const promoApplied = document.getElementById('cart-promo-applied') as HTMLElement | null;
+    const promoMsgEl = document.getElementById('cart-promo-msg');
+    if (promoSection) promoSection.style.display = '';
+    if (promoApplied) { promoApplied.style.display = 'none'; promoApplied.innerHTML = ''; }
+    if (promoMsgEl) { promoMsgEl.className = 'cart-promo-msg'; promoMsgEl.textContent = ''; }
+  }
+  (window as any).cartRemoveDiscount = cartRemoveDiscount;
+
+  // Order add-on accordion toggle (Order Notes, Protection Plan)
+  (window as any).cartExtraToggle = (btn: HTMLElement) => {
+    btn.closest('.cart-extra-acc')?.classList.toggle('open');
+  };
+
+  // Protection plan — stub to prevent console errors (UI only for now)
+  (window as any).cartSetProt = (_el: HTMLInputElement) => {};
+
+  // ── Gift wrap toggle ────────────────────────────────────────────────────────
+  (window as any).cartToggleGift = async (checkbox: HTMLInputElement) => {
+    if (!GIFT_VARIANT_ID) { checkbox.checked = false; return; }
+    checkbox.disabled = true;
+    const existingLine = $cart.get()?.lines.find((l: any) => l.merchandise.product.handle === GIFT_HANDLE);
+    if (checkbox.checked) {
+      if (!existingLine) await addItem(GIFT_VARIANT_ID);
+    } else {
+      if (existingLine) await removeItem(existingLine.id);
+    }
+    checkbox.disabled = false;
+  };
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+
+  function render() {
+    const cart = $cart.get();
+    const lines = cart?.lines ?? [];
+    if (!cart) return;
+
+    if (lines.length === 0) {
+      if (layout) layout.style.display = 'none';
+      if (empty) empty.hidden = false;
+      return;
+    }
+    if (layout) layout.style.display = '';
+    if (empty) empty.hidden = true;
+
+    if (list) {
+      list.innerHTML = lines
+        .map((it) => {
+          const img = it.merchandise.image ?? it.merchandise.product.featuredImage;
+          const variant = it.merchandise.selectedOptions.filter((o) => o.value !== 'Default Title').map((o) => o.value).join(' · ');
+          const unit = Number(it.merchandise.price.amount);
+          const lineTotal = Number(it.cost.totalAmount.amount);
+          return `<div class="cart-item">
+            <div class="cart-item-product">
+              <div class="cart-item-img"><a href="/products/${it.merchandise.product.handle}"><img src="${img?.url ?? ''}" alt="${it.merchandise.product.title}"></a></div>
+              <div>
+                <div class="cart-item-name">${it.merchandise.product.title}</div>
+                <div class="cart-item-variant">${variant}</div>
+                <div class="cart-item-unit">${money(unit)} each</div>
+                <button class="cart-item-remove" onclick="cpRemove('${it.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 6l12 12M18 6 6 18" stroke-linecap="round"/></svg>Remove</button>
+              </div>
+            </div>
+            <div class="cart-qty"><button onclick="cpQty('${it.id}',-1)" aria-label="Decrease">&minus;</button><span>${it.quantity}</span><button onclick="cpQty('${it.id}',1)" aria-label="Increase">+</button></div>
+            <div class="cart-line-total">${money(lineTotal)}</div>
+          </div>`;
+        })
+        .join('');
+    }
+
+    const subtotal = Number(cart.cost.subtotalAmount.amount);
+    const total = Number(cart.cost.totalAmount.amount);
+    const isFreeShipping = subtotal >= FREE;
+    const displayShipping = isFreeShipping ? 0 : SHIPPING;
+    const set = (id: string, v: string) => { const n = document.getElementById(id); if (n) n.textContent = v; };
+    set('cart-sum-subtotal', money(subtotal));
+    set('cart-sum-total', money(total + displayShipping));
+
+    // Shipping row — style as free (clay/italic) or show the cost
+    const shipEl = document.getElementById('cart-sum-ship');
+    if (shipEl) {
+      if (isFreeShipping) {
+        shipEl.textContent = 'Free';
+        shipEl.className = 'cart-sum-ship-free';
+      } else {
+        shipEl.textContent = money(displayShipping);
+        shipEl.className = '';
+      }
+    }
+
+    // Sub-note under the total
+    const taxNote = document.querySelector<HTMLElement>('.cart-sum-tax');
+    if (taxNote) {
+      taxNote.textContent = isFreeShipping
+        ? 'Taxes included. Free express shipping on this order.'
+        : `Taxes included. Estimated shipping: ${money(displayShipping)}. Final rates confirmed at checkout.`;
+    }
+
+    // Discount row
+    const discount = Math.max(0, subtotal - total);
+    const discountRow = document.getElementById('cart-sum-discount-row');
+    const discountEl = document.getElementById('cart-sum-discount');
+    if (discountRow) discountRow.style.display = discount > 0.001 ? '' : 'none';
+    if (discountEl) discountEl.textContent = `-${money(discount)}`;
+    const appliedCode = (cart.discountCodes ?? []).find((d: any) => d.applicable)?.code;
+
+    // Show/hide promo input vs applied chip (matches drawer pattern)
+    const promoSection = document.querySelector<HTMLElement>('.cart-promo');
+    const promoApplied = document.getElementById('cart-promo-applied') as HTMLElement | null;
+    const promoMsgEl = document.getElementById('cart-promo-msg');
+    if (appliedCode) {
+      if (promoSection) promoSection.style.display = 'none';
+      if (promoApplied) {
+        promoApplied.style.display = 'flex';
+        promoApplied.innerHTML = `<span class="cart-coupon-tag">✓ <span class="ct-code">${appliedCode}</span><button onclick="cartRemoveDiscount()" aria-label="Remove discount code">✕</button></span>`;
+      }
+      if (promoMsgEl) { promoMsgEl.className = 'cart-promo-msg'; promoMsgEl.textContent = ''; }
+    } else {
+      if (promoSection) promoSection.style.display = '';
+      if (promoApplied) { promoApplied.style.display = 'none'; promoApplied.innerHTML = ''; }
+    }
+
+    // Free-shipping progress bar
+    const remain = Math.max(0, FREE - subtotal);
+    const txt = document.getElementById('cart-ship-text');
+    const fill = document.getElementById('cart-ship-fill') as HTMLElement | null;
+    if (txt) txt.innerHTML = remain > 0 ? `Add <strong>${money(remain)}</strong> more for <strong>free express shipping</strong>` : `You've unlocked <strong>free express shipping</strong> ✓`;
+    if (fill) fill.style.width = Math.min(100, (subtotal / FREE) * 100) + '%';
+
+    // Gift wrap — sync toggle checkbox and summary row from live cart state
+    if (GIFT_HANDLE) {
+      const giftLine = lines.find((l: any) => l.merchandise.product.handle === GIFT_HANDLE);
+      const giftCheckbox = document.getElementById('gift-wrap') as HTMLInputElement | null;
+      if (giftCheckbox) giftCheckbox.checked = !!giftLine;
+      const giftRow = document.getElementById('cart-sum-gift-row');
+      const giftVal = document.getElementById('cart-sum-gift-val');
+      if (giftRow) giftRow.style.display = giftLine ? '' : 'none';
+      if (giftVal && giftLine) giftVal.textContent = `+${money(Number(giftLine.cost.totalAmount.amount))}`;
+    }
+  }
+
+  // ── Checkout ───────────────────────────────────────────────────────────────
+
+  const checkoutBtn = document.querySelector<HTMLButtonElement>('.cart-checkout');
+  if (checkoutBtn) {
+    checkoutBtn.removeAttribute('onclick');
+    checkoutBtn.addEventListener('click', () => {
+      const url = $cart.get()?.checkoutUrl;
+      if (!url) return;
+      const hasApplied = ($cart.get()?.discountCodes ?? []).some((d: any) => d.applicable);
+      if (pendingCode && !hasApplied) {
+        window.location.href = url + (url.includes('?') ? '&' : '?') + 'discount=' + encodeURIComponent(pendingCode);
+      } else {
+        window.location.href = url;
+      }
+    });
+  }
+
+  // ── Order Notes ────────────────────────────────────────────────────────────
+
+  let noteTimer: ReturnType<typeof setTimeout> | null = null;
+  const noteTextarea = document.querySelector<HTMLTextAreaElement>('.cart-note');
+  if (noteTextarea) {
+    $cart.subscribe((cart) => {
+      if (cart?.note && !noteTextarea.dataset.dirty) noteTextarea.value = cart.note;
+    });
+    noteTextarea.addEventListener('input', () => { noteTextarea.dataset.dirty = '1'; });
+    noteTextarea.addEventListener('blur', () => {
+      if (!noteTextarea.dataset.dirty) return;
+      if (noteTimer) clearTimeout(noteTimer);
+      noteTimer = setTimeout(async () => {
+        await updateNote(noteTextarea.value);
+        delete noteTextarea.dataset.dirty;
+      }, 300);
+    });
+  }
+
+  // ── Promo code ─────────────────────────────────────────────────────────────
+
+  const promoInput = document.getElementById('cart-promo-input') as HTMLInputElement | null;
+  const promoMsgEl = document.getElementById('cart-promo-msg');
+
+  async function applyPromo() {
+    const code = (promoInput?.value ?? '').trim();
+    if (promoMsgEl) { promoMsgEl.className = 'cart-promo-msg'; promoMsgEl.textContent = ''; }
+    if (!code) {
+      if (promoMsgEl) { promoMsgEl.textContent = 'Please enter a promo code.'; promoMsgEl.classList.add('err'); }
+      return;
+    }
+    const btn = document.querySelector<HTMLButtonElement>('.cart-promo button');
+    if (btn) { btn.disabled = true; btn.textContent = '…'; }
+    const res = await applyDiscount([code]);
+    if (btn) { btn.disabled = false; btn.textContent = 'Apply'; }
+    if (!res.cart) {
+      if (promoMsgEl) { promoMsgEl.className = 'cart-promo-msg err'; promoMsgEl.textContent = 'Could not process the code. Please try again.'; }
+      return;
+    }
+    const ok = res.cart.discountCodes.some(
+      (c: any) => c.applicable && c.code.trim().toUpperCase() === code.toUpperCase()
+    );
+    if (promoMsgEl) {
+      if (ok) {
+        pendingCode = null;
+        promoMsgEl.className = 'cart-promo-msg ok';
+        promoMsgEl.textContent = `✓ Code "${code.toUpperCase()}" applied!`;
+        if (promoInput) promoInput.value = '';
+      } else {
+        pendingCode = code.toUpperCase();
+        promoMsgEl.className = 'cart-promo-msg err';
+        promoMsgEl.textContent = 'Code not confirmed in cart — it will be applied automatically at checkout if valid.';
+      }
+    }
+  }
+
+  (window as any).cartApplyPromo = applyPromo;
+  promoInput?.addEventListener('keydown', (e: KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); applyPromo(); } });
+
+  // ── Bootstrap ──────────────────────────────────────────────────────────────
+
+  $cart.subscribe(render);
+  $busyLines.subscribe(() => {});
+  void initCart();
+</script>

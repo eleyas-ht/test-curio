@@ -1,0 +1,107 @@
+---
+// ============================================================
+//  Footer
+//
+//  Menu columns come from one of two sources, controlled by
+//  FOOTER_SOURCE in src/config/footer.ts:
+//
+//    'custom'   — edit CUSTOM_FOOTER_COLUMNS in footer.ts
+//    'shopify'  — fetch the "footer" menu from Shopify Admin
+//                 (Online Store → Navigation → footer).
+//                 Top-level items = column headings.
+//                 Their children = column links.
+//                 Falls back to CUSTOM_FOOTER_COLUMNS on error.
+//
+//  All other content (statement, tagline, social, legal, copyright)
+//  is managed in src/config/site.ts.
+// ============================================================
+import { SITE } from '~/config/site';
+import { FOOTER_SOURCE, CUSTOM_FOOTER_COLUMNS, type FooterColumn } from '~/config/footer';
+import { getMenu } from '~/lib/shopify';
+
+// ── URL helper (mirrors Header.astro) ───────────────────────
+
+function toPath(url: string): string {
+  try {
+    const u = new URL(url);
+    return u.pathname + (u.search || '');
+  } catch {
+    return url.startsWith('/') ? url : `/${url}`;
+  }
+}
+
+// ── Resolve columns: Shopify or custom ──────────────────────
+
+let columns: FooterColumn[] = CUSTOM_FOOTER_COLUMNS;
+
+if (FOOTER_SOURCE === 'shopify') {
+  try {
+    const menu = await getMenu('footer');
+    if (menu?.items?.length) {
+      columns = menu.items.map(col => ({
+        title: col.title,
+        links: (col.items ?? []).map(item => ({
+          label: item.title,
+          href: toPath(item.url),
+        })),
+      }));
+    }
+  } catch {
+    /* keep CUSTOM_FOOTER_COLUMNS as fallback on API error */
+  }
+}
+
+// ── Statement parser: *word* → <em>, \n → <br /> ────────────
+
+function parseStatement(text: string): string {
+  return text
+    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+    .replace(/\n/g, '<br />');
+}
+
+const statementHtml = parseStatement(SITE.footerStatement);
+
+// ── Social icon SVG lookup ───────────────────────────────────
+
+const SOCIAL_SVGS: Record<(typeof SITE.social)[number]['icon'], string> = {
+  instagram: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor"/></svg>`,
+  twitter: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 4h3l-7 8 8 11h-6l-5-7-6 7H2l8-9L2 4h6l4 6 6-6Z"/></svg>`,
+  youtube: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="6" width="20" height="13" rx="3"/><path d="m10 10 5 2.5L10 15v-5Z" fill="currentColor"/></svg>`,
+  spotify: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M7 10c3-1 8-1 11 1M7.5 13.5c2.5-.8 6.5-.5 9 1M8 17c2-.5 5-.3 7 .8"/></svg>`,
+};
+---
+
+<footer class="footer">
+  <div class="container">
+    <h2 class="footer-statement" set:html={statementHtml} />
+    <div class="footer-grid">
+      <div class="footer-col-brand">
+        <a href="/" class="footer-brand">{SITE.name}</a>
+        <p class="footer-tag">{SITE.footerTagline}</p>
+        <div class="footer-socials">
+          {SITE.social.map(s => (
+            <a href={s.href} class="footer-social" aria-label={s.label} set:html={SOCIAL_SVGS[s.icon]} />
+          ))}
+        </div>
+      </div>
+      {columns.map(col => (
+        <div>
+          <h4 class="footer-col-title">{col.title}</h4>
+          <div class="footer-links">
+            {col.links.map(link => (
+              <a href={link.href}>{link.label}</a>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+    <div class="footer-bottom">
+      <span class="footer-copy">{SITE.copyright}</span>
+      <div class="footer-legal">
+        {SITE.legal.map(link => (
+          <a href={link.href}>{link.label}</a>
+        ))}
+      </div>
+    </div>
+  </div>
+</footer>

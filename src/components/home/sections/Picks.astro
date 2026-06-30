@@ -1,0 +1,287 @@
+---
+// ============================================================
+//  Picks — Editor's Picks section
+//
+//  All content is controlled from PICKS[] in src/config/picks.ts.
+//  Three modes (set via PICKS[n].mode):
+//
+//  'products'    → products fetched from a Shopify collection.
+//                  Config: PICKS[n].productsConfig
+//
+//  'collections' → collection metadata cards from Shopify.
+//                  Config: PICKS[n].collectionsConfig
+//
+//  'custom'      → manually defined cards, no API call.
+//                  Config: PICKS[n].customItems
+// ============================================================
+import type { Collection, ProductCard } from '~/lib/shopify/types';
+import type { CustomPickItem, PicksLayout, ProductsPicksConfig } from '~/config/picks';
+import { formatMoney } from '~/lib/utils';
+
+interface Props {
+  mode: 'products' | 'collections' | 'custom';
+  label: string;           // → PICKS[n].label
+  title: string;           // → PICKS[n].title  (*word* = italic accent)
+  viewAllHref: string;     // → PICKS[n].viewAllHref
+  viewAllLabel: string;    // → PICKS[n].viewAllLabel
+  layout: PicksLayout;     // resolved from the active mode's config
+
+  // products mode
+  productsData?: { collectionTitle: string; products: ProductCard[] } | null;
+  productsConfig?: ProductsPicksConfig;
+
+  // collections mode
+  collections?: Collection[];
+  collectionKickers?: Record<string, string>;
+
+  // custom mode
+  customItems?: CustomPickItem[];
+}
+
+const {
+  mode,
+  label,
+  title,
+  viewAllHref,
+  viewAllLabel,
+  layout,
+  productsData,
+  productsConfig,
+  collections = [],
+  collectionKickers = {},
+  customItems = [],
+} = Astro.props;
+
+// Map layout → CSS grid-template-columns (desktop; editorial.css handles mobile).
+const colMap: Record<PicksLayout, string> = {
+  '2-col': 'repeat(2, 1fr)',
+  '3-col': 'repeat(3, 1fr)',
+  '4-col': 'repeat(4, 1fr)',
+};
+const gridStyle = layout !== '3-col' ? `grid-template-columns: ${colMap[layout]}` : undefined;
+
+// Parse *italic* accent words in title string → <em> tags.
+const titleHtml = title.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+// ── Unified card shape ────────────────────────────────────────────────────────
+interface PickCard {
+  image?: string;
+  imageAlt?: string;
+  kicker?: string;    // optional — hidden entirely when absent
+  cardTitle?: string; // optional — hidden entirely when absent
+  body?: string;      // optional — hidden when absent or truncated to nothing
+  href: string;
+  linkLabel: string;
+  price?: string;     // optional — hidden when absent
+  currency?: string;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Truncate text by character count or word count, appending "…" when cut. */
+function truncate(text: string, length: number, unit: 'chars' | 'words'): string {
+  if (!text || length === 0) return '';
+  if (unit === 'words') {
+    const words = text.trim().split(/\s+/);
+    return words.length > length ? words.slice(0, length).join(' ') + '…' : text;
+  }
+  return text.length > length ? text.slice(0, length).trimEnd() + '…' : text;
+}
+
+/** Format the handle into a title-cased string (kicker fallback for collections mode). */
+function formatHandle(handle: string): string {
+  return handle.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/** Resolve kicker for a product card in products mode.
+ *  Priority: explicit handle override → primary fallback → collection name cascade.
+ *  'product-type' cascades to collection name when the product's type is empty,
+ *  ensuring every card shows a label regardless of how the product is configured. */
+function resolveProductKicker(
+  product: ProductCard,
+  collectionTitle: string,
+  cfg: ProductsPicksConfig,
+): string | undefined {
+  // 1. Explicit per-handle override always wins.
+  if (cfg.kickers[product.handle]) return cfg.kickers[product.handle];
+  // 2. 'none' → intentionally blank.
+  if (cfg.kickerFallback === 'none') return undefined;
+  // 3. 'product-type' → use product type; cascade to collection name if empty.
+  //    This ensures every card shows the collection name at minimum, even when
+  //    the product's Type field is not set in Shopify Admin.
+  if (cfg.kickerFallback === 'product-type') {
+    return product.productType || collectionTitle || undefined;
+  }
+  // 4. 'collection' → always use collection name.
+  return collectionTitle || undefined;
+}
+
+// ── Build card list from the active mode ─────────────────────────────────────
+
+const cards: PickCard[] =
+  mode === 'products' && productsData && productsConfig
+    ? productsData.products.map((product) => ({
+        // image        → product featured image (Shopify Admin → Products → <product> → Images)
+        image: product.featuredImage?.url,
+        imageAlt: product.featuredImage?.altText ?? product.title,
+
+        // kicker       → PICKS[n].productsConfig.kickers[handle]
+        //                Falls back to collection name or product type per kickerFallback setting.
+        kicker: resolveProductKicker(product, productsData.collectionTitle, productsConfig),
+
+        // cardTitle    → product title from Shopify Admin
+        cardTitle: product.title,
+
+        // body         → product description (Shopify Admin → Products → <product> → Description)
+        //                Truncated by PICKS[n].productsConfig.descriptionLength + .descriptionUnit
+        body: truncate(product.description ?? '', productsConfig.descriptionLength, productsConfig.descriptionUnit),
+
+        // href         → /products/<handle>  (built automatically from the product handle)
+        href: `/products/${product.handle}`,
+
+        // linkLabel    → hardcoded 'Shop' for product cards
+        linkLabel: 'Shop',
+
+        // price        → lowest variant price fetched automatically from Shopify
+        price: product.priceRange?.minVariantPrice
+          ? formatMoney(product.priceRange.minVariantPrice.amount, product.priceRange.minVariantPrice.currencyCode)
+          : undefined,
+      }))
+    : mode === 'collections'
+      ? collections.map((col) => ({
+          // image        → collection image (Shopify Admin → Collections → <collection> → Image)
+          image: col.image?.url,
+          imageAlt: col.image?.altText ?? col.title,
+
+          // kicker       → PICKS[n].collectionsConfig.kickers[handle]
+          //                Falls back to title-cased handle when not set.
+          kicker: collectionKickers[col.handle] ?? formatHandle(col.handle),
+
+          // cardTitle    → Shopify metafield custom.editorial_title on the collection.
+          //                Set in Shopify Admin → Collections → <collection> → Metafields.
+          //                Hidden entirely when the metafield is empty or not set.
+          cardTitle: col.editorialTitle ?? undefined,
+
+          // body         → collection description (Shopify Admin → Collections → <collection> → Description)
+          body: col.description,
+
+          // href         → /collections/<handle>  (built automatically)
+          href: `/collections/${col.handle}`,
+          linkLabel: 'Shop',
+
+          // price        → lowest product price fetched automatically
+          price: col.minPrice ? `From ${formatMoney(col.minPrice.amount, col.minPrice.currencyCode)}` : undefined,
+        }))
+      : customItems.map((item) => ({
+          // image        → PICKS[n].customItems[i].image
+          image: item.image,
+          imageAlt: item.imageAlt,
+
+          // kicker       → PICKS[n].customItems[i].kicker
+          kicker: item.kicker,
+
+          // cardTitle    → PICKS[n].customItems[i].title
+          cardTitle: item.title,
+
+          // body         → PICKS[n].customItems[i].body
+          body: item.body,
+
+          // href         → PICKS[n].customItems[i].href
+          href: item.href,
+
+          // linkLabel    → PICKS[n].customItems[i].linkLabel
+          linkLabel: item.linkLabel,
+
+          // price        → PICKS[n].customItems[i].price  (omit the field to hide)
+          price: item.price,
+
+          // currency     → PICKS[n].customItems[i].currency
+          currency: item.currency,
+        }));
+---
+
+<section class="section-picks" id="editors-picks">
+  <div class="container">
+    <div class="section-head">
+      <!-- label → PICKS[n].label -->
+      <span class="label">{label}</span>
+      <div class="section-head-row">
+        <!-- title → PICKS[n].title  (*word* = italic accent) -->
+        <h2 class="section-title" set:html={titleHtml} />
+        <!-- viewAllHref / viewAllLabel → PICKS[n].viewAllHref / PICKS[n].viewAllLabel -->
+        <a href={viewAllHref} class="btn-link">
+          {viewAllLabel}
+          <svg viewBox="0 0 16 16" fill="currentColor">
+            <path
+              fill-rule="evenodd"
+              d="M8.22 2.97a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06l2.97-2.97H3.75a.75.75 0 0 1 0-1.5h7.44L8.22 4.03a.75.75 0 0 1 0-1.06Z"
+              clip-rule="evenodd"
+            />
+          </svg>
+        </a>
+      </div>
+    </div>
+
+    <!-- layout → PICKS[n].productsConfig.layout  (products mode)
+                  PICKS[n].collectionsConfig.layout  (collections mode)
+                  ('2-col' | '3-col' | '4-col') -->
+    <div class="picks-grid" style={gridStyle}>
+      {
+        cards.map((card) => (
+          <article class="pick-card">
+            <div class="pick-image">
+              {/* products:    product featured image from Shopify
+                  collections: collection image from Shopify
+                  custom:      PICKS[n].customItems[i].image + .imageAlt */}
+              {card.image ? (
+                <img src={card.image} alt={card.imageAlt ?? card.cardTitle ?? ''} loading="lazy" />
+              ) : (
+                <div class="pick-image-placeholder" aria-hidden="true" />
+              )}
+            </div>
+            {/* products:    PICKS[n].productsConfig.kickers[handle] or kickerFallback
+                collections: PICKS[n].collectionsConfig.kickers[handle]
+                custom:      PICKS[n].customItems[i].kicker */}
+            {card.kicker && <span class="pick-kicker">{card.kicker}</span>}
+            {/* products:    product title from Shopify
+                collections: custom.editorial_title metafield on the collection
+                custom:      PICKS[n].customItems[i].title */}
+            {card.cardTitle && <h3 class="pick-title">{card.cardTitle}</h3>}
+            {/* products:    product description — truncated by descriptionLength + descriptionUnit
+                collections: collection description from Shopify
+                custom:      PICKS[n].customItems[i].body */}
+            {card.body && <p class="pick-body">{card.body}</p>}
+            <div class="pick-meta">
+              {/* products:    lowest variant price fetched automatically
+                  collections: lowest product price in the collection, shown as "From $X"
+                  custom:      PICKS[n].customItems[i].price + .currency  (omit to hide) */}
+              {card.price && (
+                <span class="pick-price">
+                  {card.price}
+                  {card.currency && <small>{card.currency}</small>}
+                </span>
+              )}
+              {/* products:    links to /products/<handle>
+                  collections: links to /collections/<handle>
+                  custom:      PICKS[n].customItems[i].href + .linkLabel */}
+              <a href={card.href} class="btn-link">
+                {card.linkLabel}
+                <svg viewBox="0 0 16 16" fill="currentColor">
+                  <path
+                    fill-rule="evenodd"
+                    d="M8.22 2.97a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06l2.97-2.97H3.75a.75.75 0 0 1 0-1.5h7.44L8.22 4.03a.75.75 0 0 1 0-1.06Z"
+                    clip-rule="evenodd"
+                  />
+                </svg>
+              </a>
+            </div>
+          </article>
+        ))
+      }
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+   DEPARTMENTS — Editorial Table of Contents spread
+============================================================ -->

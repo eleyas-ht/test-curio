@@ -1,0 +1,232 @@
+---
+// ============================================================
+//  ProductFeatCard — editorial `.feat-card` wired to Shopify.
+//  Wishlist: localStorage via wishlist store (toggled in script).
+//  Compare: localStorage via compare store (up to 4 products).
+//  Rating: Shopify Product Reviews metafield (reviews.rating).
+// ============================================================
+import type { ProductCard } from '~/lib/shopify/types';
+import { formatMoney, isOnSale, discountPercent } from '~/lib/utils';
+
+interface Props {
+  product: ProductCard;
+  actions?: boolean;
+}
+const { product: p, actions = false } = Astro.props;
+const slug = (s?: string) => (s ?? 'other').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+const min = p.priceRange.minVariantPrice;
+const max = p.priceRange.maxVariantPrice;
+const cmp = p.compareAtPriceRange?.minVariantPrice ?? null;
+const onSale = isOnSale(min, cmp);
+const soldOut = !p.availableForSale;
+const isNew = (p.tags ?? []).some((t) => /new/i.test(t));
+const href = `/products/${p.handle}`;
+const cat = p.productType || p.vendor || 'Product';
+const off = discountPercent(min, cmp) ?? 0;
+const tags = (p.tags ?? []).map((t) => t.toLowerCase()).join('|');
+
+const ranged = min.amount !== max.amount;
+const firstVariantAvailable = p.firstVariantAvailable;
+const canQuickAdd = !soldOut && !ranged && !!p.variantId && firstVariantAvailable;
+
+// Rating display: real value from metafield, or null (no stars shown when absent)
+const ratingDisplay = p.rating != null ? p.rating.toFixed(1) : null;
+
+// Compact product snapshot for the compare store (serialised as a data attribute)
+const compareData = JSON.stringify({
+  id: p.id,
+  handle: p.handle,
+  title: p.title,
+  image: p.featuredImage?.url ?? '',
+  price: min.amount,
+  currency: min.currencyCode,
+  vendor: p.vendor ?? '',
+  productType: p.productType ?? '',
+});
+
+// Wishlist snapshot — same shape as WishlistProduct
+const wishlistData = JSON.stringify({
+  id: p.id,
+  handle: p.handle,
+  title: p.title,
+  image: p.featuredImage?.url ?? '',
+  price: min.amount,
+  currency: min.currencyCode,
+  vendor: p.vendor ?? '',
+  variantId: p.variantId ?? '',
+  availableForSale: p.availableForSale,
+});
+---
+
+<article
+  class="feat-card"
+  data-product-id={p.id}
+  data-category={slug(p.productType)}
+  data-brand={p.vendor ?? ''}
+  data-price={Number(min.amount)}
+  data-name={p.title}
+  data-stock={soldOut ? 'out' : 'in'}
+  data-discount={off}
+  data-rating={p.rating ?? 0}
+  data-new={isNew ? '1' : '0'}
+  data-tags={tags}
+  data-compare={compareData}
+  data-wishlist={wishlistData}
+>
+  <div class="feat-card-img">
+    <a href={href}><img src={p.featuredImage?.url} alt={p.featuredImage?.altText ?? p.title} loading="lazy" /></a>
+    {soldOut ? <span class="feat-badge">SOLD OUT</span> : isNew ? <span class="feat-badge">NEW</span> : onSale ? <span class="feat-badge">SALE</span> : null}
+    <div class="feat-side-actions">
+      <button class="feat-wish" aria-label="Add to wishlist">
+        <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+        </svg>
+      </button>
+      <button class="feat-compare" aria-label="Compare product">
+        <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+        </svg>
+      </button>
+    </div>
+    {
+      actions && (
+        <div class="feat-card-actions">
+          <button type="button" class="feat-card-act-qv" data-qv-handle={p.handle}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+            Quick View
+          </button>
+          {canQuickAdd ? (
+            <button class="feat-card-act-cart" data-add-variant={p.variantId}>
+              <svg viewBox="0 0 20 20" fill="currentColor" width="13" height="13"><path d="M3 1a1 1 0 0 0 0 2h1.22l.305 1.222a.997.997 0 0 0 .01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 0 0 0-2H6.414l1-1H14a1 1 0 0 0 .894-.553l3-6A1 1 0 0 0 17 3H6.28l-.31-1.243A1 1 0 0 0 5 1H3zm7 15a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm6 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2z" /></svg>
+              Add to Cart
+            </button>
+          ) : !soldOut && !p.hasOnlyDefaultVariant ? (
+            <button class="feat-card-act-cart" data-qv-handle={p.handle}>
+              <svg viewBox="0 0 20 20" fill="currentColor" width="13" height="13"><path d="M3 1a1 1 0 0 0 0 2h1.22l.305 1.222a.997.997 0 0 0 .01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 0 0 0-2H6.414l1-1H14a1 1 0 0 0 .894-.553l3-6A1 1 0 0 0 17 3H6.28l-.31-1.243A1 1 0 0 0 5 1H3zm7 15a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm6 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2z" /></svg>
+              Choose options
+            </button>
+          ) : (
+            <a class="feat-card-act-cart" href={href}>
+              <svg viewBox="0 0 20 20" fill="currentColor" width="13" height="13"><path d="M3 1a1 1 0 0 0 0 2h1.22l.305 1.222a.997.997 0 0 0 .01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 0 0 0-2H6.414l1-1H14a1 1 0 0 0 .894-.553l3-6A1 1 0 0 0 17 3H6.28l-.31-1.243A1 1 0 0 0 5 1H3zm7 15a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm6 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2z" /></svg>
+              {soldOut ? 'Sold out' : 'Add to Cart'}
+            </a>
+          )}
+        </div>
+      )
+    }
+  </div>
+  <p class="feat-category">{cat}</p>
+  <a href={href}><p class="feat-name">{p.title}</p></a>
+  <p class="feat-tagline"><em>{p.vendor || cat}</em></p>
+  <div class="feat-bottom-row">
+    <div class="feat-price-row">
+      {onSale && cmp && !ranged && <span class="feat-price-orig">{formatMoney(cmp.amount, cmp.currencyCode)}</span>}
+      <span class="feat-price-now">{ranged ? `From ${formatMoney(min.amount, min.currencyCode)}` : formatMoney(min.amount, min.currencyCode)}</span>
+    </div>
+    {ratingDisplay != null
+      ? <p class="feat-rating"><span class="feat-stars">★</span> {ratingDisplay}{p.ratingCount ? <span class="feat-rating-count">({p.ratingCount})</span> : null}</p>
+      : <p class="feat-rating feat-rating--none"><span class="feat-stars">★</span> No reviews</p>
+    }
+  </div>
+</article>
+
+<script>
+  import { addItem } from '~/stores/cart';
+  import { initWishlist, toggleWishlist, isWishlisted, type WishlistProduct } from '~/stores/wishlist';
+  import { initCompare, toggleCompare, isInCompare, MAX_COMPARE } from '~/stores/compare';
+
+  // ── One-time page-level init ──────────────────────────────
+  if (!(window as any).__featCardWired) {
+    (window as any).__featCardWired = true;
+
+    initWishlist();
+    initCompare();
+
+    // Sync button active states on load for all cards already in DOM.
+    function syncAllCards() {
+      document.querySelectorAll<HTMLElement>('.feat-card[data-product-id]').forEach(syncCard);
+    }
+
+    function syncCard(card: HTMLElement) {
+      const id = card.dataset.productId;
+      if (!id) return;
+      card.querySelector<HTMLButtonElement>('.feat-wish')?.classList.toggle('active', isWishlisted(id));
+      card.querySelector<HTMLButtonElement>('.feat-compare')?.classList.toggle('active', isInCompare(id));
+    }
+
+    syncAllCards();
+
+    // ── Delegated: quick add to cart ─────────────────────────
+    document.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement)?.closest<HTMLButtonElement>('.feat-card-act-cart[data-add-variant]');
+      if (!btn) return;
+      e.preventDefault();
+      const id = btn.dataset.addVariant;
+      if (!id || btn.disabled) return;
+      btn.disabled = true;
+      void addItem(id).finally(() => (btn.disabled = false));
+    });
+
+    // ── Delegated: wishlist toggle ───────────────────────────
+    document.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement)?.closest<HTMLButtonElement>('.feat-wish');
+      if (!btn) return;
+      const card = btn.closest<HTMLElement>('.feat-card[data-product-id]');
+      if (!card) return;
+      const id = card.dataset.productId;
+      if (!id) return;
+
+      let wishlistData: WishlistProduct;
+      try {
+        wishlistData = JSON.parse(card.dataset.wishlist ?? '');
+      } catch {
+        return;
+      }
+
+      const active = toggleWishlist(wishlistData);
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-label', active ? 'Remove from wishlist' : 'Add to wishlist');
+    });
+
+    // ── Delegated: compare toggle ────────────────────────────
+    document.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement)?.closest<HTMLButtonElement>('.feat-compare');
+      if (!btn) return;
+      const card = btn.closest<HTMLElement>('.feat-card[data-product-id]');
+      if (!card) return;
+      const id = card.dataset.productId;
+      if (!id) return;
+
+      let compareData: import('~/stores/compare').CompareProduct;
+      try {
+        compareData = JSON.parse(card.dataset.compare ?? '');
+      } catch {
+        return;
+      }
+
+      // If at limit and not already in compare, show a brief tooltip
+      if (!isInCompare(id) && document.querySelectorAll('.feat-compare.active').length >= MAX_COMPARE) {
+        showCompareLimit(btn);
+        return;
+      }
+
+      const active = toggleCompare(compareData);
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-label', active ? 'Remove from comparison' : 'Compare product');
+
+      // Notify the compare bar
+      window.dispatchEvent(new CustomEvent('compare:changed'));
+    });
+  }
+
+  // Brief "max items" tooltip on the button
+  function showCompareLimit(btn: HTMLElement) {
+    const existing = btn.querySelector('.compare-limit-tip');
+    if (existing) return;
+    const tip = document.createElement('span');
+    tip.className = 'compare-limit-tip';
+    tip.textContent = `Max ${MAX_COMPARE}`;
+    btn.appendChild(tip);
+    setTimeout(() => tip.remove(), 1800);
+  }
+</script>

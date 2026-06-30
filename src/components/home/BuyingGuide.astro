@@ -1,0 +1,70 @@
+﻿---
+// ============================================================
+//  Buying Guide — editorial 55/45 split. Static marketing content
+//  (image + reading meta + lede + list + CTA).
+// ============================================================
+import { Image } from 'astro:assets';
+import Button from '~/components/ui/Button.astro';
+import Icon from '~/components/ui/Icon.astro';
+import { img } from '~/lib/assets';
+
+const cover = img('buying-guide-01.jpg');
+const points = [
+  'Active noise cancellation that actually holds up on a flight',
+  'Battery you can trust for a full working day',
+  'A fit that disappears after ten minutes',
+  'Sound signature tuned for music, not marketing',
+];
+---
+
+<section class="wrap grid items-center gap-12 py-20 md:grid-cols-[1.1fr_0.9fr] md:py-28">
+  <div class="relative">
+    <div class="aspect-[4/3] overflow-hidden rounded-md border border-sand-deep bg-warm-white">
+      {
+        cover && (
+          <Image
+            src={cover}
+            alt="The 2026 headphone buying guide"
+            widths={[480, 768, 1024]}
+            sizes="(min-width: 768px) 55vw, 100vw"
+            class="h-full w-full object-cover"
+          />
+        )
+      }
+    </div>
+    <span class="absolute left-4 top-4 rounded-sm bg-cocoa/85 px-3 py-1.5 text-[0.7rem] tracking-wide text-cream backdrop-blur-sm">
+      Buying Guide
+    </span>
+  </div>
+
+  <div>
+    <div class="flex items-center gap-3 text-xs text-muted-light">
+      <span>8 min read</span>
+      <span class="h-1 w-1 rounded-full bg-sand-deep"></span>
+      <span>Updated May 2026</span>
+    </div>
+    <h2 class="masthead mt-5 text-[clamp(1.8rem,3.5vw,2.6rem)]">
+      How to buy headphones <em>you won't return</em>.
+    </h2>
+    <p class="mt-5 text-sm leading-relaxed text-muted">
+      Spec sheets lie. After 200 hours of testing across forty pairs, here's the short list of
+      what actually matters — and what's just marketing noise.
+    </p>
+    <ul class="mt-6 flex flex-col gap-3">
+      {
+        points.map((p) => (
+          <li class="flex items-start gap-3 text-sm text-ink">
+            <Icon name="check" size={18} class="mt-0.5 shrink-0 text-clay" />
+            {p}
+          </li>
+        ))
+      }
+    </ul>
+    <div class="mt-8">
+      <Button href="/pages/buying-guides" variant="outline" size="md">
+        Read the full guide
+        <Icon name="arrowRight" size={15} />
+      </Button>
+    </div>
+  </div>
+</section>

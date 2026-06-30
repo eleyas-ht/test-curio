@@ -1,0 +1,321 @@
+---
+// ============================================================
+//  /compare — side-by-side product comparison page.
+//  Handles come from the compare bar via ?handles=a,b,c,d
+// ============================================================
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import { getProduct } from '~/lib/shopify/services/products';
+import { formatMoney, isOnSale } from '~/lib/utils';
+
+const handlesParam = Astro.url.searchParams.get('handles') ?? '';
+const handles = handlesParam
+  .split(',')
+  .map((h) => h.trim())
+  .filter(Boolean)
+  .slice(0, 4);
+
+const products = (await Promise.all(handles.map((h) => getProduct(h)))).filter(
+  (p): p is NonNullable<typeof p> => p !== null,
+);
+
+// At least 2 columns so the table looks intentional even with 1 product
+const colCount = Math.max(products.length, 2);
+
+function renderStars(rating: number): string {
+  const full = Math.floor(rating);
+  const half = rating - full >= 0.5;
+  const empty = 5 - full - (half ? 1 : 0);
+  return '★'.repeat(full) + (half ? '½' : '') + '☆'.repeat(empty);
+}
+---
+
+<BaseLayout title="Compare Products">
+  <section class="compare-page">
+    <div class="compare-page-head">
+      <h1 class="compare-page-title">Compare Products</h1>
+      {products.length === 0 && (
+        <p class="compare-page-empty">
+          No products selected — use the compare button on product cards to queue items.
+          <a href="/products" class="compare-back">Browse products</a>
+        </p>
+      )}
+    </div>
+
+    {products.length > 0 && (
+      <div class="compare-table-wrap">
+        <table class="compare-table">
+          {/* ── Product headers ── */}
+          <thead>
+            <tr>
+              <th class="compare-label-cell"></th>
+              {products.map((p) => (
+                <th class="compare-product-head">
+                  <a href={`/products/${p.handle}`}>
+                    {p.featuredImage && (
+                      <img
+                        src={p.featuredImage.url}
+                        alt={p.featuredImage.altText ?? p.title}
+                        class="compare-product-img"
+                        loading="lazy"
+                      />
+                    )}
+                    <span class="compare-product-name">{p.title}</span>
+                  </a>
+                  <a href={`/products/${p.handle}`} class="compare-view-btn">View product</a>
+                </th>
+              ))}
+              {Array.from({ length: colCount - products.length }).map(() => (
+                <th class="compare-product-head compare-empty-col">
+                  <a href="/products" class="compare-add-slot">+ Add product</a>
+                </th>
+              ))}
+            </tr>
+          </thead>
+
+          <tbody>
+            {/* ── Price ── */}
+            <tr>
+              <td class="compare-label-cell">Price</td>
+              {products.map((p) => {
+                const min = p.priceRange.minVariantPrice;
+                const cmp = p.compareAtPriceRange?.minVariantPrice;
+                const sale = isOnSale(min, cmp);
+                return (
+                  <td class="compare-value-cell">
+                    {sale && cmp && (
+                      <span class="compare-price-orig">{formatMoney(cmp.amount, cmp.currencyCode)}</span>
+                    )}
+                    <span class={`compare-price-now${sale ? ' sale' : ''}`}>
+                      {formatMoney(min.amount, min.currencyCode)}
+                    </span>
+                  </td>
+                );
+              })}
+              {Array.from({ length: colCount - products.length }).map(() => <td class="compare-value-cell compare-empty-col" />)}
+            </tr>
+
+            {/* ── Rating ── */}
+            <tr>
+              <td class="compare-label-cell">Rating</td>
+              {products.map((p) => (
+                <td class="compare-value-cell compare-rating-cell">
+                  {p.rating != null
+                    ? (
+                      <span class="compare-rating-wrap">
+                        <span class="compare-stars-text">{renderStars(p.rating)}</span>
+                        <span class="compare-rating-num">{p.rating.toFixed(1)}</span>
+                        {p.ratingCount && <span class="compare-rating-count">({p.ratingCount} reviews)</span>}
+                      </span>
+                    )
+                    : <span class="compare-no-rating">No reviews yet</span>
+                  }
+                </td>
+              ))}
+              {Array.from({ length: colCount - products.length }).map(() => <td class="compare-value-cell compare-empty-col" />)}
+            </tr>
+
+            {/* ── Availability ── */}
+            <tr>
+              <td class="compare-label-cell">Availability</td>
+              {products.map((p) => (
+                <td class="compare-value-cell">
+                  {p.availableForSale
+                    ? <span class="compare-in-stock">In stock</span>
+                    : <span class="compare-out-stock">Sold out</span>}
+                </td>
+              ))}
+              {Array.from({ length: colCount - products.length }).map(() => <td class="compare-value-cell compare-empty-col" />)}
+            </tr>
+
+            {/* ── Brand ── */}
+            <tr>
+              <td class="compare-label-cell">Brand</td>
+              {products.map((p) => (
+                <td class="compare-value-cell">{p.vendor || '—'}</td>
+              ))}
+              {Array.from({ length: colCount - products.length }).map(() => <td class="compare-value-cell compare-empty-col" />)}
+            </tr>
+
+            {/* ── Category ── */}
+            <tr>
+              <td class="compare-label-cell">Category</td>
+              {products.map((p) => (
+                <td class="compare-value-cell">{p.productType || '—'}</td>
+              ))}
+              {Array.from({ length: colCount - products.length }).map(() => <td class="compare-value-cell compare-empty-col" />)}
+            </tr>
+
+            {/* ── Description ── */}
+            <tr>
+              <td class="compare-label-cell">Description</td>
+              {products.map((p) => (
+                <td class="compare-value-cell compare-desc">{p.description || '—'}</td>
+              ))}
+              {Array.from({ length: colCount - products.length }).map(() => <td class="compare-value-cell compare-empty-col" />)}
+            </tr>
+
+            {/* ── Add to cart ── */}
+            <tr>
+              <td class="compare-label-cell"></td>
+              {products.map((p) => {
+                const firstVariant = p.variants?.[0];
+                const canAdd = p.availableForSale && !!firstVariant?.id;
+                return (
+                  <td class="compare-value-cell compare-cta-cell">
+                    {canAdd
+                      ? <button
+                          class="compare-cta-btn"
+                          data-compare-add={firstVariant!.id}
+                          data-compare-handle={p.handle}
+                          type="button"
+                        >Add to Cart</button>
+                      : <span class="compare-cta-sold">Sold Out</span>}
+                  </td>
+                );
+              })}
+              {Array.from({ length: colCount - products.length }).map(() => <td class="compare-value-cell compare-empty-col" />)}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    )}
+  </section>
+</BaseLayout>
+
+<script>
+  import { addItem } from '~/stores/cart';
+
+  document.addEventListener('click', (e) => {
+    const btn = (e.target as HTMLElement)?.closest<HTMLButtonElement>('[data-compare-add]');
+    if (!btn) return;
+    const variantId = btn.dataset.compareAdd!;
+    if (!variantId || btn.disabled) return;
+    btn.disabled = true;
+    const original = btn.textContent;
+    btn.textContent = '…';
+    void addItem(variantId, 1, { open: true }).finally(() => {
+      btn.textContent = '✓ Added';
+      setTimeout(() => { btn.disabled = false; btn.textContent = original; }, 1400);
+    });
+  });
+</script>
+
+<style>
+  .compare-page {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 48px 24px 100px;
+  }
+  .compare-page-head { margin-bottom: 40px; }
+  .compare-page-title {
+    font-family: var(--font-serif);
+    font-size: clamp(28px, 4vw, 42px);
+    font-weight: 300;
+    color: var(--ink);
+    margin-bottom: 8px;
+  }
+  .compare-page-empty {
+    color: var(--muted); font-size: 15px;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  }
+  .compare-back {
+    color: var(--clay);
+    text-underline-offset: 3px;
+    text-decoration: underline;
+  }
+  .compare-table-wrap { overflow-x: auto; }
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+  .compare-label-cell {
+    width: 120px;
+    min-width: 100px;
+    padding: 14px 16px 14px 0;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--sand);
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+  .compare-product-head {
+    padding: 0 16px 24px;
+    text-align: center;
+    border-bottom: 2px solid var(--ink);
+    vertical-align: top;
+  }
+  .compare-product-head a { text-decoration: none; color: inherit; }
+  .compare-product-img {
+    width: 100%; max-width: 180px;
+    aspect-ratio: 1; object-fit: cover;
+    border-radius: var(--r-sm, 4px);
+    margin: 0 auto 12px; display: block;
+    border: 1px solid var(--sand);
+  }
+  .compare-product-name {
+    display: block;
+    font-family: var(--font-serif);
+    font-size: 15px; font-weight: 400;
+    color: var(--ink); margin-bottom: 10px;
+    line-height: 1.35;
+  }
+  .compare-view-btn {
+    display: inline-block;
+    font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase;
+    color: var(--clay);
+    text-decoration: underline; text-underline-offset: 3px;
+  }
+  .compare-empty-col { background: var(--cream); }
+  .compare-add-slot {
+    display: flex; align-items: center; justify-content: center;
+    height: 90px;
+    border: 2px dashed var(--sand-deep);
+    border-radius: var(--r-sm, 4px);
+    color: var(--muted); font-size: 12px;
+    text-decoration: none;
+    margin: 24px 16px;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .compare-add-slot:hover { border-color: var(--clay); color: var(--clay); }
+  .compare-value-cell {
+    padding: 14px 16px;
+    font-size: 13px; color: var(--ink);
+    border-bottom: 1px solid var(--sand);
+    vertical-align: middle; text-align: center;
+  }
+  .compare-price-orig {
+    display: block;
+    font-size: 11px; color: var(--muted);
+    text-decoration: line-through; margin-bottom: 2px;
+  }
+  .compare-price-now { font-weight: 600; }
+  .compare-price-now.sale { color: var(--clay); }
+
+  /* Rating */
+  .compare-rating-cell { padding: 12px 16px; }
+  .compare-rating-wrap { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .compare-stars-text { color: var(--clay); font-size: 16px; letter-spacing: 1px; }
+  .compare-rating-num { font-weight: 700; font-size: 15px; color: var(--ink); }
+  .compare-rating-count { font-size: 11px; color: var(--muted); }
+  .compare-no-rating { font-size: 12px; color: var(--muted); font-style: italic; }
+
+  .compare-in-stock { color: #3a7d44; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; }
+  .compare-out-stock { color: var(--muted); font-size: 12px; }
+  .compare-desc { font-size: 12px; color: var(--muted); text-align: left; line-height: 1.55; }
+  .compare-cta-cell { padding-top: 20px; padding-bottom: 24px; }
+  .compare-cta-btn {
+    display: inline-block;
+    background: var(--ink); color: var(--warm-white);
+    border: none; border-radius: var(--r-sm, 4px);
+    padding: 11px 22px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+    cursor: pointer; transition: background 0.15s;
+  }
+  .compare-cta-btn:hover:not(:disabled) { background: var(--clay); }
+  .compare-cta-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .compare-cta-sold { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+</style>

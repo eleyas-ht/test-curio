@@ -1,0 +1,235 @@
+---
+interface Props {
+  giftEnabled?: boolean;
+  giftPriceDisplay?: string;
+}
+const { giftEnabled = true, giftPriceDisplay = '+$12.00' } = Astro.props;
+---
+
+  <!-- ============================================================
+     CART
+============================================================ -->
+  <main class="cart">
+    <div class="container">
+
+      <!-- Breadcrumb -->
+      <nav class="cart-breadcrumb" aria-label="Breadcrumb">
+        <a href="/">Home</a><span class="cart-bc-sep">/</span>
+        <a href="/products">Shop</a><span class="cart-bc-sep">/</span>
+        <span aria-current="page">Cart</span>
+      </nav>
+
+      <!-- Head -->
+      <header class="cart-head">
+        <h1 class="cart-title">Your <em>cart</em></h1>
+        <a href="/products" class="cart-continue">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          Continue shopping
+        </a>
+      </header>
+
+      <!-- Layout -->
+      <div class="cart-layout" id="cart-layout">
+        <div class="cart-main">
+          <!-- Free shipping progress -->
+          <div class="cart-ship" id="cart-ship">
+            <p class="cart-ship-text" id="cart-ship-text"></p>
+            <div class="cart-ship-bar"><span id="cart-ship-fill"></span></div>
+          </div>
+
+          <div class="cart-list-head">
+            <span>Product</span>
+            <span>Quantity</span>
+            <span>Total</span>
+          </div>
+          <div class="cart-list" id="cart-page-list" aria-live="polite"></div>
+
+          <!-- Order add-ons -->
+          <div class="cart-extras">
+            {giftEnabled && (
+            <div class="cart-extra cart-extra-toggle" id="cart-gift-wrap-row">
+              <span class="cart-extra-ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M20 12v9H4v-9M2 7h20v5H2zM12 22V7M12 7S10 3 7.5 3 5 6 5 6.5 7 7 9 7M12 7s2-4 4.5-4S19 6 19 6.5 17 7 15 7"
+                    stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </span>
+              <div class="cart-extra-text">
+                <p class="cart-extra-title">Premium Gift Wrap <span class="cart-extra-price" id="gift-price-display">{giftPriceDisplay}</span></p>
+                <p class="cart-extra-sub">Luxe ivory box, gold ribbon &amp; handwritten card</p>
+              </div>
+              <label class="cart-switch">
+                <input type="checkbox" id="gift-wrap" onchange="cartToggleGift(this)">
+                <span class="cart-switch-track"><span class="cart-switch-knob"></span></span>
+              </label>
+            </div>
+            )}
+
+            <div class="cart-extra cart-extra-acc">
+              <button class="cart-extra-head" onclick="cartExtraToggle(this)">
+                <span class="cart-extra-ico">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M6 2h9l5 5v15H6z" stroke-linejoin="round" />
+                    <path d="M14 2v5h5M9 13h7M9 17h5" stroke-linecap="round" />
+                  </svg>
+                </span>
+                <div class="cart-extra-text">
+                  <p class="cart-extra-title">Order Notes</p>
+                  <p class="cart-extra-sub">Special delivery instructions or requests for our concierge</p>
+                </div>
+                <svg class="cart-extra-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </button>
+              <div class="cart-extra-body">
+                <div class="cart-extra-inner">
+                  <textarea class="cart-note" placeholder="Add a note for our concierge team — gift message, delivery window, anything else…"></textarea>
+                </div>
+              </div>
+            </div>
+
+            <div class="cart-extra cart-extra-acc">
+              <button class="cart-extra-head" onclick="cartExtraToggle(this)">
+                <span class="cart-extra-ico">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7l8-4z" stroke-linejoin="round" />
+                    <path d="m9 12 2 2 4-4" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </span>
+                <div class="cart-extra-text">
+                  <p class="cart-extra-title">Curio Protection Plan</p>
+                  <p class="cart-extra-sub">Extended coverage: accidental damage, theft &amp; failure</p>
+                </div>
+                <svg class="cart-extra-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="m6 9 6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </button>
+              <div class="cart-extra-body">
+                <div class="cart-extra-inner cart-prot-opts">
+                  <label class="cart-prot">
+                    <input type="radio" name="prot" value="0" data-label="" checked onchange="cartSetProt(this)">
+                    <span class="cart-prot-radio"></span><span class="cart-prot-name">No coverage</span><span
+                      class="cart-prot-price">Free</span>
+                  </label>
+                  <label class="cart-prot">
+                    <input type="radio" name="prot" value="49" data-label="2-year" onchange="cartSetProt(this)">
+                    <span class="cart-prot-radio"></span><span class="cart-prot-name">2-Year Protection</span><span
+                      class="cart-prot-price">+$49</span>
+                  </label>
+                  <label class="cart-prot">
+                    <input type="radio" name="prot" value="79" data-label="3-year" onchange="cartSetProt(this)">
+                    <span class="cart-prot-radio"></span><span class="cart-prot-name">3-Year Protection</span><span
+                      class="cart-prot-price">+$79</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Summary -->
+        <aside class="cart-summary">
+          <h2 class="cart-sum-title">Order summary</h2>
+          <div class="cart-sum-row"><span>Subtotal</span><span id="cart-sum-subtotal">$0</span></div>
+          <div class="cart-sum-row"><span>Shipping</span><span id="cart-sum-ship">Calculated at checkout</span></div>
+          <div class="cart-sum-row cart-sum-discount" id="cart-sum-discount-row" style="display:none;"><span>Discount</span><span id="cart-sum-discount">-$0</span></div>
+          <div class="cart-sum-row" id="cart-sum-gift-row" style="display:none;"><span>Gift wrap</span><span id="cart-sum-gift-val">—</span></div>
+          <div class="cart-sum-row" id="cart-sum-prot-row" style="display:none;"><span>Protection <em
+                id="cart-sum-prot-label"></em></span><span id="cart-sum-prot-val">+$0</span></div>
+
+          <div class="cart-promo">
+            <input type="text" id="cart-promo-input" placeholder="Promo code">
+            <button onclick="cartApplyPromo()">Apply</button>
+          </div>
+          <div class="cart-promo-applied" id="cart-promo-applied" style="display:none;"></div>
+          <p class="cart-promo-msg" id="cart-promo-msg"></p>
+
+          <div class="cart-sum-total"><span>Total</span><span id="cart-sum-total">$0</span></div>
+          <p class="cart-sum-tax">Taxes included. Shipping calculated at checkout.</p>
+
+          <button class="cart-checkout" onclick="window.location.href='checkout-editorial.html'">
+            Checkout
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+
+          <div class="cart-pay-icons">
+            <span class="cart-pay-badge">VISA</span>
+            <span class="cart-pay-badge">Mastercard</span>
+            <span class="cart-pay-badge">Amex</span>
+            <span class="cart-pay-badge">PayPal</span>
+            <span class="cart-pay-badge">Apple Pay</span>
+          </div>
+          <p class="cart-secure">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+              <rect x="4" y="11" width="16" height="9" rx="2" />
+              <path d="M8 11V8a4 4 0 0 1 8 0v3" stroke-linecap="round" />
+            </svg>
+            Secure, encrypted checkout
+          </p>
+        </aside>
+      </div>
+
+      <!-- Empty state -->
+      <div class="cart-empty" id="cart-empty" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3">
+          <path d="M5 7h14l-1.4 11a2 2 0 0 1-2 1.7H8.4a2 2 0 0 1-2-1.7L5 7Z" stroke-linejoin="round" />
+          <path d="M9 7V5a3 3 0 0 1 6 0v2" stroke-linecap="round" />
+        </svg>
+        <h3>Your cart is empty</h3>
+        <p>No products yet — but the edit is full of things worth keeping.</p>
+        <a href="/products" class="btn-primary">Browse the shop</a>
+      </div>
+
+      <!-- Recommended -->
+      <section class="cart-recommend">
+        <div class="cart-rec-head">
+          <span class="label">Before you check out</span>
+          <h2 class="cart-rec-title">You might also like</h2>
+        </div>
+        <div class="pairs-grid" id="cart-rec-grid"></div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ============================================================
+     FINAL CTA — Newsletter (matches home)
+============================================================ -->
+  <section class="section-newsletter">
+    <span class="newsletter-deco">"</span>
+    <div class="container newsletter-inner">
+      <span class="label label-center newsletter-eyebrow">A letter, weekly</span>
+      <h2 class="newsletter-title">Subscribe to <em>The Edit</em>.</h2>
+      <p class="newsletter-body">One thoughtful email a week. Editor's picks, the occasional rant, and what we'd
+        actually recommend to a friend looking for new gear. No deal-of-the-day. No drop-pop FOMO.</p>
+      <form class="newsletter-form" onsubmit="nlSubmit(event)">
+        <input class="newsletter-input" type="email" placeholder="your@email.com" required>
+        <button type="submit" class="newsletter-submit">Subscribe</button>
+      </form>
+      <p class="newsletter-fine">By subscribing you agree to our <a href="#">privacy policy</a>. Unsubscribe in one
+        click, always.</p>
+    </div>
+  </section>
+
+  <!-- Account dropdown -->
+  <div class="acct-menu" id="acct-menu" hidden>
+    <div class="acct-head">
+      <span class="acct-hello">Welcome to <strong>The Edit</strong></span>
+      <span class="acct-sub">Sign in for faster checkout &amp; order tracking</span>
+    </div>
+    <div class="acct-actions">
+      <button class="acct-signin">Sign in</button>
+      <button class="acct-create">Create account</button>
+    </div>
+    <nav class="acct-links">
+      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 2h9l5 5v15H6z" stroke-linejoin="round"/><path d="M9 12h6M9 16h6" stroke-linecap="round"/></svg>My orders</a>
+      <a href="#" id="acct-wishlist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 1 0-7.8 7.8L12 21.2l8.8-8.8a5.5 5.5 0 0 0 0-7.8z" stroke-linejoin="round"/></svg>Wishlist</a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="10" r="3"/><path d="M5 20c0-3.5 3-5 7-5s7 1.5 7 5" stroke-linecap="round"/></svg>Account settings</a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .8-1 1.7M12 17h.01" stroke-linecap="round"/></svg>Help &amp; support</a>
+    </nav>
+  </div>
+

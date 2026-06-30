@@ -1,0 +1,60 @@
+---
+// ============================================================
+//  FAQ — editorial 2-col: left intro, right accordion.
+//  Native <details> for zero-JS accessibility. Shared by home + about.
+// ============================================================
+import Icon from '~/components/ui/Icon.astro';
+import { FAQS } from '~/config/faqs';
+
+interface Props {
+  items?: ReadonlyArray<{ q: string; a: string }>;
+  eyebrow?: string;
+  title?: string;
+  class?: string;
+}
+const {
+  items = FAQS,
+  eyebrow = 'Questions',
+  title = 'The things *people ask*.',
+  class: className = '',
+} = Astro.props;
+const titleHtml = title.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+const roman = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii'];
+---
+
+<section class={`wrap grid gap-12 py-20 md:grid-cols-[0.8fr_1.2fr] md:py-28 ${className}`}>
+  <div class="md:sticky md:top-28 md:self-start">
+    <span class="ed-label">{eyebrow}</span>
+    <h2 class="masthead mt-6 text-[clamp(1.8rem,3.5vw,2.6rem)]" set:html={titleHtml} />
+    <p class="mt-5 max-w-xs text-sm leading-relaxed text-muted">
+      Can't find what you're after? Our concierge is staffed by real humans, 24/7.
+    </p>
+    <a
+      href="/contact"
+      class="mt-5 inline-flex items-center gap-2 border-b border-clay/40 pb-1 text-sm text-clay transition-fluid hover:gap-3 hover:text-clay-deep"
+    >
+      Talk to a human
+      <Icon name="arrowRight" size={14} />
+    </a>
+  </div>
+
+  <div>
+    {
+      items.map((item, i) => (
+        <details class="group border-t border-sand-deep [&[open]_.faq-plus]:rotate-45" name="home-faq">
+          <summary class="flex cursor-pointer list-none items-center gap-5 py-5 [&::-webkit-details-marker]:hidden">
+            <span class="w-6 shrink-0 text-xs italic text-muted-light">{roman[i]}</span>
+            <span class="flex-1 font-serif text-lg text-ink transition-fluid group-hover:text-clay">
+              {item.q}
+            </span>
+            <span class="faq-plus shrink-0 text-clay transition-transform duration-300">
+              <Icon name="plus" size={18} />
+            </span>
+          </summary>
+          <p class="pb-6 pl-11 pr-8 text-sm leading-relaxed text-muted">{item.a}</p>
+        </details>
+      ))
+    }
+    <div class="border-t border-sand-deep"></div>
+  </div>
+</section>

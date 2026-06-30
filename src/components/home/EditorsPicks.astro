@@ -1,0 +1,35 @@
+---
+// ============================================================
+//  Editor's Picks — three products our editors keep returning to.
+//  Data-driven (ProductCard[]); editorial 3-up layout.
+// ============================================================
+import type { ProductCard as ProductCardType } from '~/lib/shopify/types';
+import SectionHeading from '~/components/ui/SectionHeading.astro';
+import ProductCard from '~/components/product/ProductCard.astro';
+
+interface Props {
+  products: ProductCardType[];
+}
+const { products } = Astro.props;
+const picks = products.slice(0, 3);
+const kickers = ['The daily driver', 'The upgrade', 'The quiet luxury'];
+---
+
+{
+  picks.length > 0 && (
+    <section id="editors-picks" class="wrap py-20 md:py-28">
+      <SectionHeading
+        eyebrow="Editor's Picks"
+        title="Three products our editors *keep coming back to*."
+        href="/products"
+        linkLabel="See full edit"
+        class="mb-14"
+      />
+      <div class="grid gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
+        {picks.map((product, i) => (
+          <ProductCard product={product} index={i} kicker={kickers[i]} class="reveal" />
+        ))}
+      </div>
+    </section>
+  )
+}

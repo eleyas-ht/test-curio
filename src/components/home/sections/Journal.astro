@@ -1,0 +1,131 @@
+---
+// ============================================================
+//  Journal — editorial article cards from Shopify blog.
+//  Design is verbatim from home-editorial.html; only the data
+//  binding is dynamic. Gracefully falls back to static articles
+//  when `articles` is not passed or is empty.
+// ============================================================
+import type { BlogArticle } from '~/lib/shopify/types';
+import { JOURNAL_CONFIG, JOURNAL_FALLBACK } from '~/config/journal';
+
+interface Props {
+  /** Live Shopify blog articles. Empty array → shows static fallback. */
+  articles?: BlogArticle[];
+}
+
+const { articles = [] } = Astro.props;
+
+// ── Helpers ──────────────────────────────────────────────────
+
+/** Format an ISO date string → "Jun 2025" */
+function formatDate(iso: string): string {
+  try {
+    return new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric' }).format(
+      new Date(iso),
+    );
+  } catch {
+    return '';
+  }
+}
+
+/** Truncate text to maxLength characters, appending "…" if cut. */
+function truncate(text: string, max: number): string {
+  if (!max || text.length <= max) return text;
+  return text.slice(0, max).trimEnd() + '…';
+}
+
+/** Strip HTML tags to produce plain text (used as excerpt fallback from contentHtml). */
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+// ── Build the card list ──────────────────────────────────────
+// Use Shopify articles when available; fall back to static config.
+
+type Card = {
+  href: string;
+  image: string | null;
+  imageAlt: string;
+  category: string;
+  title: string;
+  excerpt: string | null;
+  author: string | null;
+  date: string;
+};
+
+const cards: Card[] = articles.length > 0
+  ? articles.map((a) => ({
+      href: `/blogs/${a.blog.handle}/${a.handle}`,
+      image: a.image?.url ?? null,
+      imageAlt: a.image?.altText ?? a.title,
+      category: a.tags[0] ?? 'Journal',
+      title: a.title,
+      excerpt: (() => {
+          if (!JOURNAL_CONFIG.showExcerpt) return null;
+          const raw = a.excerpt || (a.contentHtml ? stripHtml(a.contentHtml) : null);
+          return raw ? truncate(raw, JOURNAL_CONFIG.excerptMaxLength) : null;
+        })(),
+      author: a.author?.name ?? null,
+      date: formatDate(a.publishedAt),
+    }))
+  : JOURNAL_FALLBACK.map((f) => ({
+      href: f.href,
+      image: f.image,
+      imageAlt: f.title,
+      category: f.category,
+      title: f.title,
+      excerpt: JOURNAL_CONFIG.showExcerpt ? f.excerpt : null,
+      author: f.author,
+      date: f.date,
+    }));
+---
+
+  <section class="section-journal">
+    <div class="container">
+      <div class="section-head">
+        <span class="label">From the Journal</span>
+        <div class="section-head-row">
+          <h2 class="section-title">Stories, <em>longer reads</em>, and the occasional rant.</h2>
+          <a href={JOURNAL_CONFIG.allArticlesHref} class="btn-link">All journal
+            <svg viewBox="0 0 16 16" fill="currentColor">
+              <path fill-rule="evenodd"
+                d="M8.22 2.97a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06l2.97-2.97H3.75a.75.75 0 0 1 0-1.5h7.44L8.22 4.03a.75.75 0 0 1 0-1.06Z"
+                clip-rule="evenodd" />
+            </svg>
+          </a>
+        </div>
+      </div>
+      <div class="journal-grid">
+        {cards.map((card) => (
+          <article class="journal-card">
+            <a href={card.href} class="journal-image">
+              {card.image
+                ? <img src={card.image} alt={card.imageAlt} loading="lazy" />
+                : <div class="journal-image-placeholder" aria-hidden="true" />
+              }
+            </a>
+            <span class="journal-cat">{card.category}</span>
+            <h3 class="journal-title">{card.title}</h3>
+            {card.excerpt && (
+              <p class="journal-excerpt">{card.excerpt}</p>
+            )}
+            <div class="journal-meta">
+              {card.author && (
+                <span>By <em>{card.author}</em></span>
+              )}
+              {card.author && card.date && (
+                <span class="dot" />
+              )}
+              {card.date && (
+                <span>{card.date}</span>
+              )}
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+     PROMO BANNER GRID — 3-column editorial banners
+============================================================ -->

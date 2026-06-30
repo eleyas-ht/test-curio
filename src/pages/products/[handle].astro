@@ -1,0 +1,444 @@
+---
+// ============================================================
+//  PDP — SSR-driven product page.
+//  All static content is rendered server-side (no placeholder flash).
+//  The client script only wires interactive behaviour: variant
+//  selection, quantity, add-to-cart, wishlist, accordion, video.
+// ============================================================
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import ProductBody from '~/components/pages/ProductBody.astro';
+import '~/styles/pages/product.css';
+import { getProduct, getProductRecommendations } from '~/lib/shopify';
+import { formatMoney, isOnSale } from '~/lib/utils';
+import type { Product, ProductCard } from '~/lib/shopify/types';
+import { getProductWidget, type JudgeMeWidget } from '~/lib/judgeme';
+
+const { handle } = Astro.params;
+
+let product: Product | null = null;
+let loadFailed = false;
+try {
+  product = await getProduct(handle!);
+} catch (err) {
+  loadFailed = true;
+  console.error('[product] load failed:', (err as Error).message);
+}
+if (loadFailed) Astro.response.status = 503;
+else if (!product) Astro.response.status = 404;
+
+// Fetch recommendations + Judge.me widget in parallel (both best-effort)
+let relProducts: ProductCard[] = [];
+let reviews: JudgeMeWidget | null = null;
+if (product) {
+  [relProducts, reviews] = await Promise.all([
+    getProductRecommendations(product.id, 8).catch(() => [] as ProductCard[]),
+    getProductWidget(product.handle).catch(() => null),
+  ]);
+}
+
+// Delivery estimate — computed at request time (SSR is dynamic)
+function addBusinessDays(date: Date, n: number): Date {
+  const result = new Date(date);
+  let added = 0;
+  while (added < n) {
+    result.setDate(result.getDate() + 1);
+    const day = result.getDay();
+    if (day !== 0 && day !== 6) added++;
+  }
+  return result;
+}
+const now = new Date();
+const cutoffTime = new Date(now);
+cutoffTime.setHours(16, 0, 0, 0);
+const baseDate = now > cutoffTime ? addBusinessDays(now, 1) : now;
+const eta1 = addBusinessDays(baseDate, 2);
+const eta2 = addBusinessDays(baseDate, 4);
+const fmtDate = (d: Date) => d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+const etaStr = eta1.toDateString() === eta2.toDateString() ? fmtDate(eta1) : `${fmtDate(eta1)} – ${fmtDate(eta2)}`;
+const msLeft = cutoffTime.getTime() - now.getTime();
+const cutoffStr = now < cutoffTime
+  ? (Math.floor(msLeft / 3600000) > 0
+    ? `${Math.floor(msLeft / 3600000)}h ${Math.floor((msLeft % 3600000) / 60000)}m`
+    : `${Math.floor(msLeft / 60000)} minutes`)
+  : 'midnight tonight';
+
+// Build the pd data blob — shared between ProductBody (SSR props) and the
+// #pd-data JSON blob (client-side variant switching). Both must stay in sync.
+let pd: Record<string, unknown> | null = null;
+if (product) {
+  const min = product.priceRange.minVariantPrice;
+  const cmp = product.compareAtPriceRange?.minVariantPrice ?? null;
+  const onSale = isOnSale(min, cmp);
+  const cur = min.currencyCode;
+  const images = (product.images.length ? product.images : product.featuredImage ? [product.featuredImage] : []).map(
+    (i) => ({ url: i.url, alt: i.altText ?? product!.title }),
+  );
+  pd = {
+    id: product.id,
+    handle: product.handle,
+    title: product.title,
+    vendor: product.vendor || 'Curio',
+    category: product.productType || 'Shop',
+    desc: product.description || '',
+    descHtml: product.descriptionHtml || product.description || '',
+    priceNow: formatMoney(min.amount, cur),
+    priceWas: onSale && cmp ? formatMoney(cmp.amount, cur) : '',
+    save: onSale && cmp ? formatMoney((Number(cmp.amount) - Number(min.amount)).toString(), cur) : '',
+    images,
+    currency: cur,
+    options: product.options.map((o) => ({ name: o.name, values: o.optionValues.map((v) => v.name) })),
+    variants: product.variants.map((v) => ({
+      id: v.id,
+      sku: v.sku ?? '',
+      available: v.availableForSale,
+      qty: v.quantityAvailable ?? null,
+      price: formatMoney(v.price.amount, v.price.currencyCode),
+      priceNum: Number(v.price.amount),
+      compareAt: v.compareAtPrice ? formatMoney(v.compareAtPrice.amount, v.compareAtPrice.currencyCode) : '',
+      compareNum: v.compareAtPrice ? Number(v.compareAtPrice.amount) : 0,
+      image: v.image?.url ?? '',
+      options: v.selectedOptions,
+    })),
+  };
+}
+---
+
+{
+  product && pd ? (
+    <BaseLayout title={product.seo?.title ?? product.title} description={product.seo?.description ?? product.description} image={product.featuredImage?.url}>
+      <script type="application/ld+json" set:html={JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'Product',
+        name: product.title,
+        description: product.description,
+        image: product.images.map((i) => i.url),
+        brand: { '@type': 'Brand', name: product.vendor || 'Curio' },
+        offers: product.variants.map((v) => ({
+          '@type': 'Offer',
+          price: v.price.amount,
+          priceCurrency: v.price.currencyCode,
+          availability: v.availableForSale
+            ? 'https://schema.org/InStock'
+            : 'https://schema.org/OutOfStock',
+          sku: v.sku ?? undefined,
+          url: new URL(`/products/${product!.handle}`, Astro.url.origin).href,
+        })),
+      })} is:inline />
+      <ProductBody
+        pd={pd as any}
+        relProducts={relProducts}
+        delivery={{ cutoff: cutoffStr, eta: etaStr }}
+        reviews={reviews ?? undefined}
+        shopDomain={import.meta.env.SHOPIFY_SHOP_DOMAIN as string}
+      />
+      {/* JSON blob for client-side variant switching — content already correct from SSR */}
+      <script type="application/json" id="pd-data" set:html={JSON.stringify(pd)} is:inline />
+    </BaseLayout>
+  ) : (
+    <BaseLayout title={loadFailed ? 'Something went wrong' : 'Product not found'}>
+      <main class="pd"><div class="container" style="padding:120px 0;text-align:center">
+        <span class="label" style="justify-content:center">{loadFailed ? 'Error 503' : 'Error 404'}</span>
+        <h1 class="pd-title" style="font-size:48px;margin:16px 0">{loadFailed ? 'Something went wrong' : 'Product not found'}</h1>
+        <p class="pd-desc" style="max-width:420px;margin:0 auto 24px">We couldn't find that product.</p>
+        <a class="btn-primary" href="/products">Shop all products</a>
+      </div></main>
+    </BaseLayout>
+  )
+}
+
+<script>
+  import { addItem, buyNow } from '~/stores/cart';
+  import { initWishlist, toggleWishlist, isWishlisted } from '~/stores/wishlist';
+
+  const el = document.getElementById('pd-data');
+  if (el?.textContent) {
+    const pd = JSON.parse(el.textContent) as any;
+    const $ = (s: string) => document.querySelector<HTMLElement>(s);
+
+    // ── Gallery — thumbnails already rendered by SSR, just wire clicks ──
+    const thumbs = document.getElementById('pd-thumbs');
+    const mainImg = document.getElementById('pd-main-img') as HTMLImageElement | null;
+    thumbs?.querySelectorAll<HTMLButtonElement>('.pd-thumb').forEach((b) =>
+      b.addEventListener('click', () => {
+        thumbs.querySelectorAll('.pd-thumb').forEach((x) => x.classList.remove('active'));
+        b.classList.add('active');
+        if (mainImg) mainImg.src = b.dataset.full ?? mainImg.src;
+      }),
+    );
+
+    // Zoom toggle
+    document.getElementById('pd-zoom-btn')?.addEventListener('click', () => {
+      document.getElementById('pd-stage')?.classList.toggle('zoomed');
+    });
+
+    // ── Read initially selected options from SSR-rendered active buttons ──
+    const selected: Record<string, string> = {};
+    document.querySelectorAll<HTMLButtonElement>('[data-opt].active').forEach((b) => {
+      selected[b.dataset.opt!] = b.dataset.val!;
+    });
+
+    // ── Wire variant option buttons ──
+    document.querySelectorAll<HTMLButtonElement>('[data-opt]').forEach((b) =>
+      b.addEventListener('click', () => {
+        const name = b.dataset.opt!, val = b.dataset.val!;
+        selected[name] = val;
+        const block = b.closest('.pd-variant');
+        block?.querySelectorAll('[data-opt]').forEach((x) => x.classList.toggle('active', x === b));
+        // Update colour label if present
+        const label = block?.querySelector<HTMLElement>(`[data-sel="${name}"]`);
+        if (label) label.textContent = val;
+        updateVariant();
+      }),
+    );
+
+    // ── Quantity selector ──
+    let qty = 1;
+    const qtyEl = document.getElementById('pd-qty');
+    document.getElementById('pd-qty-minus')?.addEventListener('click', () => {
+      qty = Math.max(1, qty - 1);
+      if (qtyEl) qtyEl.textContent = String(qty);
+    });
+    document.getElementById('pd-qty-plus')?.addEventListener('click', () => {
+      qty = Math.min(20, qty + 1);
+      if (qtyEl) qtyEl.textContent = String(qty);
+    });
+
+    // ── ATC + Buy Now ──
+    const atc = document.getElementById('pd-atc') as HTMLButtonElement | null;
+    const buynowBtn = document.querySelector<HTMLButtonElement>('.pd-buynow');
+    let activeVariant: any = null;
+
+    function findVariant() {
+      return pd.variants.find((v: any) =>
+        v.options.every((o: any) => selected[o.name] === o.value),
+      ) ?? null;
+    }
+
+    function updateVariant() {
+      const v = findVariant();
+      activeVariant = v;
+      const price      = v ? v.price      : pd.priceNow;
+      const compare    = v ? v.compareAt  : pd.priceWas;
+      const compareNum = v ? v.compareNum : 0;
+      const priceNum   = v ? v.priceNum   : 0;
+      const avail      = v?.available ?? false;
+
+      // Price display
+      const priceEl = document.getElementById('pd-price');
+      if (priceEl) priceEl.textContent = price;
+
+      const was  = $('.pd-price-was');
+      const save = $('.pd-price-save');
+      if (was)  { if (compare)              { was.textContent  = compare; was.style.display  = ''; } else was.style.display  = 'none'; }
+      if (save) { if (compareNum > priceNum) { save.textContent = 'Save ' + new Intl.NumberFormat('en-US', { style: 'currency', currency: pd.currency, minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(compareNum - priceNum); save.style.display = ''; } else save.style.display = 'none'; }
+
+      // Installment
+      const instal = document.getElementById('pd-instal');
+      if (instal && priceNum) {
+        instal.textContent = new Intl.NumberFormat('en-US', {
+          style: 'currency', currency: pd.currency,
+          minimumFractionDigits: 2, maximumFractionDigits: 2,
+        }).format(priceNum / 4);
+      }
+
+      // Stock badge
+      const stock = document.getElementById('pd-stock');
+      if (stock) {
+        stock.className = 'pd-stock ' + (avail ? 'in' : 'out');
+        stock.innerHTML = `<span></span>${avail ? 'In stock' : 'Out of stock'}`;
+      }
+
+      // Urgency — only update if real qty is available
+      const urgency = $('.pd-urgency-msg');
+      if (urgency && v?.qty != null && v.qty > 0 && v.qty <= 10) {
+        urgency.innerHTML = `Only <strong>${v.qty} left</strong> — selling fast`;
+      }
+
+      // SKU
+      const sku = document.querySelector('.pd-foot-meta strong');
+      if (sku) sku.textContent = v?.sku || pd.title.toUpperCase().replace(/[^A-Z0-9]+/g, '-').slice(0, 14);
+
+      // Variant image swap
+      if (v?.image && mainImg) {
+        mainImg.src = v.image;
+        thumbs?.querySelectorAll<HTMLButtonElement>('.pd-thumb').forEach((b) =>
+          b.classList.toggle('active', b.dataset.full === v.image),
+        );
+      }
+
+      // ATC button — set disabled state and label
+      if (atc) {
+        atc.disabled = !avail || !v;
+        atc.innerHTML = !v
+          ? 'Unavailable'
+          : avail
+            ? `Add to Cart — <span id="pd-atc-price">${price}</span>`
+            : 'Sold out';
+      }
+    }
+
+    atc?.addEventListener('click', async () => {
+      if (!activeVariant?.id || atc.disabled) return;
+      atc.disabled = true;
+      atc.textContent = 'Adding…';
+      await addItem(activeVariant.id, qty);
+      // Re-run to restore button text
+      updateVariant();
+    });
+
+    buynowBtn?.addEventListener('click', () => {
+      if (activeVariant?.id) buyNow(activeVariant.id, qty);
+    });
+
+    // ── Pairs carousel quick-add (delegated) ──
+    document.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement)?.closest<HTMLButtonElement>('.pd-pair-add[data-pair-variant]');
+      if (!btn || btn.disabled) return;
+      e.preventDefault();
+      const variantId = btn.dataset.pairVariant;
+      if (!variantId) return;
+      btn.disabled = true;
+      btn.classList.add('atc-added');
+      void addItem(variantId).finally(() => {
+        btn.disabled = false;
+        setTimeout(() => btn.classList.remove('atc-added'), 2000);
+      });
+    });
+
+    // ── Wishlist toggle ──
+    initWishlist();
+    const wishBtn = document.getElementById('pd-wish');
+    if (wishBtn && pd.id) {
+      wishBtn.classList.toggle('active', isWishlisted(pd.id));
+      const wishProduct = {
+        id: pd.id,
+        handle: pd.handle,
+        title: pd.title,
+        image: (pd.images as any[])[0]?.url ?? '',
+        price: String((pd.variants as any[])[0]?.priceNum ?? 0),
+        currency: pd.currency as string,
+        vendor: pd.vendor as string,
+        variantId: (pd.variants as any[])[0]?.id ?? '',
+        availableForSale: true,
+      };
+      wishBtn.addEventListener('click', () => {
+        const active = toggleWishlist(wishProduct);
+        wishBtn.classList.toggle('active', active);
+        wishBtn.setAttribute('aria-label', active ? 'Remove from wishlist' : 'Add to wishlist');
+      });
+    }
+
+    // ── Pickup availability drawer ──
+    const PICKUP_STORES = [
+      { name: 'Japan Warehouse',          addr: 'Tokyo, Japan',              status: 'in',  time: 'Usually ready in 24 hours' },
+      { name: 'Singapore Distribution',   addr: 'Singapore',                 status: 'in',  time: 'Usually ready in 1–2 business days' },
+      { name: 'US West Coast Hub',         addr: 'Los Angeles, CA',           status: 'low', time: 'Usually ready in 3–5 business days' },
+      { name: 'UK Fulfillment Centre',     addr: 'London, United Kingdom',    status: 'out', time: 'Currently unavailable for pickup' },
+      { name: 'AU Distribution Centre',    addr: 'Sydney, Australia',         status: 'in',  time: 'Usually ready in 2–3 business days' },
+    ];
+    const STATUS_LABEL: Record<string, string> = { in: 'Available', low: 'Low stock', out: 'Unavailable' };
+
+    const pickupOverlay = document.getElementById('pd-pickup-overlay');
+    const pickupSubEl   = document.getElementById('pd-pickup-drawer-sub');
+    const pickupStoresEl = document.getElementById('pd-pickup-stores');
+
+    function renderPickupStores() {
+      if (!pickupStoresEl) return;
+      pickupStoresEl.innerHTML = PICKUP_STORES.map((s) => `
+        <div class="pd-pickup-store">
+          <span class="pd-pickup-store-dot ${s.status}"></span>
+          <div class="pd-pickup-store-info">
+            <p class="pd-pickup-store-name">${s.name}</p>
+            <p class="pd-pickup-store-addr">${s.addr}</p>
+            <p class="pd-pickup-store-time">${s.time}</p>
+          </div>
+          <span class="pd-pickup-store-status ${s.status}">${STATUS_LABEL[s.status]}</span>
+        </div>
+      `).join('');
+    }
+
+    function openPickupDrawer() {
+      if (!pickupOverlay) return;
+      if (pickupSubEl) {
+        const opts = (activeVariant?.options as any[] | undefined)
+          ?.map((o: any) => o.value).join(' / ') ?? '';
+        pickupSubEl.textContent = pd.title + (opts ? ' · ' + opts : '');
+      }
+      renderPickupStores();
+      pickupOverlay.classList.add('open');
+      pickupOverlay.removeAttribute('aria-hidden');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closePickupDrawer() {
+      if (!pickupOverlay) return;
+      pickupOverlay.classList.remove('open');
+      pickupOverlay.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+    }
+
+    document.getElementById('pd-pickup-trigger')?.addEventListener('click', openPickupDrawer);
+    document.getElementById('pd-pickup-close')?.addEventListener('click', closePickupDrawer);
+    pickupOverlay?.addEventListener('click', (e) => {
+      if (e.target === pickupOverlay) closePickupDrawer();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && pickupOverlay?.classList.contains('open')) closePickupDrawer();
+    });
+
+    // Initialize: read SSR active state → find matching variant → set ATC
+    updateVariant();
+  }
+
+  // ── Accordion ──
+  document.querySelectorAll<HTMLElement>('.pd-acc-trigger').forEach((btn) =>
+    btn.addEventListener('click', () => btn.closest('.pd-acc-item')?.classList.toggle('open')),
+  );
+
+  // ── Video mute toggle ──
+  const videoEl = document.querySelector<HTMLVideoElement>('.pd-video-el');
+  const muteBtn = document.getElementById('pd-video-mute');
+  muteBtn?.addEventListener('click', () => {
+    if (!videoEl) return;
+    videoEl.muted = !videoEl.muted;
+    muteBtn.setAttribute('aria-label', videoEl.muted ? 'Unmute video' : 'Mute video');
+    muteBtn.innerHTML = videoEl.muted
+      ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M11 5 6 9H2v6h4l5 4V5z" stroke-linejoin="round"/><path d="M23 9l-6 6M17 9l6 6" stroke-linecap="round"/></svg>`
+      : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M11 5 6 9H2v6h4l5 4V5z" stroke-linejoin="round"/><path d="M15 9a5 5 0 0 1 0 6M19 5a11 11 0 0 1 0 14" stroke-linecap="round"/></svg>`;
+  });
+
+  // ── Pairs carousel — paginated, N items per slide ──
+  const pairItemEls = Array.from(document.querySelectorAll<HTMLElement>('.pd-pair'));
+  if (pairItemEls.length > 0) {
+    let pairsPage = 0;
+    const pairsPerSlide = 2;
+
+    function renderPairs() {
+      const totalSlides = Math.ceil(pairItemEls.length / pairsPerSlide);
+      pairItemEls.forEach((item, i) => {
+        const slide = Math.floor(i / pairsPerSlide);
+        item.hidden = slide !== pairsPage;
+      });
+      // Fix bottom border: only the last visible item has none
+      const visible = pairItemEls.filter((el) => !el.hidden);
+      visible.forEach((el, i) => {
+        el.style.borderBottom = i === visible.length - 1 ? 'none' : '';
+      });
+      const prevBtn = document.getElementById('pairs-prev') as HTMLButtonElement | null;
+      const nextBtn = document.getElementById('pairs-next') as HTMLButtonElement | null;
+      if (prevBtn) prevBtn.disabled = pairsPage === 0;
+      if (nextBtn) nextBtn.disabled = pairsPage >= totalSlides - 1;
+    }
+
+    document.getElementById('pairs-prev')?.addEventListener('click', () => {
+      pairsPage = Math.max(0, pairsPage - 1);
+      renderPairs();
+    });
+    document.getElementById('pairs-next')?.addEventListener('click', () => {
+      pairsPage = Math.min(Math.ceil(pairItemEls.length / pairsPerSlide) - 1, pairsPage + 1);
+      renderPairs();
+    });
+
+    renderPairs();
+  }
+</script>

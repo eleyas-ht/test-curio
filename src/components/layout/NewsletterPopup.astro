@@ -1,0 +1,319 @@
+---
+// ============================================================
+//  NewsletterPopup — bottom-left slide-up newsletter card.
+//
+//  Design matches the HTML reference exactly (home-editorial.html).
+//  CSS lives in src/styles/editorial.css (.nl-popup, .nl-popup-*).
+//
+//  Configuration: src/config/newsletter.ts → NEWSLETTER_POPUP
+//    enabled            — set to false to disable entirely
+//    eyebrow            — small uppercase label ("Before you go")
+//    heading            — headline; *word* → <em>word</em> in clay
+//    description        — body copy
+//    emailPlaceholder   — input placeholder text
+//    buttonText         — submit button label
+//    successMessage     — text shown inside the form on success
+//    errorMessage       — fallback error text from the server
+//    displayDelay       — seconds after page load before showing
+//    showOnExitIntent   — trigger on desktop cursor-exit (top edge)
+//    dontShowAgainDays  — days to suppress after close / subscribe
+//    image / imageAlt   — optional image above the eyebrow
+// ============================================================
+import { NEWSLETTER_POPUP } from '~/config/newsletter';
+
+// Bail out at render time if the popup is disabled — no HTML emitted.
+if (!NEWSLETTER_POPUP.enabled) return;
+
+const {
+  eyebrow,
+  heading,
+  description,
+  emailPlaceholder,
+  buttonText,
+  successMessage,
+  errorMessage,
+  displayDelay,
+  showOnExitIntent,
+  dontShowAgainDays,
+  image,
+  imageAlt,
+} = NEWSLETTER_POPUP;
+
+// Convert *word* → <em>word</em> for italic clay styling (same pattern as Newsletter section).
+const headingHtml = heading.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+// Pass config values to the client script via data attributes on the root element
+// so the JS never needs an extra fetch or inline globals.
+---
+
+<div
+  class="nl-popup"
+  id="nl-popup"
+  aria-label="Newsletter signup"
+  data-delay={displayDelay}
+  data-suppress-days={dontShowAgainDays}
+  data-exit-intent={showOnExitIntent ? 'true' : 'false'}
+  data-btn-text={buttonText}
+  data-error-msg={errorMessage}
+>
+  {/* Close button */}
+  <button
+    class="nl-popup-close"
+    id="nl-popup-close"
+    aria-label="Close newsletter popup"
+  >
+    <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+      <path d="m6 6 12 12M6 18 18 6" />
+    </svg>
+  </button>
+
+  {/* Optional decorative image */}
+  {image && (
+    <img
+      src={image}
+      alt={imageAlt ?? ''}
+      class="nl-popup-img"
+      width="308"
+      height="140"
+      loading="lazy"
+      decoding="async"
+    />
+  )}
+
+  {/* Copy */}
+  <span class="nl-popup-eyebrow">{eyebrow}</span>
+  <h4 class="nl-popup-title" set:html={headingHtml} />
+  <p class="nl-popup-body">{description}</p>
+
+  {/* Subscription form */}
+  <form class="nl-popup-form" id="nl-popup-form" novalidate>
+    <label for="nl-popup-email" class="sr-only">Email address</label>
+    <input
+      id="nl-popup-email"
+      name="email"
+      type="email"
+      required
+      autocomplete="email"
+      placeholder={emailPlaceholder}
+    />
+    <button type="submit" id="nl-popup-submit">{buttonText}</button>
+  </form>
+
+  {/* Feedback states — toggled by JS */}
+  <p id="nl-popup-success" class="nl-popup-feedback nl-popup-feedback--success" role="status" aria-live="polite" hidden>
+    {successMessage}
+  </p>
+  <p id="nl-popup-error" class="nl-popup-feedback nl-popup-feedback--error" role="alert" aria-live="assertive" hidden>
+  </p>
+</div>
+
+{/* Extra styles scoped to optional image + feedback elements not in editorial.css */}
+<style>
+  /* Optional image above the eyebrow */
+  .nl-popup-img {
+    width: calc(100% + 52px);
+    height: 140px;
+    object-fit: cover;
+    border-radius: var(--r-md) var(--r-md) 0 0;
+    margin: -26px -26px 18px;
+    display: block;
+  }
+
+  /* Feedback text lines (success / error) */
+  .nl-popup-feedback {
+    margin-top: 10px;
+    font-family: var(--font-sans);
+    font-size: 12.5px;
+    line-height: 1.5;
+  }
+
+  .nl-popup-feedback--success {
+    font-family: var(--font-serif);
+    font-style: italic;
+    color: var(--clay);
+  }
+
+  .nl-popup-feedback--error {
+    color: #c0392b;
+  }
+
+  /* Loading state — dims the submit button */
+  #nl-popup-submit[disabled] {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+</style>
+
+<script>
+  // ============================================================
+  //  Newsletter Popup — client behaviour
+  //
+  //  Display logic:
+  //    1. On DOMContentLoaded, read localStorage key 'omnix-nl-popup'.
+  //       If it holds a future timestamp, the popup is suppressed.
+  //    2. If not suppressed, schedule the popup after `data-delay` seconds.
+  //    3. If `data-exit-intent="true"`, also trigger when the mouse leaves
+  //       the top edge of the viewport on desktop (exit-intent pattern).
+  //
+  //  Close logic:
+  //    – Clicking the × button suppresses for `data-suppress-days` days.
+  //
+  //  Submit logic:
+  //    – POSTs to /api/newsletter as JSON.
+  //    – Shows loading / success / error states inline.
+  //    – On success, suppresses for `data-suppress-days` days and
+  //      auto-closes the popup after 2.8 s.
+  // ============================================================
+
+  const LS_KEY = 'omnix-nl-popup';
+
+  const popup  = document.getElementById('nl-popup') as HTMLElement | null;
+  const form   = document.getElementById('nl-popup-form') as HTMLFormElement | null;
+  const closeBtn = document.getElementById('nl-popup-close') as HTMLButtonElement | null;
+  const emailInput = document.getElementById('nl-popup-email') as HTMLInputElement | null;
+  const submitBtn  = document.getElementById('nl-popup-submit') as HTMLButtonElement | null;
+  const successEl  = document.getElementById('nl-popup-success') as HTMLElement | null;
+  const errorEl    = document.getElementById('nl-popup-error') as HTMLElement | null;
+
+  if (!popup) throw new Error('[nl-popup] root element not found');
+
+  // Read config from data attributes so no extra global is needed.
+  const delayMs       = parseFloat(popup.dataset.delay ?? '4') * 1000;
+  const suppressDays  = parseInt(popup.dataset.suppressDays ?? '7', 10);
+  const useExitIntent = popup.dataset.exitIntent === 'true';
+
+  // ── Suppress helpers ──────────────────────────────────────
+
+  function isSuppressed(): boolean {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return false;
+    const suppressUntil = parseInt(raw, 10);
+    return Date.now() < suppressUntil;
+  }
+
+  function suppress(): void {
+    const until = Date.now() + suppressDays * 24 * 60 * 60 * 1000;
+    localStorage.setItem(LS_KEY, String(until));
+  }
+
+  // ── Open / close ──────────────────────────────────────────
+
+  let opened = false;
+
+  function open(): void {
+    if (opened || isSuppressed()) return;
+    opened = true;
+    popup.classList.add('open');
+  }
+
+  function close(): void {
+    popup.classList.remove('open');
+    suppress();
+  }
+
+  // ── Display triggers ──────────────────────────────────────
+
+  function scheduleOpen(): void {
+    if (isSuppressed()) return;
+
+    // Timed trigger
+    if (delayMs >= 0) {
+      setTimeout(open, delayMs);
+    }
+
+    // Exit-intent trigger (desktop only — ignore touch devices)
+    if (useExitIntent && window.matchMedia('(pointer: fine)').matches) {
+      document.addEventListener('mouseleave', (e: MouseEvent) => {
+        // Only trigger when the cursor exits through the top edge.
+        if (e.clientY <= 0) open();
+      }, { once: true });
+    }
+  }
+
+  // ── UI helpers ────────────────────────────────────────────
+
+  // Cache the original button label once so restore is reliable.
+  const btnLabel = submitBtn?.textContent?.trim() ?? 'Subscribe';
+
+  function setLoading(loading: boolean): void {
+    if (!submitBtn) return;
+    submitBtn.disabled = loading;
+    submitBtn.textContent = loading ? 'Subscribing…' : btnLabel;
+  }
+
+  function showSuccess(msg: string): void {
+    if (successEl) {
+      successEl.textContent = msg;
+      successEl.hidden = false;
+    }
+    errorEl && (errorEl.hidden = true);
+    form && (form.hidden = true);
+  }
+
+  function showError(msg: string): void {
+    if (errorEl) {
+      errorEl.textContent = msg;
+      errorEl.hidden = false;
+    }
+    successEl && (successEl.hidden = true);
+  }
+
+  function clearFeedback(): void {
+    if (successEl) successEl.hidden = true;
+    if (errorEl)   errorEl.hidden = true;
+  }
+
+  // ── Event listeners ───────────────────────────────────────
+
+  closeBtn?.addEventListener('click', close);
+
+  form?.addEventListener('submit', async (e: Event) => {
+    e.preventDefault();
+    clearFeedback();
+
+    const email = (emailInput?.value ?? '').trim();
+
+    // Client-side format check before hitting the server.
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showError('Please enter a valid email address.');
+      emailInput?.focus();
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/newsletter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      const payload = await res.json().catch(() => ({ ok: false, error: '' })) as {
+        ok: boolean;
+        error?: string;
+      };
+
+      if (payload.ok) {
+        // The success message text was server-rendered into #nl-popup-success.
+        // Read it from textContent so no extra data attribute is needed.
+        const successMsg = successEl?.textContent?.trim() ?? "You're on the list. See you Friday.";
+        showSuccess(successMsg);
+        // Suppress future appearances since the user is now subscribed.
+        suppress();
+        // Auto-close after the success message has been read.
+        setTimeout(close, 2800);
+      } else {
+        showError(payload.error || (popup.dataset.errorMsg ?? 'Something went wrong — please try again.'));
+        setLoading(false);
+      }
+    } catch {
+      showError('Network error — please check your connection and try again.');
+      setLoading(false);
+    }
+  });
+
+  // ── Initialise ────────────────────────────────────────────
+
+  scheduleOpen();
+</script>

@@ -1,0 +1,295 @@
+---
+// ============================================================
+//  WishlistDrawer — slides in from the right like the cart
+//  drawer. Shows wishlisted products with add-to-cart and
+//  remove actions, driven by the wishlist nanostore.
+// ============================================================
+---
+
+<div class="wish-backdrop" id="wish-backdrop"></div>
+
+<aside class="wish-drawer" id="wish-drawer" aria-label="Your wishlist" role="dialog" aria-modal="true">
+  <div class="wish-drawer-head">
+    <div class="wish-drawer-title">
+      Wishlist <em>(<span id="wish-head-count">0 items</span>)</em>
+    </div>
+    <button class="wish-close-btn" id="wish-close" aria-label="Close wishlist">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+  </div>
+
+  <div class="wish-items" id="wish-items"></div>
+
+  <div class="wish-empty show" id="wish-empty">
+    <div class="wish-empty-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" width="40" height="40">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+      </svg>
+    </div>
+    <h4 class="wish-empty-title">Your wishlist is empty</h4>
+    <p class="wish-empty-sub">Save items you love and come back to them later.</p>
+    <button class="wish-shop-btn" id="wish-empty-shop">Continue Shopping</button>
+  </div>
+
+  <div class="wish-drawer-foot" id="wish-foot" style="display:none;">
+    <a href="/products" class="wish-shop-all-btn">Browse all products</a>
+  </div>
+</aside>
+
+<style is:global>
+  /* ── Backdrop ─────────────────────────────────────────── */
+  .wish-backdrop {
+    position: fixed; inset: 0; z-index: 1099;
+    background: rgba(42, 33, 28, 0.45);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s var(--ease);
+  }
+  .wish-backdrop.open { opacity: 1; pointer-events: auto; }
+
+  /* ── Drawer panel ─────────────────────────────────────── */
+  .wish-drawer {
+    position: fixed; top: 0; right: 0; bottom: 0; z-index: 1100;
+    width: min(420px, 100vw);
+    background: var(--warm-white);
+    display: flex; flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.35s var(--ease);
+    box-shadow: -8px 0 40px rgba(0,0,0,0.12);
+  }
+  .wish-drawer.open { transform: translateX(0); }
+
+  /* ── Header ───────────────────────────────────────────── */
+  .wish-drawer-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 24px 18px;
+    border-bottom: 1px solid var(--sand);
+    flex-shrink: 0;
+  }
+  .wish-drawer-title {
+    font-family: var(--font-serif);
+    font-size: 20px; font-weight: 400;
+    color: var(--ink);
+  }
+  .wish-drawer-title em { font-style: italic; font-size: 14px; color: var(--muted); }
+  .wish-close-btn {
+    display: grid; place-items: center;
+    width: 36px; height: 36px; border-radius: 50%;
+    background: none; border: 1px solid var(--sand);
+    cursor: pointer; transition: background 0.15s;
+    color: var(--ink);
+  }
+  .wish-close-btn:hover { background: var(--sand); }
+
+  /* ── Item list ────────────────────────────────────────── */
+  .wish-items {
+    flex: 1; overflow-y: auto; padding: 4px 0;
+  }
+  .wish-item {
+    display: flex; gap: 14px; align-items: flex-start;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--sand);
+  }
+  .wish-item-img {
+    flex-shrink: 0; width: 72px; height: 72px;
+    border-radius: var(--r-sm, 4px); overflow: hidden;
+    background: var(--cream);
+    border: 1px solid var(--sand);
+  }
+  .wish-item-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .wish-item-body { flex: 1; min-width: 0; }
+  .wish-item-vendor {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--clay);
+    margin-bottom: 4px;
+  }
+  .wish-item-name {
+    font-family: var(--font-serif);
+    font-size: 14px; line-height: 1.35;
+    color: var(--ink); margin-bottom: 6px;
+  }
+  .wish-item-name a { text-decoration: none; color: inherit; }
+  .wish-item-name a:hover { color: var(--clay); }
+  .wish-item-price {
+    font-size: 13px; font-weight: 600;
+    color: var(--ink); margin-bottom: 10px;
+  }
+  .wish-item-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .wish-add-btn {
+    flex: 1;
+    background: var(--ink); color: var(--warm-white);
+    border: none; border-radius: var(--r-sm, 4px);
+    padding: 8px 14px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase;
+    cursor: pointer; white-space: nowrap;
+    transition: background 0.15s;
+  }
+  .wish-add-btn:hover:not(:disabled) { background: var(--clay); }
+  .wish-add-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .wish-add-btn.sold-out {
+    background: var(--sand-deep); color: var(--muted);
+    pointer-events: none;
+  }
+  .wish-remove-btn {
+    flex-shrink: 0;
+    background: none; border: 1px solid var(--sand);
+    border-radius: var(--r-sm, 4px);
+    padding: 8px 10px;
+    font-size: 11px; color: var(--muted);
+    cursor: pointer; white-space: nowrap;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .wish-remove-btn:hover { border-color: var(--clay); color: var(--clay); }
+
+  /* ── Empty state ──────────────────────────────────────── */
+  .wish-empty {
+    display: none; flex-direction: column; align-items: center;
+    justify-content: center; text-align: center;
+    padding: 60px 32px; gap: 12px;
+    flex: 1;
+  }
+  .wish-empty.show { display: flex; }
+  .wish-empty-icon { color: var(--sand-deep); margin-bottom: 8px; }
+  .wish-empty-title {
+    font-family: var(--font-serif);
+    font-size: 20px; font-weight: 400; color: var(--ink);
+  }
+  .wish-empty-sub { font-size: 13px; color: var(--muted); max-width: 220px; line-height: 1.5; }
+  .wish-shop-btn {
+    margin-top: 8px;
+    background: var(--ink); color: var(--warm-white);
+    border: none; border-radius: var(--r-sm, 4px);
+    padding: 11px 28px;
+    font-size: 12px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase;
+    cursor: pointer; transition: background 0.15s;
+  }
+  .wish-shop-btn:hover { background: var(--clay); }
+
+  /* ── Footer ───────────────────────────────────────────── */
+  .wish-drawer-foot {
+    flex-shrink: 0;
+    padding: 16px 24px;
+    border-top: 1px solid var(--sand);
+  }
+  .wish-shop-all-btn {
+    display: block; text-align: center;
+    background: none; border: 1px solid var(--sand-deep);
+    border-radius: var(--r-sm, 4px);
+    padding: 11px;
+    font-size: 12px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase;
+    color: var(--ink); text-decoration: none;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .wish-shop-all-btn:hover { border-color: var(--clay); color: var(--clay); }
+</style>
+
+<script>
+  import { $wishlist, $wishlistOpen, initWishlist, removeFromWishlist, closeWishlist } from '~/stores/wishlist';
+  import { addItem } from '~/stores/cart';
+
+  const drawer  = document.getElementById('wish-drawer');
+  const backdrop = document.getElementById('wish-backdrop');
+
+  // ── Open / close ──────────────────────────────────────────
+  $wishlistOpen.subscribe((open) => {
+    drawer?.classList.toggle('open', open);
+    backdrop?.classList.toggle('open', open);
+    document.body.classList.toggle('wish-open', open);
+  });
+
+  document.getElementById('wish-close')?.addEventListener('click', () => closeWishlist());
+  document.getElementById('wish-empty-shop')?.addEventListener('click', () => closeWishlist());
+  backdrop?.addEventListener('click', () => closeWishlist());
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeWishlist(); });
+
+  // ── Render ────────────────────────────────────────────────
+  const money = (amount: string, currency: string) =>
+    new Intl.NumberFormat('en-US', {
+      style: 'currency', currency,
+      minimumFractionDigits: Number.isInteger(Number(amount)) ? 0 : 2,
+    }).format(Number(amount));
+
+  function render() {
+    const items   = $wishlist.get();
+    const count   = items.length;
+    const headCountEl = document.getElementById('wish-head-count');
+    if (headCountEl) headCountEl.textContent = `${count} item${count === 1 ? '' : 's'}`;
+
+    const listEl  = document.getElementById('wish-items');
+    const emptyEl = document.getElementById('wish-empty');
+    const footEl  = document.getElementById('wish-foot');
+
+    if (count === 0) {
+      emptyEl?.classList.add('show');
+      if (listEl) listEl.innerHTML = '';
+      if (footEl) footEl.style.display = 'none';
+      return;
+    }
+
+    emptyEl?.classList.remove('show');
+    if (footEl) footEl.style.display = 'block';
+
+    if (!listEl) return;
+    listEl.innerHTML = items
+      .map(
+        (p) => `<div class="wish-item" data-wish-id="${p.id}">
+          <div class="wish-item-img">
+            <a href="/products/${p.handle}">
+              ${p.image ? `<img src="${p.image}" alt="${p.title}" loading="lazy" />` : ''}
+            </a>
+          </div>
+          <div class="wish-item-body">
+            ${p.vendor ? `<div class="wish-item-vendor">${p.vendor}</div>` : ''}
+            <div class="wish-item-name"><a href="/products/${p.handle}">${p.title}</a></div>
+            <div class="wish-item-price">${money(p.price, p.currency)}</div>
+            <div class="wish-item-actions">
+              ${p.availableForSale && p.variantId
+                ? `<button class="wish-add-btn" data-wish-add="${p.variantId}" data-wish-item-id="${p.id}">Add to Cart</button>`
+                : `<button class="wish-add-btn sold-out" disabled>Sold Out</button>`}
+              <button class="wish-remove-btn" data-wish-remove="${p.id}">Remove</button>
+            </div>
+          </div>
+        </div>`,
+      )
+      .join('');
+
+    // Add to cart
+    listEl.querySelectorAll<HTMLButtonElement>('[data-wish-add]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const variantId = btn.dataset.wishAdd!;
+        const itemId = btn.dataset.wishItemId!;
+        btn.disabled = true;
+        btn.textContent = '…';
+        try {
+          await addItem(variantId, 1, { open: true });
+          // Briefly show confirmation
+          btn.textContent = '✓ Added';
+          setTimeout(() => { btn.disabled = false; btn.textContent = 'Add to Cart'; }, 1400);
+        } catch {
+          btn.disabled = false;
+          btn.textContent = 'Add to Cart';
+        }
+      });
+    });
+
+    // Remove from wishlist
+    listEl.querySelectorAll<HTMLButtonElement>('[data-wish-remove]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.wishRemove!;
+        removeFromWishlist(id);
+        // Sync card button on the page if still visible
+        document
+          .querySelectorAll<HTMLButtonElement>(`.feat-card[data-product-id="${id}"] .feat-wish`)
+          .forEach((b) => {
+            b.classList.remove('active');
+            b.setAttribute('aria-label', 'Add to wishlist');
+          });
+      });
+    });
+  }
+
+  initWishlist();
+  $wishlist.subscribe(render);
+</script>

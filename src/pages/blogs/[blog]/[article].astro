@@ -1,0 +1,228 @@
+---
+// ============================================================
+//  Blog article detail page — /blogs/[blog]/[article]
+//  Fetches a single Shopify blog article and renders the full
+//  body in the editorial rich-text layout.
+// ============================================================
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import { getArticle } from '~/lib/shopify';
+import type { BlogArticle } from '~/lib/shopify/types';
+
+const { blog: blogHandle, article: articleHandle } = Astro.params;
+
+let blogTitle = '';
+let article: BlogArticle | null = null;
+let loadFailed = false;
+
+try {
+  const result = await getArticle(blogHandle!, articleHandle!);
+  if (result) {
+    blogTitle = result.blogTitle;
+    article = result.article;
+  } else {
+    Astro.response.status = 404;
+  }
+} catch (err) {
+  loadFailed = true;
+  console.error('[article] load failed:', (err as Error).message);
+  Astro.response.status = 503;
+}
+
+function formatDate(iso: string): string {
+  try {
+    return new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).format(new Date(iso));
+  } catch {
+    return '';
+  }
+}
+
+const category = article?.tags[0] ?? 'Journal';
+const blogHref = `/blogs/${blogHandle}`;
+---
+
+<BaseLayout
+  title={article?.seo?.title ?? article?.title ?? 'Article'}
+  description={article?.seo?.description ?? article?.excerpt ?? undefined}
+  image={article?.image?.url}
+>
+  {article && (
+    <script type="application/ld+json" set:html={JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'BlogPosting',
+      headline: article.title,
+      description: article.excerpt ?? article.seo?.description ?? '',
+      image: article.image?.url ? [article.image.url] : [],
+      datePublished: article.publishedAt,
+      author: article.author?.name
+        ? { '@type': 'Person', name: article.author.name }
+        : { '@type': 'Organization', name: 'Curio' },
+      publisher: { '@type': 'Organization', name: 'Curio', url: Astro.url.origin },
+      url: new URL(`/blogs/${blogHandle}/${articleHandle}`, Astro.url.origin).href,
+      mainEntityOfPage: { '@type': 'WebPage', '@id': new URL(`/blogs/${blogHandle}/${articleHandle}`, Astro.url.origin).href },
+    })} is:inline />
+  )}
+  <main class="article-page">
+    <div class="container-narrow">
+
+      {/* Breadcrumb */}
+      <nav class="shop-breadcrumb" aria-label="Breadcrumb">
+        <a href="/">Home</a>
+        <span class="shop-bc-sep">/</span>
+        <a href={blogHref}>{blogTitle || 'Journal'}</a>
+        <span class="shop-bc-sep">/</span>
+        <span aria-current="page">{article?.title ?? articleHandle}</span>
+      </nav>
+
+      {loadFailed ? (
+        <div class="article-error">
+          <p>Unable to load this article right now. Please try again later.</p>
+          <a href={blogHref} class="btn-link" style="margin-top:20px;">← Back to journal</a>
+        </div>
+      ) : !article ? (
+        <div class="article-error">
+          <p>This article could not be found.</p>
+          <a href={blogHref} class="btn-link" style="margin-top:20px;">← Back to journal</a>
+        </div>
+      ) : (
+        <article class="article-body">
+
+          {/* Category chip */}
+          <span class="journal-cat article-cat">{category}</span>
+
+          {/* Title */}
+          <h1 class="article-title">{article.title}</h1>
+
+          {/* Meta — author · date */}
+          <div class="article-meta">
+            {article.author?.name && (
+              <>
+                <span>By <em>{article.author.name}</em></span>
+                <span class="dot" />
+              </>
+            )}
+            <span>{formatDate(article.publishedAt)}</span>
+          </div>
+
+          {/* Hero image */}
+          {article.image && (
+            <figure class="article-figure">
+              <img
+                src={article.image.url}
+                alt={article.image.altText ?? article.title}
+                class="article-hero-img"
+                loading="eager"
+              />
+            </figure>
+          )}
+
+          {/* Body */}
+          {article.contentHtml ? (
+            <div class="rte article-rte" set:html={article.contentHtml} />
+          ) : (
+            <p class="article-no-content">No content available for this article.</p>
+          )}
+
+          {/* Back link */}
+          <a href={blogHref} class="article-back btn-link">
+            <svg viewBox="0 0 16 16" fill="currentColor" style="transform:rotate(180deg)">
+              <path fill-rule="evenodd" d="M8.22 2.97a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06l2.97-2.97H3.75a.75.75 0 0 1 0-1.5h7.44L8.22 4.03a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
+            </svg>
+            Back to {blogTitle || 'Journal'}
+          </a>
+
+        </article>
+      )}
+
+    </div>
+  </main>
+</BaseLayout>
+
+<style>
+  .article-page {
+    padding: 40px 0 100px;
+  }
+
+  .article-cat {
+    display: inline-block;
+    margin-bottom: 18px;
+  }
+
+  .article-title {
+    font-family: var(--font-serif);
+    font-size: clamp(28px, 4.5vw, 52px);
+    font-weight: 400;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    margin-bottom: 20px;
+  }
+
+  .article-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 36px;
+    padding-bottom: 28px;
+    border-bottom: 1px solid var(--sand);
+  }
+
+  .article-meta em {
+    font-family: var(--font-serif);
+    font-style: italic;
+    color: var(--clay);
+  }
+
+  .article-figure {
+    margin: 0 0 40px;
+    border-radius: var(--r-lg);
+    overflow: hidden;
+  }
+
+  .article-hero-img {
+    width: 100%;
+    height: auto;
+    display: block;
+    aspect-ratio: 16/9;
+    object-fit: cover;
+  }
+
+  /* Reuse the .rte class from pages/[handle].astro */
+  .article-rte {
+    color: var(--muted);
+    line-height: 1.85;
+    padding-bottom: 60px;
+  }
+  .article-rte > * + * { margin-top: 1.1rem; }
+  .article-rte h2, .article-rte h3 { font-family: var(--font-serif); color: var(--ink); margin-top: 2rem; font-weight: 500; }
+  .article-rte h2 { font-size: 1.7rem; }
+  .article-rte h3 { font-size: 1.35rem; }
+  .article-rte a { color: var(--clay-deep); text-decoration: underline; text-underline-offset: 3px; }
+  .article-rte ul, .article-rte ol { padding-left: 1.3rem; }
+  .article-rte ul { list-style: disc; }
+  .article-rte ol { list-style: decimal; }
+  .article-rte img { border-radius: var(--r-lg); margin-block: 1.5rem; max-width: 100%; }
+  .article-rte blockquote { border-left: 3px solid var(--clay); padding-left: 1.2rem; color: var(--ink); font-family: var(--font-serif); font-style: italic; font-size: 1.15rem; }
+
+  .article-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 20px;
+  }
+  .article-back svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .article-error {
+    padding: 40px 0;
+    color: var(--muted);
+  }
+
+  .article-no-content {
+    color: var(--muted);
+    padding: 40px 0;
+  }
+</style>

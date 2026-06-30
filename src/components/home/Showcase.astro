@@ -1,0 +1,64 @@
+---
+// ============================================================
+//  Product Showcase — dark cocoa editorial spread featuring one
+//  hero product (data-driven). Oversized watermark + plate + meta.
+// ============================================================
+import type { ProductCard } from '~/lib/shopify/types';
+import Price from '~/components/ui/Price.astro';
+import Button from '~/components/ui/Button.astro';
+import Icon from '~/components/ui/Icon.astro';
+
+interface Props {
+  product?: ProductCard | null;
+}
+const { product } = Astro.props;
+const min = product?.priceRange.minVariantPrice;
+const compareAt = product?.compareAtPriceRange?.minVariantPrice ?? null;
+---
+
+{
+  product && (
+    <section class="relative overflow-hidden bg-cocoa text-cream">
+      <span
+        aria-hidden="true"
+        class="pointer-events-none absolute -top-6 left-0 select-none whitespace-nowrap font-serif text-[22vw] leading-none text-cream/[0.04] md:text-[16vw]"
+      >
+        Most Wanted
+      </span>
+      <div class="wrap relative grid items-center gap-12 py-20 md:grid-cols-2 md:py-28">
+        <div class="order-2 md:order-1">
+          <span class="ed-label is-center justify-start text-clay before:bg-clay">In the spotlight</span>
+          <h2 class="masthead mt-6 text-[clamp(2rem,4.5vw,3.2rem)] text-cream">{product.title}</h2>
+          <p class="mt-5 max-w-md text-sm leading-relaxed text-cream/70">
+            The piece our editors reach for first. Reference-grade sound, all-day comfort, and the
+            kind of build quality you feel the moment you pick it up.
+          </p>
+          {min && (
+            <div class="mt-7">
+              <Price price={min} compareAt={compareAt} size="lg" class="text-cream [&_*]:text-cream" />
+            </div>
+          )}
+          <div class="mt-8">
+            <Button href={`/products/${product.handle}`} variant="accent" size="lg">
+              View product
+              <Icon name="arrowRight" size={16} />
+            </Button>
+          </div>
+        </div>
+
+        <a href={`/products/${product.handle}`} class="group order-1 block md:order-2">
+          <div class="relative mx-auto aspect-square max-w-md overflow-hidden rounded-md border border-cream/10 bg-cream/5">
+            {product.featuredImage && (
+              <img
+                src={product.featuredImage.url}
+                alt={product.featuredImage.altText ?? product.title}
+                loading="lazy"
+                class="h-full w-full object-cover transition-transform duration-[800ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
+              />
+            )}
+          </div>
+        </a>
+      </div>
+    </section>
+  )
+}

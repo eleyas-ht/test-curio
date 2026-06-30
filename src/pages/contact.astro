@@ -1,0 +1,72 @@
+---
+// Contact — 1:1 verbatim editorial layout.
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import ContactBody from '~/components/pages/ContactBody.astro';
+import '~/styles/pages/contact.css';
+---
+
+<BaseLayout title="Contact" description="Questions, orders, press — reach the Curio editors.">
+  <ContactBody />
+</BaseLayout>
+
+<script>
+  // ── Contact form (/api/contact) ───────────────────────────────
+  const form = document.getElementById('ct-form') as HTMLFormElement | null;
+  const hint = document.getElementById('ct-fib-hint') as HTMLElement | null;
+  const note = document.getElementById('ct-form-note') as HTMLElement | null;
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    // Clear previous validation state
+    form.querySelectorAll('.ct-fib-field.invalid').forEach((el) => el.classList.remove('invalid'));
+    if (hint) { hint.textContent = hint.dataset.default ??= hint.textContent ?? ''; hint.classList.remove('err'); }
+
+    const data = {
+      name:    (form.querySelector<HTMLInputElement>('#ct-name')?.value ?? '').trim(),
+      email:   (form.querySelector<HTMLInputElement>('#ct-email')?.value ?? '').trim(),
+      topic:   (form.querySelector<HTMLSelectElement>('#ct-topic')?.value ?? '').trim(),
+      message: (form.querySelector<HTMLTextAreaElement>('#ct-message')?.value ?? '').trim(),
+    };
+
+    let res: { ok: boolean; errors?: Record<string, string> } = { ok: false };
+    try {
+      const r = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      res = await r.json();
+    } catch { /* network error — treat as server error */ }
+
+    if (!res.ok && res.errors) {
+      // Highlight invalid fields
+      const fieldMap: Record<string, string> = { name: '#ct-name', email: '#ct-email', message: '#ct-message' };
+      const firstErr = Object.entries(res.errors)[0];
+      for (const [key, el] of Object.entries(fieldMap)) {
+        if (res.errors[key]) form.querySelector(el)?.closest('.ct-fib-field')?.classList.add('invalid');
+      }
+      if (hint && firstErr) { hint.textContent = firstErr[1]; hint.classList.add('err'); }
+      return;
+    }
+
+    // Success
+    form.reset();
+    if (note) { note.hidden = false; }
+  });
+
+  // ── Newsletter form (/api/newsletter) ─────────────────────────
+  document.getElementById('nl-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const nlForm = e.currentTarget as HTMLFormElement;
+    const email = (nlForm.querySelector<HTMLInputElement>('input[type="email"]')?.value ?? '').trim();
+    try {
+      await fetch('/api/newsletter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+    } catch { /* stub — swallow errors */ }
+    nlForm.reset();
+  });
+</script>

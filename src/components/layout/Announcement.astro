@@ -1,0 +1,39 @@
+---
+// Announcement bar — exact editorial markup (rotating slides).
+---
+<div class="announcement">
+  <div class="container announce-inner" id="announce-bar" aria-live="polite">
+    <div class="announce-slide active">
+      <span class="announce-dot"></span>
+      <span class="announce-text">Complimentary shipping on orders over $75 — <em>read this week's</em></span>
+      <a href="/pages/editors-letter" class="announce-link">Editor's Letter →</a>
+    </div>
+    <div class="announce-slide">
+      <span class="announce-dot"></span>
+      <span class="announce-text"><em>Spring Issue 03</em> — 48 products our editors actually recommend</span>
+      <a href="/products" class="announce-link">Browse Selection →</a>
+    </div>
+    <div class="announce-slide">
+      <span class="announce-dot"></span>
+      <span class="announce-text">New: The <em>Best Headphones of 2026</em> — Our definitive guide</span>
+      <a href="/pages/buying-guides" class="announce-link">Read Guide →</a>
+    </div>
+    <div class="announce-slide">
+      <span class="announce-dot"></span>
+      <span class="announce-text">Join the Edit — exclusive access, buying guides &amp; early drops</span>
+      <a href="/account" class="announce-link">Sign Up Free →</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.announce-slide'));
+  if (slides.length > 1) {
+    let current = 0;
+    setInterval(() => {
+      slides[current].classList.remove('active');
+      current = (current + 1) % slides.length;
+      slides[current].classList.add('active');
+    }, 4500);
+  }
+</script>

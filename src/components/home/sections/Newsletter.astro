@@ -1,0 +1,129 @@
+---
+// ============================================================
+//  Newsletter — "A letter, weekly" signup band.
+//  Design: verbatim from home-editorial.html (paths/links fixed).
+//  Functionality: posts to /api/newsletter → provider in
+//  src/config/newsletter.ts (default: Shopify Customers).
+// ============================================================
+import { NEWSLETTER } from '~/config/newsletter';
+---
+
+<section class="section-newsletter">
+  <span class="newsletter-deco">"</span>
+  <div class="container newsletter-inner">
+    <span class="label label-center newsletter-eyebrow">{NEWSLETTER.eyebrow}</span>
+    <h2 class="newsletter-title" set:html={NEWSLETTER.title.replace(/\*([^*]+)\*/g, '<em>$1</em>')} />
+    <p class="newsletter-body">{NEWSLETTER.body}</p>
+
+    <form data-newsletter class="newsletter-form">
+      <label for="nl-email-raw" class="sr-only">Email address</label>
+      <input
+        id="nl-email-raw"
+        name="email"
+        class="newsletter-input"
+        type="email"
+        placeholder="your@email.com"
+        required
+        autocomplete="email"
+      />
+      <button type="submit" class="newsletter-submit">Subscribe</button>
+    </form>
+
+    <!-- Success message — hidden until subscription succeeds -->
+    <p
+      data-newsletter-done
+      role="status"
+      aria-live="polite"
+      class="newsletter-success"
+      style="display:none"
+    >
+      {NEWSLETTER.successMessage}
+    </p>
+
+    <!-- Error message — hidden until an error occurs -->
+    <p
+      data-newsletter-error
+      role="alert"
+      aria-live="assertive"
+      class="newsletter-error"
+      style="display:none"
+    ></p>
+
+    <p class="newsletter-fine">
+      By subscribing you agree to our <a href="#">privacy policy</a>. Unsubscribe in one click, always.
+    </p>
+  </div>
+</section>
+
+<!-- ============================================================
+     FOOTER
+============================================================ -->
+
+<script>
+  document.querySelectorAll<HTMLFormElement>('[data-newsletter]').forEach((form) => {
+    const submitBtn   = form.querySelector<HTMLButtonElement>('[type="submit"]');
+    const emailInput  = form.querySelector<HTMLInputElement>('[name="email"]');
+    const successEl   = form.parentElement?.querySelector<HTMLElement>('[data-newsletter-done]');
+    const errorEl     = form.parentElement?.querySelector<HTMLElement>('[data-newsletter-error]');
+
+    function setLoading(loading: boolean) {
+      if (!submitBtn) return;
+      submitBtn.disabled = loading;
+      submitBtn.textContent = loading ? 'Subscribing…' : 'Subscribe';
+      submitBtn.style.opacity = loading ? '0.65' : '';
+    }
+
+    function showSuccess() {
+      if (successEl) successEl.style.display = '';
+      if (errorEl)   errorEl.style.display   = 'none';
+      form.reset();
+      setLoading(false);
+    }
+
+    function showError(msg: string) {
+      if (errorEl) {
+        errorEl.textContent    = msg;
+        errorEl.style.display  = '';
+      }
+      if (successEl) successEl.style.display = 'none';
+      setLoading(false);
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      // Clear previous messages.
+      if (successEl) successEl.style.display = 'none';
+      if (errorEl)   errorEl.style.display   = 'none';
+
+      const email = (emailInput?.value ?? '').trim();
+
+      // Client-side format check before hitting the server.
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showError('Please enter a valid email address.');
+        emailInput?.focus();
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        const res = await fetch('/api/newsletter', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+
+        const payload = await res.json().catch(() => ({ ok: false, error: 'Unexpected response.' }));
+
+        if (payload.ok) {
+          showSuccess();
+        } else {
+          showError(payload.error ?? 'Subscription failed. Please try again.');
+        }
+      } catch {
+        showError('Network error — please check your connection and try again.');
+      }
+    });
+  });
+</script>

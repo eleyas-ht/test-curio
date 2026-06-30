@@ -1,0 +1,467 @@
+﻿---
+// 1:1 verbatim body from shop-editorial.html — grid + filters wired to Shopify.
+import ProductFeatCard from '~/components/product/ProductFeatCard.astro';
+import Newsletter from '~/components/home/sections/Newsletter.astro';
+import type { ProductCard } from '~/lib/shopify/types';
+
+interface Facets {
+  categories: { value: string; label: string }[];
+  brands: string[];
+  priceMax: number;
+}
+interface Props {
+  products: ProductCard[];
+  facets: Facets;
+  heading?: string;
+  subtitle?: string;
+  crumb?: string;
+}
+const {
+  products,
+  facets,
+  heading = 'Shop <em>everything</em>',
+  subtitle = 'Every piece our editors actually recommend — curated across audio, mobile, computing and the connected home. No filler, no noise.',
+  crumb = 'Shop',
+} = Astro.props;
+const total = products.length;
+const brandCount = facets.brands.length;
+const pmax = Math.max(100, Math.ceil(facets.priceMax / 50) * 50);
+---
+
+  <!-- ============================================================
+     SHOP / COLLECTION
+============================================================ -->
+  <main class="shop">
+    <div class="container">
+
+      <!-- Breadcrumb -->
+      <nav class="shop-breadcrumb" aria-label="Breadcrumb">
+        <a href="/">Home</a>
+        <span class="shop-bc-sep">/</span>
+        <span aria-current="page">{crumb}</span>
+      </nav>
+
+      <!-- Collection header -->
+      <header class="shop-head">
+        <div class="shop-head-left">
+          <span class="shop-eyebrow"><span class="shop-eyebrow-dot"></span>The Edit · Issue 03 · Spring 2026</span>
+          <h1 class="shop-title" set:html={heading} />
+          <p class="shop-sub">{subtitle}</p>
+        </div>
+        <div class="shop-head-stats">
+          <div class="shop-stat"><span class="shop-stat-num" id="stat-count">{total}</span><span
+              class="shop-stat-label">Products</span></div>
+          <div class="shop-stat"><span class="shop-stat-num">{brandCount}</span><span class="shop-stat-label">Brands</span></div>
+          <div class="shop-stat"><span class="shop-stat-num">4.8</span><span class="shop-stat-label">Avg. rating</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Category quick pills -->
+      <div class="shop-cats" id="shop-cats" role="tablist" aria-label="Categories">
+        <button class="shop-cat active" data-cat="all">All</button>
+        {facets.categories.map((c) => <button class="shop-cat" data-cat={c.value}>{c.label}</button>)}
+      </div>
+
+      <!-- Toolbar -->
+      <div class="shop-toolbar" id="shop-toolbar">
+        <div class="shop-toolbar-left">
+          <button class="shop-filter-toggle" id="filter-toggle" aria-expanded="false" aria-controls="shop-filters"
+            onclick="toggleFilters()">
+            <svg class="sft-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+              <path stroke-linecap="round" d="M3 5h18M6 12h12M10 19h4" />
+            </svg>
+            <span class="sft-label">Filters</span>
+            <span class="shop-filter-badge" id="filter-count" hidden>0</span>
+            <svg class="sft-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6" />
+            </svg>
+          </button>
+          <span class="shop-count" id="shop-count">Showing {total} products</span>
+        </div>
+
+        <div class="shop-toolbar-right">
+          <div class="shop-view" role="group" aria-label="View options">
+            <button class="shop-view-btn" data-view="grid-2" aria-label="2 columns" title="2 columns">
+              <svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="8" height="8" rx="1" /><rect x="13"
+                  y="3" width="8" height="8" rx="1" /><rect x="3" y="13" width="8" height="8" rx="1" /><rect x="13"
+                  y="13" width="8" height="8" rx="1" /></svg>
+            </button>
+            <button class="shop-view-btn" data-view="grid-3" aria-label="3 columns" title="3 columns">
+              <svg viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="3" width="5.5" height="8" rx="1" /><rect
+                  x="9.25" y="3" width="5.5" height="8" rx="1" /><rect x="16.5" y="3" width="5.5" height="8"
+                  rx="1" /><rect x="2" y="13" width="5.5" height="8" rx="1" /><rect x="9.25" y="13" width="5.5"
+                  height="8" rx="1" /><rect x="16.5" y="13" width="5.5" height="8" rx="1" /></svg>
+            </button>
+            <button class="shop-view-btn active" data-view="grid-4" aria-label="4 columns" title="4 columns">
+              <svg viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="4" width="4" height="7" rx="1" /><rect x="7.3"
+                  y="4" width="4" height="7" rx="1" /><rect x="12.6" y="4" width="4" height="7" rx="1" /><rect x="18"
+                  y="4" width="4" height="7" rx="1" /><rect x="2" y="13" width="4" height="7" rx="1" /><rect x="7.3"
+                  y="13" width="4" height="7" rx="1" /><rect x="12.6" y="13" width="4" height="7" rx="1" /><rect x="18"
+                  y="13" width="4" height="7" rx="1" /></svg>
+            </button>
+          </div>
+
+          <div class="shop-sort">
+            <label for="shop-sort-sel">Sort</label>
+            <div class="shop-sort-wrap">
+              <select id="shop-sort-sel" onchange="renderShop()">
+                <option value="featured">Featured</option>
+                <option value="best">Best selling</option>
+                <option value="price-asc">Price: Low to High</option>
+                <option value="price-desc">Price: High to Low</option>
+                <option value="newest">Newest</option>
+                <option value="rating">Top rated</option>
+                <option value="discount">Biggest discount</option>
+                <option value="az">Name: A–Z</option>
+              </select>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Horizontal collapsible filter panel -->
+      <div class="shop-filters" id="shop-filters" hidden>
+        <div class="sf-grid">
+
+          <div class="sf-group">
+            <h4 class="sf-title">Category</h4>
+            <div class="sf-options">
+              {
+                facets.categories.map((c) => (
+                  <label class="sf-check"><input type="checkbox" data-filter="category" value={c.value}><span class="sf-box"></span>{c.label}</label>
+                ))
+              }
+            </div>
+          </div>
+
+          <div class="sf-group">
+            <h4 class="sf-title">Brand</h4>
+            <div class="sf-options">
+              {
+                facets.brands.map((b) => (
+                  <label class="sf-check"><input type="checkbox" data-filter="brand" value={b}><span class="sf-box"></span>{b}</label>
+                ))
+              }
+            </div>
+          </div>
+
+          <div class="sf-group sf-group-price">
+            <h4 class="sf-title">Price</h4>
+            <div class="sf-price-presets">
+              <button type="button" class="sf-preset" data-min="0" data-max="200">Under $200</button>
+              <button type="button" class="sf-preset" data-min="200" data-max="500">$200–500</button>
+              <button type="button" class="sf-preset" data-min="500" data-max="1000">$500–1000</button>
+              <button type="button" class="sf-preset" data-min="1000" data-max="3000">$1000+</button>
+            </div>
+            <div class="sf-price-inputs">
+              <div class="sf-price-field"><span>$</span><input type="number" id="price-min" min="0" max={pmax}
+                  placeholder="0"></div>
+              <span class="sf-price-dash">–</span>
+              <div class="sf-price-field"><span>$</span><input type="number" id="price-max" min="0" max={pmax}
+                  placeholder={String(pmax)}></div>
+            </div>
+            <input type="range" class="sf-range" id="price-range" min="0" max={pmax} step="50" value={pmax}>
+          </div>
+
+          <div class="sf-group">
+            <h4 class="sf-title">Colour</h4>
+            <div class="sf-swatches">
+              <button type="button" class="sf-swatch" data-filter="color" value="Black" style="--sw:#1a1a1a"
+                title="Black"></button>
+              <button type="button" class="sf-swatch" data-filter="color" value="Silver" style="--sw:#c9ccce"
+                title="Silver"></button>
+              <button type="button" class="sf-swatch" data-filter="color" value="White" style="--sw:#f4f1ec"
+                title="White"></button>
+              <button type="button" class="sf-swatch" data-filter="color" value="Blue" style="--sw:#3b5a78"
+                title="Blue"></button>
+              <button type="button" class="sf-swatch" data-filter="color" value="Rose" style="--sw:#c98b86"
+                title="Rose"></button>
+              <button type="button" class="sf-swatch" data-filter="color" value="Green" style="--sw:#5f7355"
+                title="Green"></button>
+              <button type="button" class="sf-swatch" data-filter="color" value="Titanium" style="--sw:#8d8b86"
+                title="Titanium"></button>
+            </div>
+          </div>
+
+          <div class="sf-group">
+            <h4 class="sf-title">Rating</h4>
+            <div class="sf-options">
+              <label class="sf-radio"><input type="radio" name="sf-rating" data-filter="rating" value="4.5"><span
+                  class="sf-dot"></span>4.5 &amp; up</label>
+              <label class="sf-radio"><input type="radio" name="sf-rating" data-filter="rating" value="4"><span
+                  class="sf-dot"></span>4.0 &amp; up</label>
+              <label class="sf-radio"><input type="radio" name="sf-rating" data-filter="rating" value="3.5"><span
+                  class="sf-dot"></span>3.5 &amp; up</label>
+              <label class="sf-radio"><input type="radio" name="sf-rating" data-filter="rating" value="0" checked><span
+                  class="sf-dot"></span>Any rating</label>
+            </div>
+          </div>
+
+          <div class="sf-group">
+            <h4 class="sf-title">Availability</h4>
+            <div class="sf-options">
+              <label class="sf-check"><input type="checkbox" data-filter="stock" value="in"><span
+                  class="sf-box"></span>In stock</label>
+              <label class="sf-check"><input type="checkbox" data-filter="stock" value="low"><span
+                  class="sf-box"></span>Low stock</label>
+              <label class="sf-check"><input type="checkbox" data-filter="stock" value="out"><span
+                  class="sf-box"></span>Out of stock</label>
+            </div>
+          </div>
+
+          <div class="sf-group">
+            <h4 class="sf-title">Features</h4>
+            <div class="sf-options sf-options-tags">
+              <label class="sf-tag"><input type="checkbox" data-filter="feature" value="Wireless">Wireless</label>
+              <label class="sf-tag"><input type="checkbox" data-filter="feature"
+                  value="Noise-Cancelling">Noise-Cancelling</label>
+              <label class="sf-tag"><input type="checkbox" data-filter="feature" value="Waterproof">Waterproof</label>
+              <label class="sf-tag"><input type="checkbox" data-filter="feature" value="Fast-Charge">Fast-Charge</label>
+              <label class="sf-tag"><input type="checkbox" data-filter="feature" value="5G">5G</label>
+              <label class="sf-tag"><input type="checkbox" data-filter="feature" value="OLED">OLED</label>
+              <label class="sf-tag"><input type="checkbox" data-filter="feature" value="Bluetooth">Bluetooth</label>
+              <label class="sf-tag"><input type="checkbox" data-filter="feature" value="Wi-Fi">Wi-Fi</label>
+            </div>
+          </div>
+
+          <div class="sf-group">
+            <h4 class="sf-title">Offers</h4>
+            <div class="sf-options">
+              <label class="sf-switch"><input type="checkbox" id="sf-sale" data-filter="sale" value="1"><span
+                  class="sf-switch-track"><span class="sf-switch-knob"></span></span>On sale only</label>
+              <label class="sf-switch"><input type="checkbox" id="sf-new" data-filter="new" value="1"><span
+                  class="sf-switch-track"><span class="sf-switch-knob"></span></span>New arrivals</label>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="sf-actions">
+          <button class="sf-clear" onclick="clearFilters()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" d="M6 6l12 12M18 6 6 18" />
+            </svg>
+            Clear all
+          </button>
+          <button class="btn-primary sf-apply" onclick="toggleFilters()">Show results</button>
+        </div>
+      </div>
+
+      <!-- Active filter chips -->
+      <div class="shop-active" id="shop-active" hidden></div>
+
+      <!-- Product grid -->
+      <div class="shop-grid grid-4" id="shop-grid" aria-live="polite">
+        {products.map((p) => <ProductFeatCard product={p} actions />)}
+      </div>
+
+      <!-- Empty state -->
+      <div class="shop-empty" id="shop-empty" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-3.5-3.5" />
+        </svg>
+        <h3>No products match your filters</h3>
+        <p>Try removing a filter or two — the edit is curated, but it's still flexible.</p>
+        <button class="btn-primary" onclick="clearFilters()">Clear all filters</button>
+      </div>
+
+      <!-- Load more -->
+      <div class="shop-loadwrap" id="shop-loadwrap">
+        <p class="shop-load-status" id="shop-load-status"></p>
+        <button class="shop-loadmore" id="shop-loadmore" onclick="loadMore()">Load more products</button>
+      </div>
+
+    </div>
+  </main>
+
+<Newsletter />
+
+<script>
+  // ============================================================
+  //  Shop / Collection — dynamic client-side filter / sort / view /
+  //  load-more, operating on the server-rendered .feat-card data.
+  // ============================================================
+  const grid = document.getElementById('shop-grid');
+  const filtersPanel = document.getElementById('shop-filters');
+  const filterToggle = document.getElementById('filter-toggle');
+  const sortSel = document.getElementById('shop-sort-sel') as HTMLSelectElement | null;
+  const countEl = document.getElementById('shop-count');
+  const statCount = document.getElementById('stat-count');
+  const emptyEl = document.getElementById('shop-empty');
+  const loadWrap = document.getElementById('shop-loadwrap');
+  const loadStatus = document.getElementById('shop-load-status');
+  const badge = document.getElementById('filter-count');
+  const chipsEl = document.getElementById('shop-active');
+  const cards = grid ? (Array.from(grid.querySelectorAll('.feat-card')) as HTMLElement[]) : [];
+
+  if (grid) {
+    const PAGE = 12;
+    let shown = PAGE;
+    const checked = (sel: string) => Array.from(document.querySelectorAll<HTMLInputElement>(sel)).filter((i) => i.checked);
+
+    function readFilters() {
+      const minV = (document.getElementById('price-min') as HTMLInputElement | null)?.value;
+      const maxV = (document.getElementById('price-max') as HTMLInputElement | null)?.value;
+      const ratingInput = document.querySelector<HTMLInputElement>('input[data-filter="rating"]:checked');
+      return {
+        category: checked('[data-filter="category"]').map((i) => i.value),
+        brand: checked('[data-filter="brand"]').map((i) => i.value),
+        stock: checked('[data-filter="stock"]').map((i) => i.value),
+        feature: checked('[data-filter="feature"]').map((i) => i.value.toLowerCase()),
+        color: Array.from(document.querySelectorAll<HTMLElement>('.sf-swatch.active')).map((s) => (s.getAttribute('value') || '').toLowerCase()),
+        sale: (document.getElementById('sf-sale') as HTMLInputElement | null)?.checked ?? false,
+        newOnly: (document.getElementById('sf-new') as HTMLInputElement | null)?.checked ?? false,
+        rating: Number(ratingInput?.value ?? 0),
+        min: minV ? Number(minV) : null,
+        max: maxV ? Number(maxV) : null,
+      };
+    }
+
+    function matches(card: HTMLElement, f: ReturnType<typeof readFilters>) {
+      const d = card.dataset;
+      const price = Number(d.price);
+      const tags = d.tags ?? '';
+      if (f.category.length && !f.category.includes(d.category ?? '')) return false;
+      if (f.brand.length && !f.brand.includes(d.brand ?? '')) return false;
+      if (f.stock.length && !f.stock.includes(d.stock ?? '')) return false;
+      if (f.min != null && price < f.min) return false;
+      if (f.max != null && price > f.max) return false;
+      if (f.color.length && !f.color.some((c) => tags.includes(c))) return false;
+      if (f.feature.length && !f.feature.every((ft) => tags.includes(ft))) return false;
+      if (f.sale && Number(d.discount) <= 0) return false;
+      if (f.newOnly && d.new !== '1') return false;
+      return true;
+    }
+
+    function sortVisible(list: HTMLElement[]) {
+      const mode = sortSel?.value ?? 'featured';
+      const by: Record<string, (a: HTMLElement, b: HTMLElement) => number> = {
+        'price-asc': (a, b) => Number(a.dataset.price) - Number(b.dataset.price),
+        'price-desc': (a, b) => Number(b.dataset.price) - Number(a.dataset.price),
+        az: (a, b) => (a.dataset.name ?? '').localeCompare(b.dataset.name ?? ''),
+        discount: (a, b) => Number(b.dataset.discount) - Number(a.dataset.discount),
+        rating: (a, b) => Number(b.dataset.rating) - Number(a.dataset.rating),
+      };
+      if (by[mode]) list.sort(by[mode]);
+      return list;
+    }
+
+    const labelFor = (type: string, val: string) =>
+      type === 'category' ? document.querySelector(`.shop-cat[data-cat="${val}"]`)?.textContent?.trim() || val : val;
+
+    function renderChips(f: ReturnType<typeof readFilters>) {
+      if (!chipsEl) return;
+      const chips: string[] = [];
+      const add = (type: string, val: string, label: string) =>
+        chips.push(`<span class="shop-chip">${label}<button aria-label="Remove" onclick="shopRemove('${type}','${val}')">×</button></span>`);
+      f.category.forEach((v) => add('category', v, labelFor('category', v)));
+      f.brand.forEach((v) => add('brand', v, v));
+      f.stock.forEach((v) => add('stock', v, v === 'in' ? 'In stock' : v === 'out' ? 'Out of stock' : 'Low stock'));
+      f.color.forEach((v) => add('color', v, v));
+      f.feature.forEach((v) => add('feature', v, v));
+      if (f.sale) add('sale', '1', 'On sale');
+      if (f.newOnly) add('new', '1', 'New arrivals');
+      if (f.min != null || f.max != null) add('price', `${f.min ?? 0}-${f.max ?? ''}`, `$${f.min ?? 0}–${f.max ?? '∞'}`);
+      chipsEl.innerHTML = chips.join('');
+      chipsEl.hidden = chips.length === 0;
+    }
+
+    function renderShop() {
+      const f = readFilters();
+      let visible = cards.filter((c) => matches(c, f));
+      visible = sortVisible(visible.slice());
+      visible.forEach((c) => grid!.appendChild(c));
+      cards.forEach((c) => (c.style.display = 'none'));
+      visible.slice(0, shown).forEach((c) => (c.style.display = ''));
+      const total = visible.length;
+      if (countEl) countEl.textContent = `Showing ${Math.min(shown, total)} of ${total} products`;
+      if (statCount) statCount.textContent = String(total);
+      if (emptyEl) emptyEl.hidden = total > 0;
+      grid!.style.display = total ? '' : 'none';
+      if (loadWrap) loadWrap.style.display = total > shown ? '' : 'none';
+      if (loadStatus) loadStatus.textContent = total ? `Showing ${Math.min(shown, total)} of ${total}` : '';
+      const n = f.category.length + f.brand.length + f.stock.length + f.color.length + f.feature.length + (f.sale ? 1 : 0) + (f.newOnly ? 1 : 0) + (f.min != null || f.max != null ? 1 : 0);
+      if (badge) { badge.textContent = String(n); badge.hidden = n === 0; }
+      renderChips(f);
+    }
+
+    let raf = 0;
+    const scheduleRender = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(renderShop); };
+    (window as any).renderShop = renderShop;
+    (window as any).scheduleRender = scheduleRender;
+    (window as any).toggleFilters = () => {
+      if (!filtersPanel) return;
+      filtersPanel.removeAttribute('hidden');
+      const open = filtersPanel.classList.toggle('open');
+      filterToggle?.setAttribute('aria-expanded', String(open));
+      filterToggle?.classList.toggle('open', open);
+    };
+    (window as any).clearFilters = () => {
+      document.querySelectorAll<HTMLInputElement>('#shop-filters input[type="checkbox"]').forEach((i) => (i.checked = false));
+      const anyRating = document.querySelector<HTMLInputElement>('input[data-filter="rating"][value="0"]');
+      if (anyRating) anyRating.checked = true;
+      const pmin = document.getElementById('price-min') as HTMLInputElement | null;
+      const pmaxEl = document.getElementById('price-max') as HTMLInputElement | null;
+      if (pmin) pmin.value = ''; if (pmaxEl) pmaxEl.value = '';
+      document.querySelectorAll('.sf-swatch.active, .sf-preset.active').forEach((b) => b.classList.remove('active'));
+      document.querySelectorAll('.shop-cat').forEach((b, i) => b.classList.toggle('active', i === 0));
+      shown = PAGE;
+      renderShop();
+    };
+    (window as any).shopRemove = (type: string, val: string) => {
+      if (type === 'sale') (document.getElementById('sf-sale') as HTMLInputElement).checked = false;
+      else if (type === 'new') (document.getElementById('sf-new') as HTMLInputElement).checked = false;
+      else if (type === 'price') { (document.getElementById('price-min') as HTMLInputElement).value = ''; (document.getElementById('price-max') as HTMLInputElement).value = ''; document.querySelectorAll('.sf-preset.active').forEach((b) => b.classList.remove('active')); }
+      else if (type === 'color') document.querySelectorAll(`.sf-swatch[value="${val}"]`).forEach((s) => s.classList.remove('active'));
+      else { const inp = document.querySelector<HTMLInputElement>(`[data-filter="${type}"][value="${val}"]`); if (inp) inp.checked = false; }
+      if (type === 'category') document.querySelectorAll('.shop-cat').forEach((b, i) => b.classList.toggle('active', i === 0));
+      renderShop();
+    };
+    (window as any).loadMore = () => { shown += PAGE; renderShop(); };
+
+    filtersPanel?.addEventListener('change', () => { shown = PAGE; scheduleRender(); });
+    document.getElementById('price-min')?.addEventListener('input', scheduleRender);
+    document.getElementById('price-max')?.addEventListener('input', scheduleRender);
+    document.getElementById('price-range')?.addEventListener('input', (e) => {
+      (document.getElementById('price-max') as HTMLInputElement).value = (e.target as HTMLInputElement).value;
+      scheduleRender();
+    });
+    sortSel?.addEventListener('change', renderShop);
+    document.querySelectorAll<HTMLButtonElement>('.sf-preset').forEach((btn) =>
+      btn.addEventListener('click', () => {
+        const active = btn.classList.toggle('active');
+        document.querySelectorAll('.sf-preset').forEach((b) => b !== btn && b.classList.remove('active'));
+        (document.getElementById('price-min') as HTMLInputElement).value = active ? btn.dataset.min ?? '' : '';
+        (document.getElementById('price-max') as HTMLInputElement).value = active ? btn.dataset.max ?? '' : '';
+        renderShop();
+      }),
+    );
+    document.querySelectorAll<HTMLButtonElement>('.sf-swatch').forEach((s) =>
+      s.addEventListener('click', () => { s.classList.toggle('active'); renderShop(); }),
+    );
+    document.querySelectorAll<HTMLButtonElement>('.shop-cat').forEach((pill) =>
+      pill.addEventListener('click', () => {
+        document.querySelectorAll('.shop-cat').forEach((b) => b.classList.toggle('active', b === pill));
+        const cat = pill.dataset.cat;
+        document.querySelectorAll<HTMLInputElement>('[data-filter="category"]').forEach((cb) => (cb.checked = cat !== 'all' && cb.value === cat));
+        shown = PAGE;
+        renderShop();
+      }),
+    );
+    document.querySelectorAll<HTMLButtonElement>('.shop-view-btn').forEach((btn) =>
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.shop-view-btn').forEach((b) => b.classList.toggle('active', b === btn));
+        grid!.classList.remove('grid-2', 'grid-3', 'grid-4');
+        grid!.classList.add(btn.dataset.view ?? 'grid-4');
+      }),
+    );
+
+    renderShop();
+  }
+</script>
+

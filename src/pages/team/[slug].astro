@@ -1,0 +1,304 @@
+---
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import { ABOUT_TEAM } from '~/config/about';
+import '~/styles/pages/about.css';
+
+const { slug } = Astro.params;
+const member = ABOUT_TEAM.find((m) => m.slug === slug);
+
+if (!member) return Astro.redirect('/about', 302);
+
+const allMembers = ABOUT_TEAM.filter((m) => m.slug !== member.slug);
+---
+
+<BaseLayout
+  title={`${member.name} — Team`}
+  description={member.bio}
+>
+  <main class="ab">
+
+    <!-- ── Profile hero ──────────────────────────────────────────────── -->
+    <section class="ab-hero tm-hero">
+      <span class="ab-hero-watermark" aria-hidden="true">{member.name.split(' ')[0]}</span>
+      <div class="container">
+        <nav class="cart-breadcrumb ab-breadcrumb" aria-label="Breadcrumb">
+          <a href="/">Home</a><span class="cart-bc-sep">/</span>
+          <a href="/about">About</a><span class="cart-bc-sep">/</span>
+          <span aria-current="page">{member.name}</span>
+        </nav>
+      </div>
+
+      <div class="container tm-hero-grid">
+        <!-- Photo -->
+        <div class="tm-photo-wrap">
+          <img src={member.image} alt={member.name} class="tm-photo" />
+          <span class="ab-member-tag tm-tag">{member.tag}</span>
+        </div>
+
+        <!-- Intro copy -->
+        <div class="tm-intro">
+          <span class="label">The team</span>
+          <h1 class="ab-hero-title tm-name">{member.name}</h1>
+          <p class="ab-member-role tm-role-large">{member.role}</p>
+          <p class="ab-story-lead tm-lead">{member.bio}</p>
+
+          <!-- Social row -->
+          <div class="tm-social">
+            {member.social.twitter && (
+              <a href={member.social.twitter} class="tm-social-link" aria-label={`${member.name} on X`}>
+                <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+                  <path d="M17.5 3h3l-6.5 7.4L21.7 21h-6l-4.7-6-5.4 6H2.6l7-7.9L2.3 3h6.2l4.2 5.6L17.5 3zm-1 16h1.6L7.6 4.7H5.9L16.5 19z" />
+                </svg>
+                <span>Follow on X</span>
+              </a>
+            )}
+            {member.social.linkedin && (
+              <a href={member.social.linkedin} class="tm-social-link" aria-label={`${member.name} on LinkedIn`}>
+                <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+                  <path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9h4v12H3zM10 9h3.8v1.7h.05c.53-1 1.83-2.05 3.77-2.05 4.03 0 4.78 2.65 4.78 6.1V21h-4v-5.4c0-1.29-.02-2.95-1.8-2.95-1.8 0-2.08 1.4-2.08 2.85V21h-4z" />
+                </svg>
+                <span>LinkedIn</span>
+              </a>
+            )}
+            {member.social.email && (
+              <a href={`mailto:${member.social.email}`} class="tm-social-link" aria-label={`Email ${member.name}`}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="18" height="18">
+                  <rect x="3" y="5" width="18" height="14" rx="2" />
+                  <path d="m3 7 9 6 9-6" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                <span>{member.social.email}</span>
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Full bio ───────────────────────────────────────────────────── -->
+    <section class="ab-story tm-bio-section">
+      <div class="container tm-bio-inner">
+        <span class="label">In their own words</span>
+        {member.fullBio.map((para, i) => (
+          <p class:list={['ab-story-copy', { 'ab-story-lead': i === 0 }]}>{para}</p>
+        ))}
+        <a href="/about#ab-team" class="ab-text-link tm-back-link">
+          ← Meet the rest of the team
+        </a>
+      </div>
+    </section>
+
+    <!-- ── Other team members ─────────────────────────────────────────── -->
+    {allMembers.length > 0 && (
+      <section class="ab-team tm-others">
+        <div class="container">
+          <div class="ab-values-head">
+            <span class="label">Also on the team</span>
+            <h2 class="ab-h2">The rest of the <em>edit crew</em>.</h2>
+          </div>
+          <div class="ab-team-grid">
+            {allMembers.map((m) => (
+              <article class="ab-member">
+                <div class="ab-member-img">
+                  <img src={m.image} alt={m.name} />
+                  <span class="ab-member-tag">{m.tag}</span>
+                  <div class="ab-member-overlay">
+                    <p class="ab-member-bio">{m.bio}</p>
+                    <div class="ab-member-social">
+                      {m.social.twitter && (
+                        <a href={m.social.twitter} aria-label={`${m.name} on X`}>
+                          <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M17.5 3h3l-6.5 7.4L21.7 21h-6l-4.7-6-5.4 6H2.6l7-7.9L2.3 3h6.2l4.2 5.6L17.5 3zm-1 16h1.6L7.6 4.7H5.9L16.5 19z" />
+                          </svg>
+                        </a>
+                      )}
+                      {m.social.linkedin && (
+                        <a href={m.social.linkedin} aria-label={`${m.name} on LinkedIn`}>
+                          <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9h4v12H3zM10 9h3.8v1.7h.05c.53-1 1.83-2.05 3.77-2.05 4.03 0 4.78 2.65 4.78 6.1V21h-4v-5.4c0-1.29-.02-2.95-1.8-2.95-1.8 0-2.08 1.4-2.08 2.85V21h-4z" />
+                          </svg>
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <h3 class="ab-member-name">
+                  <a href={`/team/${m.slug}`}>{m.name}</a>
+                </h3>
+                <p class="ab-member-role">{m.role}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+    )}
+
+  </main>
+</BaseLayout>
+
+<style>
+  /* ── Team profile page extras ─────────────────────────────── */
+  .tm-hero {
+    padding-bottom: 0;
+  }
+
+  .tm-hero-grid {
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    gap: 64px;
+    align-items: center;
+    padding: 40px 0 80px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .tm-photo-wrap {
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .tm-photo {
+    width: 100%;
+    aspect-ratio: 1 / 1.22;
+    object-fit: cover;
+    border-radius: var(--r-lg);
+    background: var(--cream-deep);
+    display: block;
+  }
+
+  .tm-tag {
+    position: absolute;
+    top: 18px;
+    left: 18px;
+    background: rgba(247, 242, 234, 0.92);
+    backdrop-filter: blur(6px);
+    color: var(--ink);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: 6px 12px;
+    border-radius: var(--r-pill);
+  }
+
+  .tm-name {
+    font-size: clamp(36px, 5vw, 68px);
+    margin-top: 14px;
+  }
+
+  .tm-role-large {
+    font-size: 15px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--clay-deep);
+    font-weight: 600;
+    margin: 4px 0 22px;
+  }
+
+  .tm-lead {
+    max-width: 520px;
+    margin-bottom: 32px !important;
+  }
+
+  .tm-social {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .tm-social-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink);
+    transition: color var(--t-fast) var(--ease);
+  }
+
+  .tm-social-link svg {
+    color: var(--muted);
+    flex-shrink: 0;
+    transition: color var(--t-fast) var(--ease);
+  }
+
+  .tm-social-link:hover {
+    color: var(--clay-deep);
+  }
+
+  .tm-social-link:hover svg {
+    color: var(--clay-deep);
+  }
+
+  /* Bio section */
+  .tm-bio-section {
+    padding: 80px 0 100px;
+    background: var(--cream-deep);
+    border-top: 1px solid var(--sand);
+    border-bottom: 1px solid var(--sand);
+  }
+
+  .tm-bio-inner {
+    max-width: 720px;
+  }
+
+  .tm-bio-inner .label {
+    display: block;
+    margin-bottom: 24px;
+  }
+
+  .tm-bio-inner p {
+    font-size: 17px;
+    line-height: 1.85;
+    color: var(--muted);
+    margin: 0 0 22px;
+  }
+
+  .tm-bio-inner .ab-story-lead {
+    color: var(--ink) !important;
+    font-size: 18px !important;
+  }
+
+  .tm-back-link {
+    display: inline-block;
+    margin-top: 16px;
+  }
+
+  /* Others section */
+  .tm-others {
+    padding-bottom: 120px;
+  }
+
+  /* Responsive */
+  @media (max-width: 860px) {
+    .tm-hero-grid {
+      grid-template-columns: 1fr;
+      gap: 36px;
+    }
+
+    .tm-photo-wrap {
+      max-width: 420px;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .tm-photo-wrap {
+      max-width: 100%;
+    }
+
+    .tm-name {
+      font-size: clamp(30px, 8vw, 48px);
+    }
+  }
+</style>
+
+<script>
+  // Member card image click → navigate to profile page.
+  document.querySelectorAll<HTMLElement>('.tm-others .ab-member .ab-member-img').forEach((imgDiv) => {
+    imgDiv.style.cursor = 'pointer';
+    imgDiv.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).closest('.ab-member-social')) return;
+      const link = imgDiv.closest('.ab-member')?.querySelector<HTMLAnchorElement>('.ab-member-name a');
+      if (link) window.location.href = link.href;
+    });
+  });
+</script>

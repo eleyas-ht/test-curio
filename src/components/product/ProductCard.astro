@@ -1,0 +1,116 @@
+---
+// ============================================================
+//  ProductCard — editorial catalogue specimen. Image with category
+//  tag + sale/new badge, vendor eyebrow, serif title, price.
+//  Image + title link to PDP; bottom button adds to cart (single
+//  variant) or opens Quick View (multi-variant).
+// ============================================================
+import type { ProductCard as ProductCardType } from '~/lib/shopify/types';
+import { discountPercent, isOnSale } from '~/lib/utils';
+import Price from '~/components/ui/Price.astro';
+import Badge from '~/components/ui/Badge.astro';
+import Icon from '~/components/ui/Icon.astro';
+
+interface Props {
+  product: ProductCardType;
+  index?: number;
+  /** Category/kicker text above the title (e.g. productType). */
+  kicker?: string;
+  class?: string;
+}
+
+const { product, index, kicker, class: className = '' } = Astro.props;
+
+const min = product.priceRange.minVariantPrice;
+const max = product.priceRange.maxVariantPrice;
+const compareAt = product.compareAtPriceRange?.minVariantPrice ?? null;
+const onSale = isOnSale(min, compareAt);
+const off = discountPercent(min, compareAt);
+const ranged = min.amount !== max.amount;
+const soldOut = !product.availableForSale;
+const eyebrowText = kicker || product.vendor;
+const href = `/products/${product.handle}`;
+---
+
+<div class={`group block ${className}`}>
+  <a href={href} aria-label={product.title} class="block" tabindex="-1">
+    <div class="relative aspect-[4/5] overflow-hidden rounded-md border border-sand-deep bg-warm-white">
+      {
+        product.featuredImage ? (
+          <img
+            src={product.featuredImage.url}
+            alt={product.featuredImage.altText ?? product.title}
+            loading="lazy"
+            class="h-full w-full object-cover transition-transform duration-[600ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
+          />
+        ) : (
+          <div class="grid h-full place-items-center text-muted-light">No image</div>
+        )
+      }
+
+      {/* Catalogue index marker */}
+      {
+        index != null && (
+          <span class="absolute left-3 top-3 text-[0.7rem] tabular text-ink/50">
+            No. {String(index + 1).padStart(2, '0')}
+          </span>
+        )
+      }
+
+      {/* Status badges */}
+      <div class="absolute right-3 top-3 flex flex-col items-end gap-1.5">
+        {soldOut && <Badge tone="ink">Sold out</Badge>}
+        {
+          !soldOut &&
+            onSale &&
+            (!ranged && off != null ? <Badge tone="accent">−{off}%</Badge> : <Badge tone="accent">Sale</Badge>)
+        }
+      </div>
+
+      {/* Wishlist affordance (visual) */}
+      <span
+        class="pointer-events-none absolute bottom-3 right-3 grid h-9 w-9 translate-y-2 place-items-center rounded-full bg-warm-white/90 text-ink opacity-0 backdrop-blur-sm transition-fluid group-hover:translate-y-0 group-hover:opacity-100"
+      >
+        <Icon name="heart" size={16} />
+      </span>
+    </div>
+  </a>
+
+  <div class="mt-4">
+    <a href={href} class="block">
+      {eyebrowText && <p class="ed-label !gap-2 text-muted-light before:w-3">{eyebrowText}</p>}
+      <h3 class="mt-2 font-serif text-lg leading-snug text-ink transition-fluid group-hover:text-clay">
+        {product.title}
+      </h3>
+      <div class="mt-2 flex items-center justify-between gap-3">
+        <Price price={min} compareAt={ranged ? null : compareAt} from={ranged} size="sm" />
+        <span class="flex items-center gap-1 text-xs text-muted-light">
+          <Icon name="star" size={13} class="text-clay" />
+          <span class="tabular">4.8</span>
+        </span>
+      </div>
+    </a>
+
+    {!soldOut && (
+      product.hasOnlyDefaultVariant
+        ? <button class="btn-ghost mt-3 w-full" data-add-variant={product.variantId}>Add to cart</button>
+        : <button class="btn-ghost mt-3 w-full" data-qv-handle={product.handle}>Choose options</button>
+    )}
+  </div>
+</div>
+
+<script>
+  import { addItem } from '~/stores/cart';
+  if (!(window as any).__cardAddWired) {
+    (window as any).__cardAddWired = true;
+    document.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement)?.closest<HTMLButtonElement>('.btn-ghost[data-add-variant]');
+      if (!btn) return;
+      e.preventDefault();
+      const id = btn.dataset.addVariant;
+      if (!id || btn.disabled) return;
+      btn.disabled = true;
+      void addItem(id).finally(() => (btn.disabled = false));
+    });
+  }
+</script>

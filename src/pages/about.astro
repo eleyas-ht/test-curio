@@ -1,0 +1,84 @@
+---
+// About — 1:1 verbatim editorial layout with dynamic data.
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import AboutBody from '~/components/pages/AboutBody.astro';
+import '~/styles/pages/about.css';
+---
+
+<BaseLayout title="About" description="We sell fewer things, chosen with far more care. The story behind Curio.">
+  <AboutBody />
+</BaseLayout>
+
+<script>
+  // ── Journey timeline — year tab switching ─────────────────────────────────
+  const jrTabs = document.querySelectorAll<HTMLButtonElement>('.ab-jr2-tab');
+  const jrPanels = document.querySelectorAll<HTMLElement>('.ab-jr2-panel');
+
+  function activateJourneyTab(index: number) {
+    jrTabs.forEach((t, i) => {
+      const active = i === index;
+      t.classList.toggle('active', active);
+      t.setAttribute('aria-selected', String(active));
+    });
+    jrPanels.forEach((p, i) => {
+      p.classList.toggle('active', i === index);
+    });
+  }
+
+  jrTabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      activateJourneyTab(Number(tab.dataset.i));
+    });
+  });
+
+  // ── FAQ accordion ─────────────────────────────────────────────────────────
+  document.querySelectorAll<HTMLButtonElement>('.faq-q').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      btn.closest('.faq-item')?.classList.toggle('open');
+    });
+  });
+
+  // ── Hero image slider (auto-advances every 5 s) ───────────────────────────
+  const heroSlides = document.querySelectorAll<HTMLElement>('.ab-hero-slide');
+  if (heroSlides.length > 1) {
+    let current = 0;
+    setInterval(() => {
+      heroSlides[current].classList.remove('active');
+      current = (current + 1) % heroSlides.length;
+      heroSlides[current].classList.add('active');
+    }, 5000);
+  }
+
+  // ── Scroll-reveal ─────────────────────────────────────────────────────────
+  const revealEls = document.querySelectorAll<HTMLElement>('.ab-reveal');
+  if ('IntersectionObserver' in window) {
+    const obs = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.add('ab-in');
+            obs.unobserve(e.target);
+          }
+        });
+      },
+      { threshold: 0.12 },
+    );
+    revealEls.forEach((el) => obs.observe(el));
+  } else {
+    revealEls.forEach((el) => el.classList.add('ab-in'));
+  }
+
+  // ── Member card click → navigate to team page ────────────────────────────
+  // Clicking the image area (not the social links) navigates to the member page.
+  document.querySelectorAll<HTMLElement>('.ab-member[data-member-href] .ab-member-img').forEach((imgDiv) => {
+    imgDiv.style.cursor = 'pointer';
+    imgDiv.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      // Let social link clicks propagate normally (they have their own href).
+      if (target.closest('.ab-member-social')) return;
+      const href = imgDiv.closest<HTMLElement>('[data-member-href]')?.dataset.memberHref;
+      if (href) window.location.href = href;
+    });
+  });
+
+</script>

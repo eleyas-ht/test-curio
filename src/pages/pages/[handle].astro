@@ -1,0 +1,63 @@
+---
+// CMS page — editorial layout (rich text from Shopify), with a tidy
+// placeholder so footer links never dead-end.
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import { getPage, type ShopifyPage } from '~/lib/shopify';
+
+const { handle } = Astro.params;
+
+let page: ShopifyPage | null = null;
+try {
+  page = await getPage(handle!);
+} catch (err) {
+  console.error('[page] load failed:', (err as Error).message);
+}
+
+const prettyTitle = (handle ?? '')
+  .split('-')
+  .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+  .join(' ');
+const title = page?.title ?? prettyTitle;
+---
+
+<BaseLayout title={page?.seo?.title ?? title} description={page?.seo?.description ?? page?.bodySummary}>
+  <main class="shop">
+    <div class="container" style="max-width:880px;">
+      <nav class="shop-breadcrumb" aria-label="Breadcrumb">
+        <a href="/">Home</a><span class="shop-bc-sep">/</span><span aria-current="page">{title}</span>
+      </nav>
+      <header class="shop-head" style="margin-bottom:40px;">
+        <div class="shop-head-left">
+          <span class="shop-eyebrow"><span class="shop-eyebrow-dot"></span>Curio · The Edit</span>
+          <h1 class="shop-title">{title}</h1>
+        </div>
+      </header>
+
+      {
+        page?.body ? (
+          <article class="rte" set:html={page.body} />
+        ) : (
+          <div style="padding-bottom:40px;">
+            <p style="color:var(--muted);line-height:1.8;max-width:560px;">
+              This page is still being written. In the meantime, the catalogue is open — go have a look around.
+            </p>
+            <a class="btn-primary" href="/products" style="margin-top:24px;">Shop all products</a>
+          </div>
+        )
+      }
+    </div>
+  </main>
+</BaseLayout>
+
+<style>
+  .rte { color: var(--muted); line-height: 1.85; padding-bottom: 60px; max-width: 720px; }
+  .rte > * + * { margin-top: 1.1rem; }
+  .rte h2, .rte h3 { font-family: var(--font-serif); color: var(--ink); margin-top: 2rem; font-weight: 500; }
+  .rte h2 { font-size: 1.7rem; }
+  .rte h3 { font-size: 1.35rem; }
+  .rte a { color: var(--clay-deep); text-decoration: underline; text-underline-offset: 3px; }
+  .rte ul, .rte ol { padding-left: 1.3rem; }
+  .rte ul { list-style: disc; }
+  .rte ol { list-style: decimal; }
+  .rte img { border-radius: var(--r-lg); margin-block: 1.5rem; }
+</style>

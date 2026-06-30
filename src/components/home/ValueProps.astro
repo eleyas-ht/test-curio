@@ -1,0 +1,23 @@
+---
+// Trust strip — editorial value props (4-up) from site config.
+import { SITE } from '~/config/site';
+import Icon from '~/components/ui/Icon.astro';
+---
+
+<section class="border-y border-sand-deep bg-warm-white">
+  <div class="wrap grid divide-y divide-sand-deep/60 sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4">
+    {
+      SITE.valueProps.map((vp) => (
+        <div class="flex items-center gap-4 py-7 sm:px-7 sm:[&:not(:first-child)]:border-l sm:[&:not(:first-child)]:border-sand-deep/60">
+          <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-sand-deep text-clay">
+            <Icon name={vp.icon} size={20} />
+          </span>
+          <div>
+            <p class="font-serif text-base text-ink">{vp.title}</p>
+            <p class="mt-0.5 text-xs tracking-wide text-muted">{vp.body}</p>
+          </div>
+        </div>
+      ))
+    }
+  </div>
+</section>

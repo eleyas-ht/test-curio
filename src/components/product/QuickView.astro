@@ -1,0 +1,177 @@
+---
+// ============================================================
+//  QuickView — 1:1 with the mockup's `.qv-overlay` modal, plus a
+//  variant selector. Opened by any `[data-qv-handle]` (the Quick
+//  View button on product cards); fetches /api/quickview and wires
+//  Add to cart → shared nanostore. Mounted once in BaseLayout.
+// ============================================================
+---
+
+<div class="qv-overlay" id="qv-overlay">
+  <div class="qv-panel">
+    <button class="qv-close" id="qv-close" aria-label="Close">
+      <svg viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6" /></svg>
+    </button>
+    <div class="qv-image"><img id="qv-img" src="" alt=""></div>
+    <div class="qv-info">
+      <span class="qv-cat" id="qv-cat">Category</span>
+      <h3 class="qv-title" id="qv-title">Product</h3>
+      <div class="qv-price" id="qv-price">$0</div>
+      <p class="qv-desc" id="qv-desc"></p>
+      <div class="qv-variants" id="qv-variants"></div>
+      <div class="qv-feats" id="qv-feats">
+        <div class="qv-feat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 4 4L19 6" /></svg><span>Free express shipping over $75</span></div>
+        <div class="qv-feat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 4 4L19 6" /></svg><span>2-year warranty · 30-day returns</span></div>
+      </div>
+      <div class="qv-actions">
+        <button class="btn-primary" id="qv-add" style="flex:1">Add to cart</button>
+        <a class="btn-ghost" id="qv-details" href="#">View details</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style is:global>
+  /* Variant selector — matches the editorial card/PDP language.
+     Global because the option buttons are injected via innerHTML
+     (scoped styles wouldn't reach dynamically-created nodes). */
+  .qv-variants { display: flex; flex-direction: column; gap: 16px; margin: 4px 0 22px; }
+  .qv-opt-group { display: flex; flex-direction: column; gap: 9px; }
+  .qv-opt-label {
+    font-family: var(--font-sans); font-size: 11px; font-weight: 600;
+    letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted);
+  }
+  .qv-opt-label strong { color: var(--ink); font-weight: 600; text-transform: none; letter-spacing: 0; }
+  .qv-opts { display: flex; flex-wrap: wrap; gap: 8px; }
+  .qv-opt {
+    min-width: 44px; height: 40px; padding: 0 14px;
+    border: 1px solid var(--sand-deep); border-radius: var(--r-sm);
+    background: var(--warm-white); color: var(--ink);
+    font-size: 13px; cursor: pointer; transition: all var(--t-base) var(--ease);
+  }
+  .qv-opt:hover { border-color: var(--clay); }
+  .qv-opt.active { background: var(--cocoa); border-color: var(--cocoa); color: var(--cream); }
+  .qv-opt.unavailable { color: var(--muted-light); text-decoration: line-through; }
+</style>
+
+<script>
+  import { addItem } from '~/stores/cart';
+
+  const overlay = document.getElementById('qv-overlay');
+  const imgEl = document.getElementById('qv-img') as HTMLImageElement | null;
+  const catEl = document.getElementById('qv-cat');
+  const titleEl = document.getElementById('qv-title');
+  const priceEl = document.getElementById('qv-price');
+  const descEl = document.getElementById('qv-desc');
+  const variantsEl = document.getElementById('qv-variants');
+  const addBtn = document.getElementById('qv-add') as HTMLButtonElement | null;
+  const detailsLink = document.getElementById('qv-details') as HTMLAnchorElement | null;
+
+  let current: any = null;
+  let selected: Record<string, string> = {};
+
+  const open = () => { overlay?.classList.add('open'); document.body.style.overflow = 'hidden'; };
+  const close = () => { overlay?.classList.remove('open'); document.body.style.overflow = ''; };
+
+  function matchVariant() {
+    if (!current) return null;
+    return current.variants.find((v: any) =>
+      v.options.every((o: any) => selected[o.name] === o.value),
+    ) ?? null;
+  }
+
+  function refresh() {
+    const v = matchVariant();
+    if (priceEl) {
+      const was = current.priceWas ? `<s>${current.priceWas}</s>` : '';
+      priceEl.innerHTML = was + (v ? v.price : current.priceNow);
+    }
+    if (imgEl) {
+      imgEl.src = v?.image ?? current.image;
+    }
+    if (addBtn) {
+      const ok = v?.available;
+      addBtn.disabled = !ok;
+      addBtn.textContent = v ? (ok ? 'Add to cart' : 'Sold out') : 'Unavailable';
+      addBtn.dataset.variant = v?.id ?? '';
+    }
+  }
+
+  function renderVariants() {
+    if (!variantsEl) return;
+    selected = {};
+    if (!current.options?.length) { variantsEl.innerHTML = ''; return; }
+    // Default to the CHEAPEST variant overall so the modal's opening price
+    // matches the listing card's minVariantPrice. If that variant is unavailable,
+    // the button shows "Sold out" and the user can pick a different option.
+    const cheapest = (vs: any[]) => vs.reduce((b: any, v: any) => (!b || v.priceNum < b.priceNum ? v : b), null);
+    const base = cheapest(current.variants) ?? current.variants[0];
+    base?.options.forEach((o: any) => (selected[o.name] = o.value));
+
+    variantsEl.innerHTML = current.options
+      .map((opt: any) => {
+        const btns = opt.values
+          .map((val: string) => {
+            const active = selected[opt.name] === val ? ' active' : '';
+            return `<button class="qv-opt${active}" data-opt="${opt.name}" data-val="${val}">${val}</button>`;
+          })
+          .join('');
+        return `<div class="qv-opt-group"><span class="qv-opt-label">${opt.name}: <strong data-opt-sel="${opt.name}">${selected[opt.name] ?? ''}</strong></span><div class="qv-opts">${btns}</div></div>`;
+      })
+      .join('');
+
+    variantsEl.querySelectorAll<HTMLButtonElement>('.qv-opt').forEach((b) =>
+      b.addEventListener('click', () => {
+        const name = b.dataset.opt!, val = b.dataset.val!;
+        selected[name] = val;
+        variantsEl.querySelectorAll(`.qv-opt[data-opt="${name}"]`).forEach((x) => x.classList.toggle('active', x === b));
+        const sel = variantsEl.querySelector(`[data-opt-sel="${name}"]`);
+        if (sel) sel.textContent = val;
+        refresh();
+      }),
+    );
+  }
+
+  async function show(handle: string) {
+    open();
+    if (titleEl) titleEl.textContent = 'Loading…';
+    if (descEl) descEl.textContent = '';
+    if (variantsEl) variantsEl.innerHTML = '';
+    try {
+      const res = await fetch(`/api/quickview?handle=${encodeURIComponent(handle)}`);
+      current = await res.json();
+      if (current.error) { if (titleEl) titleEl.textContent = 'Unavailable'; return; }
+      if (imgEl) { imgEl.src = current.image; imgEl.alt = current.title; }
+      if (catEl) catEl.textContent = current.category;
+      if (titleEl) titleEl.textContent = current.title;
+      if (descEl) descEl.textContent = current.desc;
+      if (detailsLink) detailsLink.href = `/products/${current.handle}`;
+      renderVariants();
+      refresh();
+    } catch {
+      if (titleEl) titleEl.textContent = 'Something went wrong';
+    }
+  }
+
+  // Open from any Quick View button on the page.
+  document.addEventListener('click', (e) => {
+    const trigger = (e.target as HTMLElement)?.closest<HTMLElement>('[data-qv-handle]');
+    if (!trigger) return;
+    e.preventDefault();
+    void show(trigger.dataset.qvHandle!);
+  });
+
+  // Add to cart from the modal.
+  addBtn?.addEventListener('click', async () => {
+    const id = addBtn.dataset.variant;
+    if (!id || addBtn.disabled) return;
+    addBtn.disabled = true;
+    await addItem(id);
+    close();
+    addBtn.disabled = false;
+  });
+
+  document.getElementById('qv-close')?.addEventListener('click', close);
+  overlay?.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+</script>

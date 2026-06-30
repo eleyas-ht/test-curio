@@ -1,0 +1,434 @@
+---
+// ============================================================
+//  Countdown Drop — Shopify-powered campaign section with a live
+//  countdown timer and a configurable CTA.
+//
+//  CAMPAIGN SETTINGS  (edit the Props block below, or pass as
+//  component attributes from the parent page):
+//
+//  ── Product ────────────────────────────────────────────────
+//  productHandle  — Shopify product handle, e.g. "omnix-tower-l1".
+//                   Leave "" to show the section without live product data.
+//  fallbackImage  — Filename from src/assets/images/ used when no
+//                   product is connected (e.g. "countdown-02.jpg").
+//  fallbackTitle  — Static product title shown in the absence of a handle.
+//  fallbackPrice  — Static price string (e.g. "$649.00") shown when
+//                   no product is connected.
+//
+//  ── Countdown ──────────────────────────────────────────────
+//  targetDate     — ISO 8601 countdown target, e.g. "2026-07-04T00:00:00Z".
+//                   Takes priority over inDays when both are provided.
+//  inDays         — Days from now until the drop. Used only when
+//                   targetDate is not set. Default: 6.
+//
+//  ── CTA button ─────────────────────────────────────────────
+//  ctaText        — Button label. Default: "Shop Now".
+//  ctaAction      — What happens when the button is clicked:
+//                     'pdp'          → Navigate to the product detail page.
+//                     'add-to-cart'  → Add the first variant to the cart
+//                                      (opens the cart drawer on success).
+//                     'quick-view'   → Open the Quick View modal.
+//                   Falls back to 'pdp' when the required data is absent
+//                   (e.g. no variantId for add-to-cart).
+//
+//  ── Expired state ──────────────────────────────────────────
+//  handleExpiry   — When true the CTA button is hidden and expiredMessage
+//                   is shown once the countdown reaches zero. Default: true.
+//  expiredMessage — Text displayed when the campaign ends. Set to "" to
+//                   show nothing. Default: "This drop has ended."
+//
+//  ── Multiple instances ─────────────────────────────────────
+//  instanceId     — Unique string ID for this section, e.g. "summer-drop".
+//                   REQUIRED when more than one Countdown Drop appears on
+//                   the same page so the timers don't interfere.
+//                   Default: "default".
+// ============================================================
+
+import { Image } from 'astro:assets';
+import Icon     from '~/components/ui/Icon.astro';
+import { img }  from '~/lib/assets';
+import { getProduct } from '~/lib/shopify';
+
+// ── Props / settings ─────────────────────────────────────────────────────────
+
+interface Props {
+  // Product
+  productHandle?:  string;
+  fallbackImage?:  string;
+  fallbackTitle?:  string;
+  fallbackPrice?:  string;
+  // Countdown
+  targetDate?:     string;
+  inDays?:         number;
+  // CTA
+  ctaText?:        string;
+  ctaAction?:      'pdp' | 'add-to-cart' | 'quick-view';
+  // Expired
+  handleExpiry?:   boolean;
+  expiredMessage?: string;
+  // Instance
+  instanceId?:     string;
+}
+
+const {
+  // Product
+  productHandle  = '',
+  fallbackImage  = 'countdown-02.jpg',
+  fallbackTitle  = 'The next issue lands soon.',
+  fallbackPrice  = '',
+  // Countdown
+  targetDate,
+  inDays         = 6,
+  // CTA
+  ctaText        = 'Shop Now',
+  ctaAction      = 'pdp',
+  // Expired
+  handleExpiry   = true,
+  expiredMessage = 'This drop has ended.',
+  // Instance
+  instanceId     = 'default',
+} = Astro.props;
+
+// ── Shopify product fetch ─────────────────────────────────────────────────────
+// Fetches only when a handle is configured. Falls back gracefully when the
+// handle is empty or the product is not found in the store.
+
+const shopifyProduct = productHandle ? await getProduct(productHandle) : null;
+
+// ── Resolved display values ───────────────────────────────────────────────────
+
+function formatPrice(amount: string): string {
+  const n = parseFloat(amount);
+  return isNaN(n) ? amount : `$${n.toFixed(2)}`;
+}
+
+const productTitle     = shopifyProduct?.title ?? fallbackTitle;
+const productUrl       = shopifyProduct ? `/products/${shopifyProduct.handle}` : '#';
+const productAvailable = shopifyProduct?.availableForSale ?? true;
+// First variant id — used by the add-to-cart action.
+const variantId        = shopifyProduct?.variants?.[0]?.id ?? '';
+
+const displayPrice = shopifyProduct?.priceRange?.minVariantPrice?.amount
+  ? formatPrice(shopifyProduct.priceRange.minVariantPrice.amount)
+  : fallbackPrice;
+
+const compareAtPrice = shopifyProduct?.compareAtPriceRange?.minVariantPrice?.amount
+  ? formatPrice(shopifyProduct.compareAtPriceRange.minVariantPrice.amount)
+  : null;
+
+// Show a "Sale" badge when compare-at is higher than the current price.
+const isOnSale = compareAtPrice && compareAtPrice !== displayPrice;
+
+// Product image: prefer Shopify CDN URL, then fall back to local asset.
+const shopifyImageUrl = shopifyProduct?.featuredImage?.url ?? null;
+const shopifyImageAlt = shopifyProduct?.featuredImage?.altText ?? productTitle;
+const localFallback   = img(fallbackImage);
+
+// ── Countdown target ──────────────────────────────────────────────────────────
+// Use the explicit ISO date when provided; otherwise compute from inDays.
+const target = targetDate
+  ? new Date(targetDate).toISOString()
+  : new Date(Date.now() + inDays * 24 * 60 * 60 * 1000).toISOString();
+
+// ── Effective CTA action ──────────────────────────────────────────────────────
+// Silently degrade to 'pdp' when the required data for the action is missing.
+const effectiveCta: 'pdp' | 'add-to-cart' | 'quick-view' =
+  ctaAction === 'add-to-cart' && !variantId     ? 'pdp' :
+  ctaAction === 'quick-view'  && !productHandle ? 'pdp' :
+  ctaAction;
+
+// Unique prefix for all DOM ids in this instance.
+const uid = `cd-${instanceId}`;
+---
+
+<!-- ============================================================
+  COUNTDOWN DROP — campaign section
+  data-* attributes pass all runtime settings to the client script.
+============================================================ -->
+<section
+  class="border-y border-sand-deep bg-cream-deep"
+  data-countdown-drop={uid}
+  data-target={target}
+  data-variant-id={variantId}
+  data-cta-action={effectiveCta}
+  data-product-url={productUrl}
+  data-handle-expiry={handleExpiry ? 'true' : 'false'}
+  data-expired-message={expiredMessage}
+  data-available={productAvailable ? 'true' : 'false'}
+>
+  <div class="wrap grid items-center gap-12 py-20 md:grid-cols-2 md:py-24">
+
+    <!-- ── Left column — label, heading, product info, timer, CTA ── -->
+    <div>
+      <span class="ed-label">Exclusive Drop</span>
+
+      <h2 class="masthead mt-6 text-[clamp(1.9rem,4vw,2.8rem)]">
+        The next issue lands <em>soon</em>.
+      </h2>
+
+      {/* Product title + price — shown when a Shopify product is connected */}
+      {shopifyProduct ? (
+        <div class="mt-4">
+          <p class="text-base font-semibold text-ink">{productTitle}</p>
+          <p class="mt-1 flex flex-wrap items-baseline gap-2 text-sm">
+            {/* Compare-at price (original / was price) */}
+            {isOnSale && (
+              <span class="text-muted-light line-through">{compareAtPrice}</span>
+            )}
+            {/* Current price */}
+            {displayPrice && (
+              <span class="font-semibold text-clay">{displayPrice}</span>
+            )}
+            {/* Sale badge */}
+            {isOnSale && (
+              <span class="rounded-full bg-clay px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-warm-white">
+                Sale
+              </span>
+            )}
+            {/* Availability indicator */}
+            {!productAvailable && (
+              <span class="text-[0.7rem] font-medium uppercase tracking-wider text-muted-light">
+                Sold out
+              </span>
+            )}
+          </p>
+        </div>
+      ) : (
+        /* Static description — used when no product handle is set */
+        <p class="mt-5 max-w-md text-sm leading-relaxed text-muted">
+          A limited run of the editors' most-requested pieces. Sign up to get
+          first access — these sell out in hours, not days.
+        </p>
+      )}
+
+      <!-- Countdown timer — digits are driven by the client script below -->
+      <div class="mt-8 flex gap-3" id={`${uid}-timer`}>
+        {['Days', 'Hours', 'Mins', 'Secs'].map((label) => (
+          <div class="flex-1 rounded-md border border-sand-deep bg-warm-white px-2 py-4 text-center">
+            {/* data-cd-num targets are filled by the per-instance tick loop */}
+            <span
+              data-cd-num
+              class="block font-serif text-3xl text-ink tabular md:text-4xl"
+            >
+              --
+            </span>
+            <span class="mt-1 block text-[0.65rem] uppercase tracking-[0.18em] text-muted-light">
+              {label}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <!-- CTA / status area -->
+      <div class="mt-7 w-full max-w-md" id={`${uid}-cta`}>
+
+        {/* Sold-out notice — shown when the product exists but has no stock */}
+        {shopifyProduct && !productAvailable ? (
+          <p class="text-sm font-medium text-muted-light">This product is currently sold out.</p>
+        ) : (
+          /* CTA button wrapper — hidden by JS when handleExpiry fires */
+          <div id={`${uid}-cta-btn`}>
+
+            {/* ── Go to product page ─────────────────────────────── */}
+            {effectiveCta === 'pdp' && (
+              <a
+                href={productUrl}
+                class="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-md bg-cocoa px-6 text-sm font-medium text-cream transition-fluid hover:bg-clay"
+              >
+                {ctaText}
+                <Icon name="arrowRight" size={15} />
+              </a>
+            )}
+
+            {/* ── Add to cart ────────────────────────────────────── */}
+            {effectiveCta === 'add-to-cart' && (
+              <button
+                type="button"
+                id={`${uid}-atc`}
+                class="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-md bg-cocoa px-6 text-sm font-medium text-cream transition-fluid hover:bg-clay disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {ctaText}
+                <Icon name="zap" size={15} />
+              </button>
+            )}
+
+            {/* ── Quick View ─────────────────────────────────────── */}
+            {effectiveCta === 'quick-view' && (
+              <button
+                type="button"
+                data-qv-handle={productHandle}
+                class="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-md bg-cocoa px-6 text-sm font-medium text-cream transition-fluid hover:bg-clay"
+              >
+                {ctaText}
+                <Icon name="search" size={15} />
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Expired message — hidden until the timer reaches zero and handleExpiry is true */}
+        <p
+          id={`${uid}-expired`}
+          role="status"
+          class="hidden text-sm font-medium text-clay"
+        >
+          {expiredMessage}
+        </p>
+
+        {/* Add-to-cart feedback message */}
+        <p id={`${uid}-atc-msg`} role="status" class="mt-2 hidden text-xs text-clay" />
+
+      </div>
+    </div>
+
+    <!-- ── Right column — product image + badge ──────────────────── -->
+    <div class="relative">
+      <div class="aspect-[4/3] overflow-hidden rounded-md border border-sand-deep bg-warm-white">
+        {shopifyImageUrl ? (
+          /* Live Shopify CDN image */
+          <img
+            src={shopifyImageUrl}
+            alt={shopifyImageAlt}
+            class="h-full w-full object-cover"
+            loading="lazy"
+          />
+        ) : localFallback ? (
+          /* Local asset fallback (Astro-optimised) */
+          <Image
+            src={localFallback}
+            alt="Coming soon — the next drop"
+            widths={[480, 768]}
+            sizes="(min-width: 768px) 45vw, 100vw"
+            class="h-full w-full object-cover"
+          />
+        ) : null}
+      </div>
+
+      {/* Badge — shows product name when available, otherwise "Coming soon" */}
+      <span class="absolute right-4 top-4 rounded-full bg-clay px-3 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-warm-white">
+        {shopifyProduct ? productTitle : 'Coming soon'}
+      </span>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================================================
+  CLIENT SCRIPT
+  Scoped per-instance: loops over every [data-countdown-drop]
+  element on the page so multiple sections work independently.
+  Reads all configuration from data-* attributes (set above),
+  never from global variables, so instances don't interfere.
+============================================================ -->
+<script>
+  import { addItem } from '~/stores/cart';
+
+  document.querySelectorAll<HTMLElement>('[data-countdown-drop]').forEach((section) => {
+
+    // ── Read instance configuration from data-* attributes ────────
+    const uid            = section.dataset.countdownDrop!;
+    const targetMs       = section.dataset.target ? new Date(section.dataset.target).getTime() : 0;
+    const ctaAction      = section.dataset.ctaAction as 'pdp' | 'add-to-cart' | 'quick-view';
+    const variantId      = section.dataset.variantId ?? '';
+    const handleExpiry   = section.dataset.handleExpiry === 'true';
+    const expiredMessage = section.dataset.expiredMessage ?? '';
+
+    // ── DOM refs (all scoped to this instance's uid) ───────────────
+    const timerEl   = section.querySelector<HTMLElement>(`#${uid}-timer`);
+    const ctaBtnEl  = section.querySelector<HTMLElement>(`#${uid}-cta-btn`);
+    const expiredEl = section.querySelector<HTMLElement>(`#${uid}-expired`);
+    const atcBtn    = section.querySelector<HTMLButtonElement>(`#${uid}-atc`);
+    const atcMsg    = section.querySelector<HTMLElement>(`#${uid}-atc-msg`);
+    const numEls    = timerEl?.querySelectorAll<HTMLElement>('[data-cd-num]');
+
+    // ── Countdown timer ────────────────────────────────────────────
+    const pad = (n: number) => String(Math.max(0, n)).padStart(2, '0');
+    let hasExpired = false;
+
+    function tick(): void {
+      const diff = Math.max(0, targetMs - Date.now());
+
+      // Fill each digit pair
+      if (numEls) {
+        const d = Math.floor(diff / 86400000);
+        const h = Math.floor((diff % 86400000) / 3600000);
+        const m = Math.floor((diff % 3600000) / 60000);
+        const s = Math.floor((diff % 60000) / 1000);
+        [d, h, m, s].forEach((v, i) => {
+          if (numEls[i]) numEls[i].textContent = pad(v);
+        });
+      }
+
+      // Trigger expiry once
+      if (diff === 0 && !hasExpired) {
+        hasExpired = true;
+        onExpire();
+      }
+    }
+
+    // ── Expiry handler ─────────────────────────────────────────────
+    function onExpire(): void {
+      if (!handleExpiry) return;
+
+      // Freeze timer digits at zero
+      numEls?.forEach((el) => { el.textContent = '00'; });
+
+      // Hide CTA, surface expired message
+      if (ctaBtnEl) ctaBtnEl.classList.add('hidden');
+      if (expiredEl) {
+        expiredEl.textContent = expiredMessage;
+        expiredEl.classList.remove('hidden');
+      }
+    }
+
+    // ── Add to Cart handler ────────────────────────────────────────
+    if (ctaAction === 'add-to-cart' && atcBtn && variantId) {
+      atcBtn.addEventListener('click', async () => {
+        if (atcBtn.disabled) return;
+
+        const origLabel = atcBtn.textContent ?? '';
+        atcBtn.disabled = true;
+        atcBtn.textContent = 'Adding…';
+        if (atcMsg) atcMsg.classList.add('hidden');
+
+        const result = await addItem(variantId, 1, { open: true });
+
+        if (result.userErrors?.length) {
+          // Surface the first Shopify user error
+          if (atcMsg) {
+            atcMsg.textContent = result.userErrors[0].message;
+            atcMsg.classList.remove('hidden');
+          }
+          atcBtn.disabled = false;
+          atcBtn.textContent = origLabel;
+        } else if (result.cart) {
+          // Success: brief confirmation then restore
+          atcBtn.textContent = 'Added!';
+          if (atcMsg) {
+            atcMsg.textContent = 'Item added to your cart.';
+            atcMsg.classList.remove('hidden');
+          }
+          setTimeout(() => {
+            atcBtn.disabled = false;
+            atcBtn.textContent = origLabel;
+            if (atcMsg) atcMsg.classList.add('hidden');
+          }, 2500);
+        } else {
+          // Unexpected failure
+          if (atcMsg) {
+            atcMsg.textContent = 'Could not add to cart. Please try again.';
+            atcMsg.classList.remove('hidden');
+          }
+          atcBtn.disabled = false;
+          atcBtn.textContent = origLabel;
+        }
+      });
+    }
+
+    // ── Start the timer ────────────────────────────────────────────
+    if (targetMs) {
+      tick();
+      setInterval(tick, 1000);
+    }
+  });
+</script>

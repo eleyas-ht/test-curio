@@ -1,0 +1,394 @@
+---
+// ============================================================
+//  /account/orders/[id] — order detail
+//  id param is Buffer.from(gid).toString('base64url')
+// ============================================================
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import PageHeader from '~/components/layout/PageHeader.astro';
+import {
+  createCustomerClient,
+  CUSTOMER_ORDER_QUERY,
+  getPublicOrigin,
+  NotAuthenticatedError,
+} from '~/lib/shopify/customer';
+import type { CustomerOrderResult, MailingAddress } from '~/lib/shopify/customer';
+
+export const prerender = false;
+
+const client = createCustomerClient(Astro.cookies, getPublicOrigin(Astro.request, Astro.url));
+
+if (!client.isLoggedIn()) {
+  return Astro.redirect('/account/login?return_to=/account/orders');
+}
+
+// Decode URL-safe base64 → Shopify GID using Node.js Buffer (safe on SSR).
+const encoded = Astro.params.id ?? '';
+let orderId = '';
+try {
+  orderId = atob(encoded.replace(/-/g, '+').replace(/_/g, '/'));
+} catch {
+  return Astro.redirect('/account/orders');
+}
+
+if (!orderId.startsWith('gid://shopify/Order/')) {
+  return Astro.redirect('/account/orders');
+}
+
+let order: CustomerOrderResult['order'] = null;
+let error: string | null = null;
+
+try {
+  const data = await client.query<CustomerOrderResult>(CUSTOMER_ORDER_QUERY, { orderId });
+  order = data.order;
+} catch (err) {
+  if (err instanceof NotAuthenticatedError) {
+    return Astro.redirect('/account/login?return_to=/account/orders');
+  }
+  error = (err as Error).message;
+}
+
+if (!order && !error) {
+  return Astro.redirect('/account/orders');
+}
+
+const fmtMoney = (m: { amount: string; currencyCode: string } | null | undefined) =>
+  m
+    ? new Intl.NumberFormat('en-US', { style: 'currency', currency: m.currencyCode }).format(
+        Number(m.amount),
+      )
+    : '—';
+
+const fmtDate = (iso: string) =>
+  new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(iso));
+
+function formatAddress(
+  addr: MailingAddress | null | undefined,
+): string[] {
+  if (!addr) return [];
+  return [
+    [addr.firstName, addr.lastName].filter(Boolean).join(' '),
+    addr.company,
+    addr.address1,
+    addr.address2,
+    [addr.city, addr.province].filter(Boolean).join(', ') + (addr.zip ? ` ${addr.zip}` : ''),
+    addr.country,
+  ].filter((l): l is string => Boolean(l));
+}
+
+function statusClass(status: string | null | undefined) {
+  const s = (status ?? '').toLowerCase();
+  if (s === 'paid' || s === 'fulfilled') return 'badge badge--success';
+  if (s === 'pending' || s === 'unfulfilled' || s === 'in_progress') return 'badge badge--pending';
+  if (s === 'refunded' || s === 'voided' || s === 'cancelled') return 'badge badge--muted';
+  return 'badge badge--default';
+}
+
+const lineItems = order?.lineItems?.nodes ?? [];
+const shippingLines = formatAddress(order?.shippingAddress);
+---
+
+<BaseLayout title={order ? `Order ${order.name}` : 'Order'}>
+  <PageHeader
+    eyebrow="My account / orders"
+    title={order ? `Order *${order.name}*` : 'Order'}
+  />
+
+  <div class="container account-section">
+    <a href="/account/orders" class="back-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="16" height="16" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+      </svg>
+      Back to orders
+    </a>
+
+    {error && (
+      <p class="account-alert">
+        Couldn't load this order: {error}
+      </p>
+    )}
+
+    {order && (
+      <div class="order-layout">
+
+        {/* ── Status bar ─────────────────────────────────────── */}
+        <div class="status-bar">
+          <span class="status-bar-date">{fmtDate(order.processedAt)}</span>
+          <div class="status-chips">
+            {order.financialStatus && (
+              <span class={statusClass(order.financialStatus)}>
+                {order.financialStatus.replace(/_/g, ' ')}
+              </span>
+            )}
+            {order.fulfillmentStatus &&
+              order.fulfillmentStatus !== order.financialStatus && (
+                <span class={statusClass(order.fulfillmentStatus)}>
+                  {order.fulfillmentStatus.replace(/_/g, ' ')}
+                </span>
+              )}
+          </div>
+        </div>
+
+        {/* ── Line items + order total ────────────────────────── */}
+        <section class="order-card">
+          <h2 class="order-card-title">Items ordered</h2>
+
+          {lineItems.length === 0 ? (
+            <p class="text-sm text-muted">No items found.</p>
+          ) : (
+            <ul class="line-items">
+              {lineItems.map((item) => (
+                <li class="line-item">
+                  {item.image ? (
+                    <img
+                      src={item.image.url}
+                      alt={item.image.altText ?? item.title}
+                      width="64"
+                      height="64"
+                      class="line-item-img"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div class="line-item-img-placeholder" aria-hidden="true" />
+                  )}
+                  <div class="line-item-info">
+                    <p class="line-item-title">{item.title}</p>
+                    {item.variantTitle && item.variantTitle !== 'Default Title' && (
+                      <p class="line-item-variant">{item.variantTitle}</p>
+                    )}
+                    <p class="line-item-qty">Qty: {item.quantity}</p>
+                  </div>
+                  <p class="line-item-price">
+                    {fmtMoney(item.totalPrice)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {/* ── Order total ─────────────────────────────────────── */}
+          <div class="order-totals">
+            <div class="total-row total-row--grand">
+              <span>Order total</span>
+              <span class="tabular">{fmtMoney(order.totalPrice)}</span>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Shipping address ────────────────────────────────── */}
+        {shippingLines.length > 0 && (
+          <section class="order-card">
+            <h2 class="order-card-title">Shipping address</h2>
+            <address class="addr">
+              {shippingLines.map((line, i) => (
+                <Fragment>
+                  {line}
+                  {i < shippingLines.length - 1 && <br />}
+                </Fragment>
+              ))}
+            </address>
+          </section>
+        )}
+
+      </div>
+    )}
+  </div>
+</BaseLayout>
+
+<style>
+  /* ── Page section vertical padding ───────────────────────── */
+  .account-section {
+    padding-top: 0;
+    padding-bottom: 64px;
+  }
+  @media (max-width: 640px) {
+    .account-section { padding-top: 0; padding-bottom: 48px; }
+  }
+
+  /* ── Alert ────────────────────────────────────────────────── */
+  .account-alert {
+    margin-top: 24px;
+    margin-bottom: 0;
+    padding: 12px 16px;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    line-height: 1.5;
+    background: rgba(179, 64, 31, 0.05);
+    border: 1px solid rgba(179, 64, 31, 0.3);
+    color: var(--color-danger);
+  }
+
+  /* ── Back link ────────────────────────────────────────────── */
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-muted);
+    text-decoration: none;
+    margin-bottom: 32px;
+    transition: color 160ms;
+  }
+  .back-link:hover { color: var(--color-ink); }
+
+  /* ── Order layout ─────────────────────────────────────────── */
+  .order-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* ── Status bar ───────────────────────────────────────────── */
+  .status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 16px 20px;
+    background: var(--color-warm-white);
+    border: 1px solid var(--color-sand-deep);
+    border-radius: var(--radius-lg);
+  }
+  .status-bar-date {
+    font-size: 13px;
+    color: var(--color-muted);
+  }
+  .status-chips {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  /* ── Order cards ──────────────────────────────────────────── */
+  .order-card {
+    background: var(--color-warm-white);
+    border: 1px solid var(--color-sand-deep);
+    border-radius: var(--radius-lg);
+    padding: 28px;
+  }
+  @media (max-width: 480px) {
+    .order-card { padding: 20px 16px; }
+  }
+  .order-card-title {
+    font-family: var(--font-sans);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-muted-light);
+    margin-bottom: 20px;
+  }
+
+  /* ── Line items ───────────────────────────────────────────── */
+  .line-items {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .line-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--color-sand);
+  }
+  .line-item:first-child { padding-top: 0; }
+  .line-item:last-child { border-bottom: none; padding-bottom: 0; }
+
+  .line-item-img {
+    width: 72px;
+    height: 72px;
+    object-fit: cover;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-sand-deep);
+    flex-shrink: 0;
+    background: var(--color-cream-deep);
+  }
+  .line-item-img-placeholder {
+    width: 72px;
+    height: 72px;
+    border-radius: var(--radius-md);
+    background: var(--color-cream-deep);
+    flex-shrink: 0;
+  }
+  .line-item-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .line-item-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-ink);
+    line-height: 1.4;
+  }
+  .line-item-variant {
+    font-size: 12px;
+    color: var(--color-muted-light);
+  }
+  .line-item-qty {
+    font-size: 12px;
+    color: var(--color-muted);
+  }
+  .line-item-price {
+    flex-shrink: 0;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-ink);
+    font-variant-numeric: tabular-nums;
+    padding-top: 2px;
+  }
+
+  /* ── Order totals ─────────────────────────────────────────── */
+  .order-totals {
+    margin-top: 24px;
+    border-top: 1px solid var(--color-sand-deep);
+    padding-top: 20px;
+  }
+  .total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    color: var(--color-muted);
+    padding: 4px 0;
+  }
+  .total-row--grand {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--color-ink);
+    padding-top: 12px;
+  }
+
+  .addr {
+    font-size: 14px;
+    color: var(--color-muted);
+    line-height: 1.9;
+  }
+
+  /* ── Badges ───────────────────────────────────────────────── */
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: var(--radius-pill);
+  }
+  .badge--success { background: #d1fae5; color: var(--color-success); }
+  .badge--pending { background: #fef3c7; color: #92400e; }
+  .badge--muted   { background: var(--color-sand); color: var(--color-muted); }
+  .badge--default { background: var(--color-fog);  color: var(--color-muted); }
+</style>

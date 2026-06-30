@@ -1,0 +1,261 @@
+﻿---
+// ============================================================
+//  Home — 1:1 editorial layout (sections verbatim from the mockup);
+//  the Featured grid is wired to live Shopify products.
+// ============================================================
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import Hero from '~/components/home/sections/Hero.astro';
+import Trust from '~/components/home/sections/Trust.astro';
+import Picks from '~/components/home/sections/Picks.astro';
+import Departments from '~/components/home/Departments.astro';
+import Showcase from '~/components/home/sections/Showcase.astro';
+import Featured from '~/components/home/sections/Featured.astro';
+import Guide from '~/components/home/sections/Guide.astro';
+import Partners from '~/components/home/sections/Partners.astro';
+import Inspo from '~/components/home/sections/Inspo.astro';
+import Countdown from '~/components/home/sections/Countdown.astro';
+import Testimonials from '~/components/home/sections/Testimonials.astro';
+import Bundle from '~/components/home/Bundle.astro';
+import Journal from '~/components/home/sections/Journal.astro';
+import Promo from '~/components/home/Promo.astro';
+import Faq from '~/components/home/sections/Faq.astro';
+import Instagram from '~/components/home/sections/Instagram.astro';
+import Newsletter from '~/components/home/sections/Newsletter.astro';
+import { getProducts, getCollectionsByHandles, getPicksProducts, getDepartmentsCollections, getProductsByHandles, getProduct, getBlogArticles } from '~/lib/shopify';
+import type { BlogArticle, ProductCard, Collection } from '~/lib/shopify/types';
+import { PICKS } from '~/config/picks';
+import { SHOWCASE } from '~/config/showcase';
+import { DEPARTMENTS_CONFIG } from '~/config/departments';
+import { FEATURED } from '~/config/featured';
+import { TESTIMONIALS } from '~/config/testimonials';
+import { JOURNAL_CONFIG } from '~/config/journal';
+import type { ResolvedTestimonial } from '~/components/home/sections/Testimonials.astro';
+
+let products: ProductCard[] = [];
+try {
+  const page = await getProducts({ pageSize: 12, sortKey: 'BEST_SELLING' });
+  products = page.items;
+} catch (err) {
+  console.error('[home] Shopify load failed:', (err as Error).message);
+}
+
+// Featured section — in 'collection-tabs' mode fetch products per tab collection.
+// All-tabs (isAllTab: true) receive a deduplicated union of every other tab's products.
+// Tabs are parallel fetches; a failed tab is silently dropped (falls back to empty).
+interface FeaturedTab { label: string; products: ProductCard[] }
+let featuredTabs: FeaturedTab[] = [];
+if (FEATURED.mode === 'collection-tabs' && FEATURED.collectionTabs.length > 0) {
+  // Fetch collection tabs; all-tabs are placeholders (products resolved after).
+  const resolved = await Promise.all(
+    FEATURED.collectionTabs.map(async (tab) => {
+      if (tab.isAllTab) return { label: tab.customName ?? 'All', products: null as ProductCard[] | null };
+      if (!tab.collectionHandle) return null;
+      try {
+        const data = await getPicksProducts(tab.collectionHandle, tab.fetchLimit ?? FEATURED.fetchLimit);
+        if (!data) return null;
+        return { label: tab.customName ?? data.collectionTitle, products: data.products };
+      } catch (err) {
+        console.error(`[home] Featured tab "${tab.collectionHandle}" failed:`, (err as Error).message);
+        return null;
+      }
+    }),
+  );
+
+  // Deduplicated union of every collection tab's products (used by all-tabs).
+  const seen = new Set<string>();
+  const allProducts: ProductCard[] = [];
+  for (const r of resolved) {
+    if (r?.products) {
+      for (const p of r.products) {
+        if (!seen.has(p.id)) { seen.add(p.id); allProducts.push(p); }
+      }
+    }
+  }
+
+  featuredTabs = resolved
+    .filter((r): r is { label: string; products: ProductCard[] | null } => r !== null)
+    .map((r) => ({ label: r.label, products: r.products ?? allProducts }));
+}
+
+// Departments section — fetch collections from Shopify with product counts.
+let departmentsCollections: Collection[] = [];
+try {
+  departmentsCollections = await getDepartmentsCollections({
+    limit: DEPARTMENTS_CONFIG.collectionLimit,
+    selectors:
+      DEPARTMENTS_CONFIG.customCollections.length > 0
+        ? [...DEPARTMENTS_CONFIG.customCollections]
+        : undefined,
+  });
+} catch (err) {
+  console.error('[home] Departments load failed:', (err as Error).message);
+}
+
+// Resolve every Picks instance independently and in parallel.
+// 'products'    → fetches products from the configured collection handle.
+// 'collections' → fetches collection metadata cards.
+// 'custom'      → no API call; data comes from config directly.
+type PicksProductsData = { collectionTitle: string; products: ProductCard[] } | null;
+const picksData = await Promise.all(
+  PICKS.map(async (cfg, i) => {
+    if (cfg.mode === 'products' && cfg.productsConfig) {
+      try {
+        const productsData = await getPicksProducts(
+          cfg.productsConfig.collectionHandle,
+          cfg.productsConfig.productLimit,
+        );
+        return { cfg, collections: [] as Collection[], productsData };
+      } catch (err) {
+        console.error(`[home] Picks[${i}] products load failed:`, (err as Error).message);
+        return { cfg, collections: [] as Collection[], productsData: null as PicksProductsData };
+      }
+    }
+    if (cfg.mode === 'collections') {
+      try {
+        const collections = await getCollectionsByHandles(cfg.collectionsConfig.handles);
+        return { cfg, collections, productsData: null as PicksProductsData };
+      } catch (err) {
+        console.error(`[home] Picks[${i}] collections load failed:`, (err as Error).message);
+        return { cfg, collections: [] as Collection[], productsData: null as PicksProductsData };
+      }
+    }
+    return { cfg, collections: [] as Collection[], productsData: null as PicksProductsData };
+  })
+);
+
+// Product Showcase — in 'shopify' mode, fetch the hand-picked products (by
+// handle, in order). In 'custom' mode no API call is made; the component reads
+// SHOWCASE.customItems directly.
+let showcaseProducts: ProductCard[] = [];
+if (SHOWCASE.mode === 'shopify') {
+  try {
+    showcaseProducts = await getProductsByHandles(SHOWCASE.shopifyConfig.productHandles);
+  } catch (err) {
+    console.error('[home] Showcase products load failed:', (err as Error).message);
+  }
+}
+
+// Journal — fetch latest blog articles from Shopify.
+// Controlled by JOURNAL_CONFIG in src/config/journal.ts.
+// Falls back to static articles (defined in the same config) when
+// blogHandle is empty or the fetch fails.
+let journalArticles: BlogArticle[] = [];
+if (JOURNAL_CONFIG.blogHandle) {
+  try {
+    journalArticles = await getBlogArticles(JOURNAL_CONFIG.blogHandle, JOURNAL_CONFIG.articleCount);
+  } catch (err) {
+    console.error('[home] Journal articles load failed:', (err as Error).message);
+  }
+}
+
+// Testimonials — resolve each entry's optional Shopify product chip.
+// For entries with a productHandle, fetch live title/price/image.
+// Falls back to the inline `product` config when the handle is blank or fails.
+const resolvedTestimonials: ResolvedTestimonial[] = await Promise.all(
+  TESTIMONIALS.testimonials.map(async (t) => {
+    let chip: ResolvedTestimonial['chip'] = null;
+
+    // Try Shopify handle first (Option A)
+    if (t.productHandle && t.productHandle.trim()) {
+      try {
+        const p = await getProduct(t.productHandle.trim());
+        if (p) {
+          const price = p.priceRange?.minVariantPrice;
+          const priceStr = price
+            ? new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: price.currencyCode ?? 'USD',
+                minimumFractionDigits: 0,
+              }).format(parseFloat(price.amount))
+            : '';
+          chip = {
+            name: p.title,
+            price: priceStr,
+            image: p.featuredImage?.url ?? p.images?.[0]?.url ?? '',
+          };
+        }
+      } catch (err) {
+        console.error(
+          `[home] Testimonials: product "${t.productHandle}" failed:`,
+          (err as Error).message
+        );
+      }
+    }
+
+    // Fall back to inline product config (Option B)
+    if (!chip && t.product) {
+      chip = { name: t.product.name, price: t.product.price, image: t.product.image };
+    }
+
+    return {
+      text: t.text,
+      stars: t.stars,
+      name: t.name,
+      role: t.role,
+      avatar: t.avatar,
+      avatarAlt: t.avatarAlt,
+      chip,
+    };
+  })
+);
+---
+
+<BaseLayout>
+  <Hero />
+  <Trust />
+  {picksData.map(({ cfg, collections, productsData }) => (
+    <Picks
+      mode={cfg.mode}
+      label={cfg.label}
+      title={cfg.title}
+      viewAllHref={cfg.viewAllHref}
+      viewAllLabel={cfg.viewAllLabel}
+      layout={cfg.mode === 'products' ? (cfg.productsConfig?.layout ?? '3-col') : cfg.collectionsConfig.layout}
+      productsData={productsData}
+      productsConfig={cfg.productsConfig}
+      collections={collections}
+      collectionKickers={cfg.collectionsConfig.kickers}
+      customItems={[...cfg.customItems]}
+    />
+  ))}
+  <Departments collections={departmentsCollections} config={DEPARTMENTS_CONFIG} />
+  <Showcase
+    mode={SHOWCASE.mode}
+    settings={SHOWCASE.settings}
+    shopifyProducts={showcaseProducts}
+    shopifyConfig={SHOWCASE.shopifyConfig}
+    customItems={SHOWCASE.customItems}
+  />
+  <Featured
+    tabs={featuredTabs.length > 0 ? featuredTabs : undefined}
+    products={featuredTabs.length === 0 ? products : undefined}
+    label={FEATURED.label}
+    title={FEATURED.title}
+    productLimit={FEATURED.productLimit}
+  />
+  <Guide />
+  <Partners />
+  <Inspo />
+  <Countdown />
+  <Testimonials testimonials={resolvedTestimonials} settings={TESTIMONIALS.settings} />
+  <Bundle />
+  <Journal articles={journalArticles} />
+  <Promo />
+  <Faq />
+  <Instagram />
+  <Newsletter />
+</BaseLayout>
+
+<script>
+  // FAQ accordion — one item open at a time.
+  document.querySelectorAll<HTMLButtonElement>('.faq-q').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const item = btn.closest('.faq-item');
+      const list = item?.closest('.faq-list');
+      list?.querySelectorAll('.faq-item').forEach((el) => el.classList.remove('open'));
+      item?.classList.add('open');
+    });
+  });
+
+  // Newsletter form is handled by the Newsletter component's own script.
+</script>

@@ -1,0 +1,448 @@
+---
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import { ABOUT_TEAM } from '~/config/about';
+import '~/styles/pages/about.css';
+---
+
+<BaseLayout
+  title="The Team — Curio"
+  description="The small, opinionated team behind every product in the Curio edit."
+>
+  <main class="ab">
+
+    <!-- ── Page hero ───────────────────────────────────────────────────── -->
+    <section class="ab-hero tm-index-hero">
+      <span class="ab-hero-watermark" aria-hidden="true">Team</span>
+      <div class="container">
+        <nav class="cart-breadcrumb ab-breadcrumb" aria-label="Breadcrumb">
+          <a href="/">Home</a><span class="cart-bc-sep">/</span>
+          <span aria-current="page">The Team</span>
+        </nav>
+
+        <div class="tm-index-intro ab-reveal">
+          <span class="label">The people behind the edit</span>
+          <h1 class="ab-hero-title tm-index-h1">
+            Small team.<br><em>Strong opinions.</em>
+          </h1>
+          <p class="ab-story-lead tm-index-lead">
+            Every product in the edit is tested, argued about, and approved by one of these four people.
+            No algorithms. No paid placements. Just humans who care about good gear.
+          </p>
+        </div>
+
+        <!-- Stats strip -->
+        <div class="tm-index-stats ab-reveal">
+          <div class="tm-index-stat">
+            <span class="tm-stat-num">4</span>
+            <span class="tm-stat-label">Editors &<br>specialists</span>
+          </div>
+          <div class="tm-index-divider" aria-hidden="true"></div>
+          <div class="tm-index-stat">
+            <span class="tm-stat-num">9<sup>yrs</sup></span>
+            <span class="tm-stat-label">Combined<br>experience</span>
+          </div>
+          <div class="tm-index-divider" aria-hidden="true"></div>
+          <div class="tm-index-stat">
+            <span class="tm-stat-num">600<sup>+</sup></span>
+            <span class="tm-stat-label">Products<br>tested</span>
+          </div>
+          <div class="tm-index-divider" aria-hidden="true"></div>
+          <div class="tm-index-stat">
+            <span class="tm-stat-num">9/10</span>
+            <span class="tm-stat-label">Products<br>rejected</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Divider rule ─────────────────────────────────────────────────── -->
+    <div class="container">
+      <hr class="hairline" />
+    </div>
+
+    <!-- ── Team grid ───────────────────────────────────────────────────── -->
+    <section class="ab-team tm-index-grid-section">
+      <div class="container">
+        <div class="ab-team-grid">
+          {ABOUT_TEAM.map((member, i) => (
+            <article
+              class="ab-member ab-reveal tm-index-card"
+              data-member-href={`/team/${member.slug}`}
+              style={`--reveal-delay: ${i * 0.1}s`}
+            >
+              <div class="ab-member-img">
+                <img src={member.image} alt={member.name} loading="lazy" />
+                <span class="ab-member-tag">{member.tag}</span>
+                <div class="ab-member-overlay">
+                  <p class="ab-member-bio">{member.bio}</p>
+                  <div class="ab-member-social">
+                    {member.social.twitter && (
+                      <a href={member.social.twitter} aria-label={`${member.name} on X`}>
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M17.5 3h3l-6.5 7.4L21.7 21h-6l-4.7-6-5.4 6H2.6l7-7.9L2.3 3h6.2l4.2 5.6L17.5 3zm-1 16h1.6L7.6 4.7H5.9L16.5 19z" />
+                        </svg>
+                      </a>
+                    )}
+                    {member.social.linkedin && (
+                      <a href={member.social.linkedin} aria-label={`${member.name} on LinkedIn`}>
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9h4v12H3zM10 9h3.8v1.7h.05c.53-1 1.83-2.05 3.77-2.05 4.03 0 4.78 2.65 4.78 6.1V21h-4v-5.4c0-1.29-.02-2.95-1.8-2.95-1.8 0-2.08 1.4-2.08 2.85V21h-4z" />
+                        </svg>
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <h2 class="ab-member-name">
+                <a href={`/team/${member.slug}`}>{member.name}</a>
+              </h2>
+              <p class="ab-member-role">{member.role}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Editorial note ──────────────────────────────────────────────── -->
+    <section class="tm-index-note ab-reveal">
+      <div class="container">
+        <div class="tm-index-note-inner">
+          <span class="label">How we work</span>
+          <blockquote class="tm-index-quote">
+            "The best recommendation comes from someone who tried the thing, found the flaw, and
+            chose to tell you anyway. That's the only kind we make."
+          </blockquote>
+          <div class="tm-index-note-footer">
+            <a href="/about" class="ab-text-link">Read our full story →</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Newsletter ──────────────────────────────────────────────────── -->
+    <section class="tm-index-newsletter ab-reveal">
+      <div class="container">
+        <div class="tm-index-nl-inner">
+          <div class="tm-index-nl-copy">
+            <span class="label">From the editors</span>
+            <h2 class="ab-h2">Get the monthly <em>Editor's Letter.</em></h2>
+            <p class="ab-story-copy">
+              Once a month, Sofia writes a letter about what we've been testing, what surprised us,
+              and what made the cut. No noise, no promotions — just the edit.
+            </p>
+          </div>
+          <form class="tm-index-nl-form" id="tm-nl-form" novalidate>
+            <label for="tm-nl-email" class="sr-only">Email address</label>
+            <div class="tm-index-nl-row">
+              <input
+                id="tm-nl-email"
+                name="email"
+                type="email"
+                placeholder="your@email.com"
+                autocomplete="email"
+                required
+                class="tm-index-nl-input"
+              />
+              <button type="submit" class="tm-index-nl-btn">Subscribe</button>
+            </div>
+            <p class="tm-index-nl-fine">No spam. Unsubscribe anytime.</p>
+            <p class="tm-index-nl-success" hidden>You're on the list — welcome.</p>
+          </form>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</BaseLayout>
+
+<style>
+  /* ── Team index — page-specific styles ───────────────────── */
+
+  .tm-index-hero {
+    padding-bottom: 0;
+  }
+
+  .tm-index-intro {
+    max-width: 640px;
+    padding: 48px 0 56px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .tm-index-h1 {
+    font-size: clamp(40px, 6vw, 80px);
+    margin: 14px 0 20px;
+  }
+
+  .tm-index-lead {
+    max-width: 520px;
+    margin-bottom: 0 !important;
+  }
+
+  /* Stats strip */
+  .tm-index-stats {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 0 0 56px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .tm-index-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-right: 48px;
+  }
+
+  .tm-index-stat:last-child {
+    padding-right: 0;
+  }
+
+  .tm-stat-num {
+    font-family: var(--font-serif);
+    font-size: clamp(28px, 3.5vw, 44px);
+    font-weight: 300;
+    line-height: 1;
+    color: var(--ink);
+    letter-spacing: -.02em;
+  }
+
+  .tm-stat-num sup {
+    font-size: 0.45em;
+    font-family: var(--font-sans);
+    color: var(--clay);
+    font-weight: 600;
+    vertical-align: super;
+  }
+
+  .tm-stat-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--muted);
+    line-height: 1.5;
+    white-space: pre-line;
+  }
+
+  .tm-index-divider {
+    width: 1px;
+    height: 40px;
+    background: var(--sand);
+    margin: 0 48px 0 0;
+    flex-shrink: 0;
+  }
+
+  /* Grid section */
+  .tm-index-grid-section {
+    padding-bottom: 0;
+  }
+
+  /* Staggered reveal via CSS var */
+  .tm-index-card.ab-reveal {
+    transition-delay: var(--reveal-delay, 0s);
+  }
+
+  /* Editorial note */
+  .tm-index-note {
+    padding: 96px 0;
+    background: var(--cocoa);
+  }
+
+  .tm-index-note-inner {
+    max-width: 800px;
+  }
+
+  .tm-index-note .label {
+    color: var(--clay);
+    display: block;
+    margin-bottom: 28px;
+  }
+
+  .tm-index-quote {
+    font-family: var(--font-serif);
+    font-size: clamp(22px, 3vw, 36px);
+    font-weight: 300;
+    font-style: italic;
+    color: var(--cream);
+    line-height: 1.5;
+    margin: 0 0 32px;
+    border: none;
+    padding: 0;
+  }
+
+  .tm-index-note-footer .ab-text-link {
+    color: var(--clay);
+  }
+
+  .tm-index-note-footer .ab-text-link:hover {
+    color: var(--cream);
+  }
+
+  /* Newsletter section */
+  .tm-index-newsletter {
+    padding: 100px 0 120px;
+    background: var(--cream);
+    border-top: 1px solid var(--sand);
+  }
+
+  .tm-index-nl-inner {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 80px;
+    align-items: center;
+  }
+
+  .tm-index-nl-copy .ab-h2 {
+    margin: 14px 0 16px;
+  }
+
+  .tm-index-nl-copy .ab-story-copy {
+    color: var(--muted);
+    line-height: 1.75;
+  }
+
+  .tm-index-nl-row {
+    display: flex;
+    gap: 0;
+    border: 1px solid var(--sand-deep);
+    border-radius: var(--r-md);
+    overflow: hidden;
+    background: var(--warm-white);
+  }
+
+  .tm-index-nl-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 14px 18px;
+    font-size: 15px;
+    color: var(--ink);
+    font-family: var(--font-sans);
+    outline: none;
+  }
+
+  .tm-index-nl-input::placeholder {
+    color: var(--muted-light);
+  }
+
+  .tm-index-nl-btn {
+    background: var(--ink);
+    color: var(--cream);
+    border: none;
+    padding: 14px 24px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    cursor: pointer;
+    font-family: var(--font-sans);
+    transition: background var(--t-fast) var(--ease);
+    flex-shrink: 0;
+  }
+
+  .tm-index-nl-btn:hover {
+    background: var(--clay-deep);
+  }
+
+  .tm-index-nl-fine {
+    font-size: 12px;
+    color: var(--muted-light);
+    margin-top: 10px;
+  }
+
+  .tm-index-nl-success {
+    font-size: 14px;
+    color: var(--success);
+    margin-top: 12px;
+    font-weight: 500;
+  }
+
+  /* ── Responsive ───────────────────────────────────────────── */
+  @media (max-width: 960px) {
+    .tm-index-nl-inner {
+      grid-template-columns: 1fr;
+      gap: 40px;
+    }
+  }
+
+  @media (max-width: 720px) {
+    .tm-index-stats {
+      flex-wrap: wrap;
+      gap: 28px;
+    }
+
+    .tm-index-divider {
+      display: none;
+    }
+
+    .tm-index-stat {
+      padding-right: 0;
+      min-width: calc(50% - 14px);
+    }
+  }
+
+  @media (max-width: 560px) {
+    .tm-index-nl-row {
+      flex-direction: column;
+    }
+
+    .tm-index-nl-btn {
+      width: 100%;
+      padding: 14px;
+    }
+  }
+</style>
+
+<script>
+  // ── Scroll-reveal ─────────────────────────────────────────────────────────
+  const revealEls = document.querySelectorAll<HTMLElement>('.ab-reveal');
+  if ('IntersectionObserver' in window) {
+    const obs = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.add('ab-in');
+            obs.unobserve(e.target);
+          }
+        });
+      },
+      { threshold: 0.1 },
+    );
+    revealEls.forEach((el) => obs.observe(el));
+  } else {
+    revealEls.forEach((el) => el.classList.add('ab-in'));
+  }
+
+  // ── Member card image click → navigate to profile ─────────────────────────
+  document.querySelectorAll<HTMLElement>('.ab-member[data-member-href] .ab-member-img').forEach((imgDiv) => {
+    imgDiv.style.cursor = 'pointer';
+    imgDiv.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).closest('.ab-member-social')) return;
+      const href = imgDiv.closest<HTMLElement>('[data-member-href]')?.dataset.memberHref;
+      if (href) window.location.href = href;
+    });
+  });
+
+  // ── Newsletter form ───────────────────────────────────────────────────────
+  const nlForm = document.getElementById('tm-nl-form') as HTMLFormElement | null;
+  nlForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const input = nlForm.querySelector<HTMLInputElement>('#tm-nl-email');
+    const success = nlForm.querySelector<HTMLElement>('.tm-index-nl-success');
+    if (!input?.value) return;
+    try {
+      await fetch('/api/newsletter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: input.value }),
+      });
+    } catch {
+      // fail silently — UX still shows success
+    }
+    nlForm.querySelector<HTMLElement>('.tm-index-nl-row')!.style.display = 'none';
+    if (success) success.hidden = false;
+  });
+</script>

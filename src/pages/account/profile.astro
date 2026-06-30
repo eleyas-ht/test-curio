@@ -1,0 +1,322 @@
+---
+// ============================================================
+//  /account/profile — view and edit customer profile
+// ============================================================
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import PageHeader from '~/components/layout/PageHeader.astro';
+import {
+  createCustomerClient,
+  CUSTOMER_OVERVIEW_QUERY,
+  CUSTOMER_PROFILE_QUERY,
+  getPublicOrigin,
+  NotAuthenticatedError,
+} from '~/lib/shopify/customer';
+import type { CustomerOverview, CustomerProfile } from '~/lib/shopify/customer';
+
+export const prerender = false;
+
+const client = createCustomerClient(Astro.cookies, getPublicOrigin(Astro.request, Astro.url));
+
+if (!client.isLoggedIn()) {
+  return Astro.redirect('/account/login?return_to=/account/profile');
+}
+
+let customer: CustomerOverview['customer'] = null;
+let profile: CustomerProfile['customer'] = null;
+let error: string | null = null;
+
+try {
+  const data = await client.query<CustomerOverview>(CUSTOMER_OVERVIEW_QUERY, { first: 1 });
+  customer = data.customer;
+} catch (err) {
+  if (err instanceof NotAuthenticatedError) {
+    return Astro.redirect('/account/login?return_to=/account/profile');
+  }
+  error = (err as Error).message;
+}
+
+try {
+  const profileData = await client.query<CustomerProfile>(CUSTOMER_PROFILE_QUERY, {});
+  profile = profileData.customer;
+} catch {
+  // silently ignore — phone is non-critical
+}
+
+const flash = Astro.url.searchParams.get('success');
+const formError = Astro.url.searchParams.get('error');
+---
+
+<BaseLayout title="Profile">
+  <PageHeader eyebrow="My account" title="Your *profile*" />
+
+  <div class="container account-section">
+    <nav class="account-nav">
+      <a href="/account" class="account-nav-link">Overview</a>
+      <a href="/account/orders" class="account-nav-link">Orders</a>
+      <a href="/account/profile" class="account-nav-link active" aria-current="page">Profile</a>
+      <a href="/account/addresses" class="account-nav-link">Addresses</a>
+      <a href="/account/logout" class="account-nav-link account-nav-link--logout">Sign out</a>
+    </nav>
+
+    {flash === 'updated' && (
+      <div class="flash flash--success">Profile updated successfully.</div>
+    )}
+    {formError && (
+      <div class="form-error">{decodeURIComponent(formError)}</div>
+    )}
+    {error && (
+      <div class="form-error">Couldn't load profile: {error}</div>
+    )}
+
+    <div class="profile-layout">
+
+      {/* ── Edit form ──────────────────────────────────────────── */}
+      <section class="profile-card">
+        <h2 class="card-title">Personal information</h2>
+        <p class="card-desc">Update your name and phone number.</p>
+
+        <form method="post" action="/api/account/profile" class="profile-form">
+          <div class="field-row">
+            <div class="field">
+              <label for="firstName">First name</label>
+              <input
+                type="text"
+                id="firstName"
+                name="firstName"
+                value={customer?.firstName ?? ''}
+                autocomplete="given-name"
+              />
+            </div>
+            <div class="field">
+              <label for="lastName">Last name</label>
+              <input
+                type="text"
+                id="lastName"
+                name="lastName"
+                value={customer?.lastName ?? ''}
+                autocomplete="family-name"
+              />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="phone">Phone <span class="optional">(optional)</span></label>
+            <input
+              type="tel"
+              id="phone"
+              name="phone"
+              value={profile?.phoneNumber?.phoneNumber ?? ''}
+              autocomplete="tel"
+              placeholder="+1 555 000 0000"
+            />
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn-primary">Save changes</button>
+          </div>
+        </form>
+      </section>
+
+      {/* ── Read-only email ────────────────────────────────────── */}
+      <section class="profile-card">
+        <h2 class="card-title">Email address</h2>
+        <p class="card-desc">Your sign-in email is managed by Shopify and cannot be changed here.</p>
+        <div class="readonly-field">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16" class="text-muted-light" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+          <span class="text-sm text-ink">{customer?.emailAddress?.emailAddress ?? '—'}</span>
+        </div>
+      </section>
+
+      {/* ── Password ────────────────────────────────────────────── */}
+      <section class="profile-card">
+        <h2 class="card-title">Password</h2>
+        <p class="card-desc">
+          Password changes are handled through Shopify's secure login flow.
+          Sign out and use the "Forgot password?" link to reset your password.
+        </p>
+        <a href="/account/logout" class="btn-outline">Sign out to reset password</a>
+      </section>
+
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  /* ── Page section vertical padding ───────────────────────── */
+  .account-section {
+    padding-top: 0;
+    padding-bottom: 64px;
+  }
+  @media (max-width: 640px) {
+    .account-section { padding-top: 0; padding-bottom: 48px; }
+  }
+
+  /* ── Account nav ──────────────────────────────────────────── */
+  .account-nav {
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid var(--color-sand-deep);
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin-bottom: 40px;
+  }
+  .account-nav::-webkit-scrollbar { display: none; }
+  .account-nav-link {
+    display: inline-block;
+    padding: 10px 18px 10px 0;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-muted);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    white-space: nowrap;
+    text-decoration: none;
+    transition: color 180ms, border-color 180ms;
+  }
+  .account-nav-link:hover { color: var(--color-ink); }
+  .account-nav-link.active { color: var(--color-ink); border-bottom-color: var(--color-clay); }
+  .account-nav-link--logout { margin-left: auto; padding-right: 0; color: var(--color-muted-light); }
+  .account-nav-link--logout:hover { color: var(--color-danger); }
+
+  /* ── Flash / form errors ──────────────────────────────────── */
+  .flash {
+    padding: 12px 16px;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    margin-bottom: 28px;
+  }
+  .flash--success { background: #d1fae5; color: var(--color-success); border: 1px solid #6ee7b7; }
+
+  .form-error {
+    padding: 12px 16px;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    line-height: 1.5;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: var(--color-danger);
+    margin-bottom: 28px;
+  }
+
+  /* ── Profile layout ───────────────────────────────────────── */
+  .profile-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-width: 680px;
+  }
+
+  .profile-card {
+    background: var(--color-warm-white);
+    border: 1px solid var(--color-sand-deep);
+    border-radius: var(--radius-lg);
+    padding: 28px 32px;
+  }
+  @media (max-width: 480px) {
+    .profile-card { padding: 20px 18px; }
+  }
+  .card-title {
+    font-family: var(--font-serif);
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--color-ink);
+    margin-bottom: 8px;
+  }
+  .card-desc {
+    font-size: 14px;
+    color: var(--color-muted);
+    margin-bottom: 24px;
+    line-height: 1.65;
+  }
+
+  /* ── Form fields ──────────────────────────────────────────── */
+  .profile-form {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 480px) { .field-row { grid-template-columns: 1fr; gap: 18px; } }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+  .field label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+  .field input {
+    padding: 11px 14px;
+    border: 1.5px solid var(--color-sand-deep);
+    border-radius: var(--radius-md);
+    background: var(--color-cream);
+    font-size: 14px;
+    font-family: var(--font-sans);
+    color: var(--color-ink);
+    transition: border-color 180ms;
+    outline: none;
+    width: 100%;
+  }
+  .field input:focus { border-color: var(--color-clay); }
+
+  .optional { font-weight: 400; color: var(--color-muted-light); text-transform: none; letter-spacing: 0; }
+
+  .form-actions { padding-top: 8px; }
+
+  /* ── Read-only email field ────────────────────────────────── */
+  .readonly-field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 16px;
+    background: var(--color-cream-deep);
+    border: 1px solid var(--color-sand-deep);
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    color: var(--color-ink);
+  }
+
+  /* ── Buttons ──────────────────────────────────────────────── */
+  .btn-primary {
+    display: inline-block;
+    padding: 12px 28px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: var(--color-cocoa);
+    color: var(--color-warm-white);
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background 180ms;
+  }
+  .btn-primary:hover { background: var(--color-clay); }
+
+  .btn-outline {
+    display: inline-block;
+    padding: 11px 24px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border: 1.5px solid var(--color-sand-deep);
+    border-radius: var(--radius-md);
+    color: var(--color-muted);
+    text-decoration: none;
+    transition: background 180ms, border-color 180ms, color 180ms;
+  }
+  .btn-outline:hover { background: var(--color-sand); border-color: var(--color-clay); color: var(--color-ink); }
+</style>

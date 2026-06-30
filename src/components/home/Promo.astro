@@ -1,0 +1,104 @@
+---
+// ============================================================
+//  Promo — editorial promo grid wired to ecommerce data.
+//  Config: ~/config/promos.ts
+//
+//  mode === 'collection'
+//    Each handle in collectionConfig.handles is fetched from Shopify.
+//    image       → collection image
+//    title       → collection title       (promo-title heading)
+//    description → collection description (promo-cat eyebrow)
+//    URL         → /collections/<handle>
+//
+//  mode === 'custom'
+//    All card content comes from customItems in the config.
+//    No Shopify API call is made.
+//
+//  Markup is identical to the original mockup (raw/Promo.astro).
+// ============================================================
+import { PROMO } from '~/config/promos';
+import { getCollectionMeta } from '~/lib/shopify';
+
+interface ResolvedCard {
+  badge: string;
+  description: string;  // promo-cat eyebrow
+  title: string;        // promo-title heading
+  ctaText: string;
+  link: string;
+  imageSrc: string;
+  imageAlt: string;
+}
+
+let cards: ResolvedCard[] = [];
+
+if (PROMO.mode === 'collection') {
+  // Fetch all collection handles in parallel.
+  const results = await Promise.all(
+    PROMO.collectionConfig.handles.map(async (handle) => {
+      const col = await getCollectionMeta(handle).catch(() => null);
+      if (!col) return null;
+
+      // image, title, description, and URL come directly from Shopify.
+      const imageSrc   = (col.image as { url?: string } | null | undefined)?.url ?? '';
+      const imageAlt   = (col.image as { altText?: string | null } | null | undefined)?.altText ?? col.title;
+      const title       = col.title;
+      const description = col.description ?? col.title;
+      const link        = `/collections/${handle}`;
+      const ctaText     = `Shop ${title}`;
+
+      if (!imageSrc) return null;  // skip card if collection has no image
+      return { badge: '', description, title, ctaText, link, imageSrc, imageAlt } as ResolvedCard;
+    }),
+  );
+  cards = results.filter((c): c is ResolvedCard => c !== null);
+
+} else {
+  // Custom mode — values come straight from the config, no API call.
+  cards = PROMO.customItems.map((item) => ({
+    badge:       item.badge   ?? '',
+    description: item.description,
+    title:       item.title,
+    ctaText:     item.ctaText ?? `Shop ${item.description}`,
+    link:        item.link,
+    imageSrc:    `/images/${item.image}`,
+    imageAlt:    item.title,
+  }));
+}
+
+const visible = cards.slice(0, PROMO.count);
+---
+
+<section class="section-promo-grid">
+  <div class="container">
+    <div class="promo-grid">
+      {visible.map((card) => (
+        <a class="promo-card" href={card.link}>
+          <img
+            class="promo-card-img"
+            src={card.imageSrc}
+            alt={card.imageAlt}
+            loading="lazy"
+          />
+          <div class="promo-overlay"></div>
+          {card.badge && (
+            <span class="promo-badge">{card.badge}</span>
+          )}
+          <div class="promo-body">
+            <span class="promo-cat">{card.description}</span>
+            <h3 class="promo-title">{card.title}</h3>
+            <span class="promo-cta">
+              {card.ctaText}
+              <svg viewBox="0 0 16 16" fill="currentColor">
+                <path
+                  fill-rule="evenodd"
+                  d="M8.22 2.97a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06l2.97-2.97H3.75a.75.75 0 0 1 0-1.5h7.44L8.22 4.03a.75.75 0 0 1 0-1.06Z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            </span>
+          </div>
+        </a>
+      ))}
+    </div>
+  </div>
+</section>

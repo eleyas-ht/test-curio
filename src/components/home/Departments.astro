@@ -1,0 +1,126 @@
+---
+// ============================================================
+//  Departments — editorial table-of-contents spread.
+//  Left: sticky intro copy. Right: Shopify collections list
+//  with product count and hover image preview (desktop).
+//
+//  Configuration: src/config/departments.ts
+//  Data source:   getDepartmentsCollections() (Storefront API)
+// ============================================================
+import type { Collection } from '~/lib/shopify/types';
+import type { DEPARTMENTS_CONFIG } from '~/config/departments';
+import Icon from '~/components/ui/Icon.astro';
+
+interface Props {
+  collections: Collection[];
+  config: typeof DEPARTMENTS_CONFIG;
+}
+
+const { collections, config } = Astro.props;
+const hover = config.hoverImage;
+
+// ── Helpers ────────────────────────────────────────────────
+/** Truncate text to N words, appending an ellipsis when trimmed. */
+function truncateWords(text: string | undefined, limit: number): string {
+  if (!text) return '';
+  if (!limit) return text;
+  const words = text.trim().split(/\s+/);
+  return words.length <= limit ? text : words.slice(0, limit).join(' ') + '…';
+}
+
+/** Format the product count as "N item(s)". */
+function itemLabel(count: number | null | undefined): string {
+  if (count == null) return '';
+  return count === 1 ? '1 item' : `${count} items`;
+}
+---
+
+{
+  collections.length > 0 && (
+    <section class="section-departments border-y border-sand-deep bg-cream-deep">
+      <div class="wrap container grid gap-12 py-20 md:grid-cols-[0.8fr_1.2fr] md:py-28">
+
+        {/* ── Left: sticky editorial intro ── */}
+        <div class="dept-intro md:sticky md:top-28 md:self-start">
+          <div class="dept-intro-no ed-label text-clay">{config.label}</div>
+          <h2 class="masthead mt-6 text-[clamp(1.9rem,4vw,2.8rem)]">
+            {config.heading} <em>{config.headingEm}</em>.
+          </h2>
+          <p class="dept-intro-lead mt-5 max-w-xs text-sm leading-relaxed text-muted">
+            {config.body}
+          </p>
+          <a
+            href={config.ctaHref}
+            class="dept-intro-link mt-8 inline-flex items-center gap-2 border-b border-current pb-0.5 text-xs font-medium uppercase tracking-widest text-ink transition-colors hover:text-clay"
+          >
+            {config.ctaLabel}
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="h-3.5 w-3.5"
+            >
+              <line x1="5" y1="12" x2="19" y2="12" />
+              <polyline points="12 5 19 12 12 19" />
+            </svg>
+          </a>
+        </div>
+
+        {/* ── Right: department TOC list ── */}
+        <ul class="dept-toc flex flex-col">
+          {collections.map((c, i) => (
+            <li class="group">
+              <a
+                href={`/collections/${c.handle}`}
+                class="dept-row relative flex items-center gap-6 border-t border-sand-deep py-6 transition-fluid hover:px-2"
+              >
+                {/* Index number */}
+                <span class="dept-num w-8 shrink-0 text-sm tabular text-muted-light">
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+
+                {/* Name + description */}
+                <div class="dept-info min-w-0 flex-1">
+                  <span class="dept-row-name block font-serif text-xl text-ink transition-fluid group-hover:text-clay md:text-2xl">
+                    {c.title}
+                  </span>
+                  {(c.description || '') && (
+                    <span class="dept-row-desc mt-0.5 block text-sm italic text-muted">
+                      {truncateWords(c.description, config.descriptionWordLimit)}
+                    </span>
+                  )}
+                </div>
+
+                {/* Product count */}
+                {c.productCount != null && (
+                  <span class="dept-row-count hidden shrink-0 text-xs tabular uppercase tracking-widest text-muted-light lg:block">
+                    {itemLabel(c.productCount)}
+                  </span>
+                )}
+
+                {/* Hover preview — identical to the Collections page. Placement,
+                    size and slide-in animation come from `.dept-row-img` in
+                    editorial.css (right: 170px, slides in on .dept-row:hover). */}
+                {hover.enabled && c.image && (
+                  <div class="dept-row-img">
+                    <img src={c.image.url} alt={c.image.altText ?? c.title} loading="lazy" />
+                  </div>
+                )}
+
+                {/* Arrow */}
+                <div class="dept-row-arrow shrink-0 text-muted-light transition-fluid group-hover:translate-x-1 group-hover:text-clay">
+                  <Icon name="arrowRight" size={18} />
+                </div>
+              </a>
+            </li>
+          ))}
+          {/* Bottom border rule */}
+          <li class="border-t border-sand-deep" aria-hidden="true" />
+        </ul>
+      </div>
+    </section>
+  )
+}

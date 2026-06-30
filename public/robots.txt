@@ -1,0 +1,7 @@
+User-agent: *
+Disallow: /account/
+Disallow: /api/
+Disallow: /cart
+Disallow: /compare
+
+Sitemap: https://your-domain.com/sitemap-index.xml

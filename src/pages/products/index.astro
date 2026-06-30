@@ -1,0 +1,23 @@
+---
+// Shop — 1:1 verbatim editorial layout; grid + filters wired to live Shopify data.
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import ShopBody from '~/components/pages/ShopBody.astro';
+import '~/styles/pages/shop.css';
+import { getProducts } from '~/lib/shopify';
+import { buildFacets } from '~/lib/facets';
+import type { ProductCard } from '~/lib/shopify/types';
+
+let products: ProductCard[] = [];
+try {
+  const page = await getProducts({ pageSize: 100, sortKey: 'BEST_SELLING' });
+  products = page.items;
+} catch (err) {
+  console.error('[shop] load failed:', (err as Error).message);
+}
+
+const facets = buildFacets(products);
+---
+
+<BaseLayout title="Shop everything" description="The full range — every piece in the catalogue, curated by our editors.">
+  <ShopBody products={products} facets={facets} />
+</BaseLayout>

@@ -1,0 +1,85 @@
+---
+// ============================================================
+//  Hero — editorial cover. Full-bleed featured plate (4:5) with a
+//  photo credit, beside a serif headline with an italic accent,
+//  intro, CTAs, and a publication byline.
+//
+//  All text / links are configured in src/config/hero.ts.
+// ============================================================
+import type { ProductCard } from '~/lib/shopify/types';
+import { Image } from 'astro:assets';
+import Button from '~/components/ui/Button.astro';
+import Icon from '~/components/ui/Icon.astro';
+import { img } from '~/lib/assets';
+import { HERO } from '~/config/hero';
+
+interface Props {
+  featured?: ProductCard | null;
+}
+const { featured } = Astro.props;
+const cover = img(HERO.coverImage);
+const coverAlt = featured?.title ?? HERO.coverAlt;
+const heroHref = featured ? `/products/${featured.handle}` : HERO.secondaryCta.href;
+const headingHtml = HERO.heading.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+---
+
+<section class="relative overflow-hidden border-b border-sand-deep">
+  <span
+    class="pointer-events-none absolute right-6 top-1/2 hidden -translate-y-1/2 rotate-90 origin-right text-xs tracking-[0.3em] text-muted-light lg:block"
+  >
+    {HERO.sidebarText}
+  </span>
+  <div class="wrap grid items-center gap-10 py-12 md:grid-cols-[1.05fr_1fr] md:gap-14 md:py-16 lg:py-20">
+    {/* Cover plate */}
+    <a href={heroHref} class="group relative block">
+      <div class="relative aspect-[4/5] overflow-hidden rounded-md border border-sand-deep bg-warm-white">
+        {
+          cover ? (
+            <Image
+              src={cover}
+              alt={coverAlt}
+              widths={[480, 768, 1024]}
+              sizes="(min-width: 768px) 50vw, 100vw"
+              fetchpriority="high"
+              loading="eager"
+              class="h-full w-full object-cover transition-transform duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03]"
+            />
+          ) : (
+            featured?.featuredImage && (
+              <img src={featured.featuredImage.url} alt={coverAlt} class="h-full w-full object-cover" />
+            )
+          )
+        }
+        <span class="absolute bottom-4 left-4 rounded-sm bg-cocoa/80 px-3 py-1.5 text-[0.7rem] tracking-wide text-cream backdrop-blur-sm">
+          {HERO.photoCredit}
+        </span>
+      </div>
+    </a>
+
+    {/* Cover story */}
+    <div class="max-w-xl">
+      <span class="ed-label">{HERO.issueLabel}</span>
+      <h1 class="masthead mt-6 text-[clamp(2.4rem,6vw,4.5rem)] leading-[1.02]" set:html={headingHtml} />
+      <p class="mt-6 max-w-md text-base leading-relaxed text-muted md:text-lg">
+        {HERO.intro}
+      </p>
+      <div class="mt-9 flex flex-wrap items-center gap-5">
+        <Button href={HERO.primaryCta.href} variant="primary" size="lg">
+          {HERO.primaryCta.label}
+          <Icon name="arrowRight" size={16} />
+        </Button>
+        <Button href={HERO.secondaryCta.href} variant="link">
+          {HERO.secondaryCta.label}
+          <Icon name="arrowRight" size={14} />
+        </Button>
+      </div>
+      <div class="mt-9 flex flex-wrap items-center gap-3 text-xs text-muted-light">
+        <span>Published <em class="font-serif not-italic text-muted">{HERO.byline.publishedDate}</em></span>
+        <span class="h-1 w-1 rounded-full bg-sand-deep"></span>
+        <span>{HERO.byline.readTime}</span>
+        <span class="h-1 w-1 rounded-full bg-sand-deep"></span>
+        <span>By {HERO.byline.author}</span>
+      </div>
+    </div>
+  </div>
+</section>

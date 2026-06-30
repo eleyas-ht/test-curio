@@ -1,0 +1,82 @@
+---
+// ============================================================
+//  ProductListing — shared PLP body: optional filters panel,
+//  result-count + sort toolbar, product grid, cursor pagination,
+//  empty state. Used by all-products, collection, and search.
+// ============================================================
+import type { CollectionFilter, ProductCard, SortOption } from '~/lib/shopify/types';
+import ProductGrid from './ProductGrid.astro';
+import Pagination from './Pagination.astro';
+import SortSelect from './SortSelect.astro';
+import ProductFilters from './ProductFilters.astro';
+import Icon from '~/components/ui/Icon.astro';
+
+interface Props {
+  products: ProductCard[];
+  countLabel: string;
+  sortOptions?: SortOption[];
+  sortValue?: string;
+  sortAction?: string;
+  sortHidden?: Record<string, string>;
+  /** Faceted filters (collection pages only) + the panel's form action. */
+  filters?: CollectionFilter[];
+  filterUrl?: URL;
+  prevUrl?: string | null;
+  nextUrl?: string | null;
+  emptyTitle?: string;
+  emptyBody?: string;
+}
+
+const {
+  products,
+  countLabel,
+  sortOptions,
+  sortValue = '',
+  sortAction = '',
+  sortHidden = {},
+  filters,
+  filterUrl,
+  prevUrl = null,
+  nextUrl = null,
+  emptyTitle = 'Nothing here yet',
+  emptyBody = 'No products match. Try a different filter or browse everything.',
+} = Astro.props;
+---
+
+{
+  filters && filterUrl && (
+    <ProductFilters filters={filters} url={filterUrl} action={sortAction} sortValue={sortValue} />
+  )
+}
+
+<div class="flex flex-wrap items-center justify-between gap-4 border-b border-sand-deep pb-5">
+  <p class="text-xs tracking-wide text-muted tabular">{countLabel}</p>
+  {sortOptions && (
+    <SortSelect options={sortOptions} value={sortValue} action={sortAction} hidden={sortHidden} />
+  )}
+</div>
+
+{
+  products.length > 0 ? (
+    <div class="pt-12">
+      <h2 class="sr-only">Products</h2>
+      <ProductGrid products={products} />
+      <Pagination prevUrl={prevUrl} nextUrl={nextUrl} />
+    </div>
+  ) : (
+    <div class="flex flex-col items-center justify-center py-24 text-center">
+      <span class="mb-5 grid h-16 w-16 place-items-center rounded-full border border-sand-deep text-muted-light">
+        <Icon name="search" size={24} />
+      </span>
+      <h2 class="masthead text-2xl">{emptyTitle}</h2>
+      <p class="mt-2 max-w-sm text-sm text-muted">{emptyBody}</p>
+      <a
+        href="/products"
+        class="mt-7 inline-flex h-11 items-center gap-2 rounded-md bg-cocoa px-6 text-sm font-medium text-cream transition-fluid hover:bg-clay"
+      >
+        Browse all products
+        <Icon name="arrowRight" size={16} />
+      </a>
+    </div>
+  )
+}

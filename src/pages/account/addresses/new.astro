@@ -1,0 +1,244 @@
+---
+// ============================================================
+//  /account/addresses/new — add a new address
+// ============================================================
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import PageHeader from '~/components/layout/PageHeader.astro';
+import { createCustomerClient, getPublicOrigin, NotAuthenticatedError } from '~/lib/shopify/customer';
+
+export const prerender = false;
+
+const client = createCustomerClient(Astro.cookies, getPublicOrigin(Astro.request, Astro.url));
+
+if (!client.isLoggedIn()) {
+  return Astro.redirect('/account/login?return_to=/account/addresses/new');
+}
+
+const errorMsg = Astro.url.searchParams.get('error');
+---
+
+<BaseLayout title="Add Address">
+  <PageHeader eyebrow="My account / addresses" title="Add *address*" />
+
+  <div class="container account-section">
+    <a href="/account/addresses" class="back-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="16" height="16" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+      </svg>
+      Back to addresses
+    </a>
+
+    {errorMsg && (
+      <div class="form-error">{decodeURIComponent(errorMsg)}</div>
+    )}
+
+    <form method="post" action="/api/account/addresses/add" class="addr-form">
+      <div class="field-row">
+        <div class="field">
+          <label for="firstName">First name</label>
+          <input type="text" id="firstName" name="firstName" autocomplete="given-name" />
+        </div>
+        <div class="field">
+          <label for="lastName">Last name</label>
+          <input type="text" id="lastName" name="lastName" autocomplete="family-name" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="company">Company <span class="optional">(optional)</span></label>
+        <input type="text" id="company" name="company" autocomplete="organization" />
+      </div>
+
+      <div class="field">
+        <label for="address1">Address line 1 <span class="required">*</span></label>
+        <input type="text" id="address1" name="address1" required autocomplete="address-line1" />
+      </div>
+
+      <div class="field">
+        <label for="address2">Address line 2 <span class="optional">(optional)</span></label>
+        <input type="text" id="address2" name="address2" autocomplete="address-line2" />
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="city">City <span class="required">*</span></label>
+          <input type="text" id="city" name="city" required autocomplete="address-level2" />
+        </div>
+        <div class="field">
+          <label for="zoneCode">State / Province code</label>
+          <input type="text" id="zoneCode" name="zoneCode" autocomplete="address-level1"
+            placeholder="e.g. CA, NY, TX" />
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="zip">Postal code <span class="required">*</span></label>
+          <input type="text" id="zip" name="zip" required autocomplete="postal-code" />
+        </div>
+        <div class="field">
+          <label for="countryCode">Country code <span class="required">*</span></label>
+          <input type="text" id="countryCode" name="countryCode" required autocomplete="country"
+            placeholder="e.g. US, GB, AU" maxlength="2" style="text-transform:uppercase" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="phoneNumber">Phone <span class="optional">(optional)</span></label>
+        <input type="tel" id="phoneNumber" name="phoneNumber" autocomplete="tel" />
+      </div>
+
+      <div class="field field--checkbox">
+        <label class="checkbox-label">
+          <input type="checkbox" name="defaultAddress" value="true" />
+          <span>Set as default address</span>
+        </label>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn-primary">Save address</button>
+        <a href="/account/addresses" class="btn-ghost">Cancel</a>
+      </div>
+    </form>
+  </div>
+</BaseLayout>
+
+<style>
+  /* ── Page section vertical padding ───────────────────────── */
+  .account-section {
+    padding-top: 0;
+    padding-bottom: 64px;
+  }
+  @media (max-width: 640px) {
+    .account-section { padding-top: 0; padding-bottom: 48px; }
+  }
+
+  /* ── Back link ────────────────────────────────────────────── */
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-muted);
+    text-decoration: none;
+    margin-bottom: 36px;
+    transition: color 160ms;
+  }
+  .back-link:hover { color: var(--color-ink); }
+
+  /* ── Form error ───────────────────────────────────────────── */
+  .form-error {
+    padding: 12px 16px;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    line-height: 1.5;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: var(--color-danger);
+    margin-bottom: 28px;
+  }
+
+  /* ── Address form ─────────────────────────────────────────── */
+  .addr-form {
+    max-width: 600px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 480px) {
+    .field-row { grid-template-columns: 1fr; gap: 20px; }
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .field label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+
+  .field input[type="text"],
+  .field input[type="tel"] {
+    padding: 11px 14px;
+    border: 1.5px solid var(--color-sand-deep);
+    border-radius: var(--radius-md);
+    background: var(--color-warm-white);
+    font-size: 14px;
+    font-family: var(--font-sans);
+    color: var(--color-ink);
+    transition: border-color 180ms;
+    outline: none;
+    width: 100%;
+  }
+  .field input:focus { border-color: var(--color-clay); }
+
+  .optional { font-weight: 400; color: var(--color-muted-light); text-transform: none; letter-spacing: 0; }
+  .required { color: var(--color-danger); }
+
+  .field--checkbox .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 400;
+    letter-spacing: normal;
+    text-transform: none;
+    color: var(--color-ink);
+    cursor: pointer;
+  }
+  .field--checkbox input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--color-clay);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  /* ── Form actions ─────────────────────────────────────────── */
+  .form-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding-top: 12px;
+  }
+
+  .btn-primary {
+    display: inline-block;
+    padding: 12px 28px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: var(--color-cocoa);
+    color: var(--color-warm-white);
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background 180ms;
+  }
+  .btn-primary:hover { background: var(--color-clay); }
+
+  .btn-ghost {
+    display: inline-block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-muted);
+    text-decoration: none;
+    transition: color 160ms;
+  }
+  .btn-ghost:hover { color: var(--color-ink); }
+</style>

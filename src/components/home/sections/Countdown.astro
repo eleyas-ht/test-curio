@@ -1,0 +1,506 @@
+---
+// ============================================================
+//  Countdown Drop — Shopify-powered campaign section.
+//  Preserves the original editorial design 1:1; only functionality
+//  is added here — no layout, spacing, type, or colour changes.
+//
+//  ─────────────────────────────────────────────────────────────
+//  CAMPAIGN SETTINGS — edit the defaults below OR pass as props
+//  when you use the component on a page:
+//
+//  ── Product ─────────────────────────────────────────────────
+//  productHandle    Shopify product handle, e.g. "omnix-headset-x1".
+//                   Leave "" to run without a live product.
+//
+//  ── Countdown ───────────────────────────────────────────────
+//  targetDate       ISO 8601 end date/time, e.g. "2026-07-04T00:00:00Z".
+//                   Takes priority over inDays when both are set.
+//  inDays           Days from now (used only when targetDate is not set).
+//                   Default: 14.
+//  campaignLabel    Eyebrow text after the pulsing dot.
+//                   Default: "Exclusive Drop".
+//  campaignDate     Human-readable date shown next to the eyebrow label,
+//                   e.g. "July 4, 2026". Defaults to the formatted
+//                   targetDate / inDays value when not set.
+//
+//  ── CTA button ──────────────────────────────────────────────
+//  ctaHeading       Small text above the CTA button.
+//                   Default: "Available when the drop goes live."
+//  ctaText          Button label. Default: "Shop Now".
+//  ctaAction        What happens on click:
+//                     'pdp'          → Navigate to the product page.
+//                     'add-to-cart'  → Add the first variant to the cart.
+//                     'quick-view'   → Open the Quick View modal.
+//                   Falls back to 'pdp' when the required data is absent.
+//  ctaFine          Faint fine-print below the button.
+//                   Default: "Limited units · Ships immediately".
+//
+//  ── Expired state ───────────────────────────────────────────
+//  handleExpiry     Hide the CTA and show expiredMessage when the
+//                   countdown hits zero. Default: true.
+//  expiredMessage   Text shown after expiry. Default: "This drop has ended."
+//
+//  ── Fallback images (shown when no product is connected) ────
+//  fallbackImages   Array of { src, name, meta } objects used for the
+//                   right-side slideshow when productHandle is empty.
+//                   Falls back to the built-in static slides below.
+//
+//  ── Multiple instances ──────────────────────────────────────
+//  instanceId       Unique string for this section, e.g. "summer-drop".
+//                   Required when more than one Countdown section
+//                   appears on the same page. Default: "default".
+// ============================================================
+
+import { getProduct } from '~/lib/shopify';
+
+// ── Props ─────────────────────────────────────────────────────────────────────
+
+interface SlideItem { src: string; name: string; meta: string; }
+
+interface Props {
+  productHandle?:  string;
+  targetDate?:     string;
+  inDays?:         number;
+  campaignLabel?:  string;
+  campaignDate?:   string;
+  ctaHeading?:     string;
+  ctaText?:        string;
+  ctaAction?:      'pdp' | 'add-to-cart' | 'quick-view';
+  ctaFine?:        string;
+  handleExpiry?:   boolean;
+  expiredMessage?: string;
+  fallbackImages?: SlideItem[];
+  instanceId?:     string;
+}
+
+const {
+  productHandle  = '',       // ← set your Shopify product handle here
+  targetDate,
+  inDays         = 14,
+  campaignLabel  = 'Exclusive Drop',
+  campaignDate,
+  ctaHeading     = 'Available when the drop goes live.',
+  ctaText        = 'Shop Now',
+  ctaAction      = 'pdp',
+  ctaFine        = 'Limited units · Ships immediately',
+  handleExpiry   = true,
+  expiredMessage = 'This drop has ended.',
+  fallbackImages,
+  instanceId     = 'default',
+} = Astro.props;
+
+// ── Shopify product fetch ─────────────────────────────────────────────────────
+
+const shopifyProduct = productHandle ? await getProduct(productHandle) : null;
+
+// ── Resolved display values ───────────────────────────────────────────────────
+
+function formatPrice(amount: string): string {
+  const n = parseFloat(amount);
+  return isNaN(n) ? amount : `$${n.toFixed(2)}`;
+}
+
+const productTitle     = shopifyProduct?.title   ?? '';
+const productUrl       = shopifyProduct           ? `/products/${shopifyProduct.handle}` : '#';
+const productAvailable = shopifyProduct?.availableForSale ?? true;
+const variantId        = shopifyProduct?.variants?.[0]?.id ?? '';
+
+const displayPrice = shopifyProduct?.priceRange?.minVariantPrice?.amount
+  ? formatPrice(shopifyProduct.priceRange.minVariantPrice.amount)
+  : '';
+
+const compareAtPrice = shopifyProduct?.compareAtPriceRange?.minVariantPrice?.amount
+  ? formatPrice(shopifyProduct.compareAtPriceRange.minVariantPrice.amount)
+  : null;
+
+const isOnSale = compareAtPrice && compareAtPrice !== displayPrice;
+
+// Badge meta line: price info or sold-out notice
+const badgeMeta = !shopifyProduct
+  ? ''
+  : !productAvailable
+    ? 'Sold out'
+    : isOnSale
+      ? `Was ${compareAtPrice} · From ${displayPrice}`
+      : displayPrice
+        ? `Starting from ${displayPrice}`
+        : '';
+
+// ── Slideshow images ──────────────────────────────────────────────────────────
+// Prefer Shopify product images (up to 3). Fall back to fallbackImages or the
+// built-in static slides so the section always looks complete.
+
+const STATIC_SLIDES: SlideItem[] = fallbackImages ?? [
+  { src: '/images/countdown01.png', name: 'AudioCraft Phantom',     meta: '47 units at launch · from $649'   },
+  { src: '/images/countdown-02.jpg', name: 'ChronoX Limited Edition', meta: '32 units at launch · from $429' },
+  { src: '/images/countdown-03.jpg', name: 'PixelSnap Pro Max',       meta: '25 units at launch · from $1,299' },
+];
+
+const slides: SlideItem[] = shopifyProduct?.images?.length
+  ? shopifyProduct.images.slice(0, 3).map((img) => ({
+      src:  img.url,
+      name: productTitle,
+      meta: badgeMeta,
+    }))
+  : STATIC_SLIDES;
+
+// Badge uses the first slide's name/meta on initial render; JS updates on transition.
+const badgeName = slides[0]?.name ?? '';
+const badgeMetaText = slides[0]?.meta ?? '';
+
+// ── Countdown target ──────────────────────────────────────────────────────────
+
+const targetISO = targetDate
+  ? new Date(targetDate).toISOString()
+  : new Date(Date.now() + inDays * 24 * 60 * 60 * 1000).toISOString();
+
+// Format the campaign date shown in the eyebrow.
+const eyebrowDate = campaignDate
+  ?? new Date(targetISO).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+// ── Effective CTA action ──────────────────────────────────────────────────────
+
+const effectiveCta: 'pdp' | 'add-to-cart' | 'quick-view' =
+  ctaAction === 'add-to-cart' && !variantId     ? 'pdp' :
+  ctaAction === 'quick-view'  && !productHandle ? 'pdp' :
+  ctaAction;
+
+// Unique scope prefix for all DOM ids in this instance.
+const uid = `cd-${instanceId}`;
+---
+
+<section class="section-countdown"
+  data-cd-section={uid}
+  data-target={targetISO}
+  data-variant-id={variantId}
+  data-cta-action={effectiveCta}
+  data-product-url={productUrl}
+  data-handle-expiry={handleExpiry ? 'true' : 'false'}
+  data-expired-message={expiredMessage}
+  data-available={productAvailable ? 'true' : 'false'}
+>
+  <div class="countdown-layout">
+
+    <!-- ── LEFT: heading, timer, CTA ──────────────────────── -->
+    <div class="countdown-left">
+
+      <div class="countdown-eyebrow">
+        <span class="countdown-live-dot"></span>
+        {campaignLabel} · <span id={`${uid}-date`}>{eyebrowDate}</span>
+      </div>
+
+      <h2 class="countdown-heading">
+        The most anticipated<br>arrival of <em>the season.</em>
+      </h2>
+
+      <div class="countdown-divider"></div>
+
+      <!-- Countdown timer — digits filled by per-instance JS below -->
+      <div class="countdown-timer">
+        <div class="countdown-unit">
+          <div class="countdown-num-wrap">
+            <span class="countdown-num" id={`${uid}-days`}>00</span>
+          </div>
+          <span class="countdown-label">Days</span>
+        </div>
+        <span class="countdown-unit-sep">:</span>
+        <div class="countdown-unit">
+          <div class="countdown-num-wrap">
+            <span class="countdown-num" id={`${uid}-hours`}>00</span>
+          </div>
+          <span class="countdown-label">Hours</span>
+        </div>
+        <span class="countdown-unit-sep">:</span>
+        <div class="countdown-unit">
+          <div class="countdown-num-wrap">
+            <span class="countdown-num" id={`${uid}-mins`}>00</span>
+          </div>
+          <span class="countdown-label">Mins</span>
+        </div>
+        <span class="countdown-unit-sep">:</span>
+        <div class="countdown-unit">
+          <div class="countdown-num-wrap">
+            <span class="countdown-num" id={`${uid}-secs`}>00</span>
+          </div>
+          <span class="countdown-label">Secs</span>
+        </div>
+      </div>
+
+      <!-- CTA area -->
+      <div class="countdown-cta">
+
+        <p class="countdown-cta-text">
+          {shopifyProduct && !productAvailable
+            ? 'This product is currently sold out.'
+            : ctaHeading}
+        </p>
+
+        {/* ── Shop CTA button (shown when a product is connected + available) ── */}
+        {/* Hidden by JS when the campaign expires (handleExpiry: true).         */}
+        {shopifyProduct && productAvailable && (
+          <div id={`${uid}-cta-btn`}>
+            {effectiveCta === 'pdp' && (
+              <a href={productUrl} class="countdown-btn countdown-btn-solo">
+                {ctaText}
+              </a>
+            )}
+            {effectiveCta === 'add-to-cart' && (
+              <button
+                type="button"
+                id={`${uid}-atc`}
+                class="countdown-btn countdown-btn-solo"
+              >
+                {ctaText}
+              </button>
+            )}
+            {effectiveCta === 'quick-view' && (
+              <button
+                type="button"
+                data-qv-handle={productHandle}
+                class="countdown-btn countdown-btn-solo"
+              >
+                {ctaText}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* ── Email notify form — original design, always visible ── */}
+        <form class="countdown-form" id={`${uid}-notify-form`}>
+          <input
+            class="countdown-input"
+            type="email"
+            placeholder="your@email.com"
+            required
+            aria-label="Email address"
+          />
+          <button type="submit" class="countdown-btn">Notify me</button>
+        </form>
+
+        {/* Success message shown after form submit */}
+        <p id={`${uid}-notify-done`} class="countdown-fine cd-notify-done hidden">
+          You're on the list — we'll email you the moment it drops.
+        </p>
+
+        {/* Expired message — surfaced by JS when handleExpiry fires */}
+        <p id={`${uid}-expired`} class="countdown-fine cd-expired-msg hidden">
+          {expiredMessage}
+        </p>
+
+        {/* Add-to-cart feedback */}
+        <p id={`${uid}-atc-msg`} role="status" class="countdown-fine cd-atc-msg hidden"></p>
+
+        <p class="countdown-fine">One email at launch. Nothing else, ever.</p>
+
+      </div>
+    </div>
+
+    <!-- ── RIGHT: product image slideshow + badge ──────────── -->
+    <div class="countdown-right">
+
+      <div class="countdown-slides">
+        {slides.map((slide, i) => (
+          <img
+            class={`countdown-slide${i === 0 ? ' active' : ''}`}
+            src={slide.src}
+            alt={slide.name}
+            data-name={slide.name}
+            data-meta={slide.meta}
+            loading={i === 0 ? 'eager' : 'lazy'}
+          />
+        ))}
+      </div>
+
+      <div class="countdown-right-grad"></div>
+
+      <div class="countdown-badge">
+        <div class="countdown-badge-eyebrow">
+          <span class="countdown-badge-dot"></span>Coming Soon
+        </div>
+        <span class="countdown-badge-name" id={`${uid}-badge-name`}>{badgeName}</span>
+        <span class="countdown-badge-meta" id={`${uid}-badge-meta`}>{badgeMetaText}</span>
+      </div>
+
+      <div class="countdown-slide-dots" id={`${uid}-dots`}>
+        {slides.map((_, i) => (
+          <span class={`countdown-slide-dot${i === 0 ? ' active' : ''}`} />
+        ))}
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── Minimal style additions (no design changes) ─────────── -->
+<style>
+  /* Standalone CTA button — fully rounded (vs. the form-attached half-rounded variant). */
+  .countdown-btn-solo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  /* Hidden utility used by JS for status messages and form swap. */
+  .cd-expired-msg.hidden,
+  .cd-atc-msg.hidden,
+  .cd-notify-done.hidden,
+  .countdown-form.hidden {
+    display: none;
+  }
+</style>
+
+<!-- ============================================================
+  CLIENT SCRIPT — per-instance; multiple Countdown sections on the
+  same page each run independently via [data-cd-section] scoping.
+============================================================ -->
+<script>
+  import { addItem } from '~/stores/cart';
+
+  document.querySelectorAll<HTMLElement>('[data-cd-section]').forEach((section) => {
+
+    // ── Instance config from data-* attributes ─────────────────
+    const uid            = section.dataset.cdSection!;
+    const targetMs       = section.dataset.target ? new Date(section.dataset.target).getTime() : 0;
+    const ctaAction      = section.dataset.ctaAction as 'pdp' | 'add-to-cart' | 'quick-view';
+    const variantId      = section.dataset.variantId ?? '';
+    const handleExpiry   = section.dataset.handleExpiry === 'true';
+    const expiredMessage = section.dataset.expiredMessage ?? '';
+
+    // ── Scoped DOM refs ────────────────────────────────────────
+    const daysEl      = document.getElementById(`${uid}-days`);
+    const hoursEl     = document.getElementById(`${uid}-hours`);
+    const minsEl      = document.getElementById(`${uid}-mins`);
+    const secsEl      = document.getElementById(`${uid}-secs`);
+    const ctaBtnEl    = document.getElementById(`${uid}-cta-btn`);
+    const expiredEl   = document.getElementById(`${uid}-expired`);
+    const atcBtn      = document.getElementById(`${uid}-atc`) as HTMLButtonElement | null;
+    const atcMsg      = document.getElementById(`${uid}-atc-msg`);
+    const badgeName   = document.getElementById(`${uid}-badge-name`);
+    const badgeMeta   = document.getElementById(`${uid}-badge-meta`);
+    const dotsWrap    = document.getElementById(`${uid}-dots`);
+    const slides      = section.querySelectorAll<HTMLElement>('.countdown-slide');
+    const dots        = dotsWrap?.querySelectorAll<HTMLElement>('.countdown-slide-dot');
+
+    // ── Countdown timer ────────────────────────────────────────
+    const pad = (n: number) => String(Math.max(0, n)).padStart(2, '0');
+
+    // Flip animation on digit change (matches the CSS numFlip keyframe).
+    function setDigit(el: HTMLElement | null, value: string): void {
+      if (!el || el.textContent === value) return;
+      el.classList.remove('flipping');
+      void el.offsetWidth; // reflow to restart animation
+      el.textContent = value;
+      el.classList.add('flipping');
+    }
+
+    let hasExpired = false;
+
+    function tick(): void {
+      const diff = Math.max(0, targetMs - Date.now());
+
+      setDigit(daysEl,  pad(Math.floor(diff / 86400000)));
+      setDigit(hoursEl, pad(Math.floor((diff % 86400000) / 3600000)));
+      setDigit(minsEl,  pad(Math.floor((diff % 3600000)  / 60000)));
+      setDigit(secsEl,  pad(Math.floor((diff % 60000)    / 1000)));
+
+      if (diff === 0 && !hasExpired) {
+        hasExpired = true;
+        onExpire();
+      }
+    }
+
+    // ── Expiry handler ─────────────────────────────────────────
+    function onExpire(): void {
+      if (!handleExpiry) return;
+      if (ctaBtnEl) ctaBtnEl.hidden = true;
+      if (expiredEl) {
+        expiredEl.textContent = expiredMessage;
+        expiredEl.classList.remove('hidden');
+      }
+    }
+
+    // ── Slideshow ──────────────────────────────────────────────
+    let currentSlide = 0;
+    const total = slides.length;
+
+    function goToSlide(idx: number): void {
+      const next = ((idx % total) + total) % total;
+      slides[currentSlide]?.classList.remove('active');
+      dots?.[currentSlide]?.classList.remove('active');
+      currentSlide = next;
+      slides[currentSlide]?.classList.add('active');
+      dots?.[currentSlide]?.classList.add('active');
+
+      // Update badge content from the active slide's data attributes.
+      const activeSlide = slides[currentSlide] as HTMLImageElement | null;
+      if (badgeName) badgeName.textContent = activeSlide?.dataset.name ?? '';
+      if (badgeMeta) badgeMeta.textContent  = activeSlide?.dataset.meta ?? '';
+    }
+
+    // Auto-advance slides.
+    if (total > 1) {
+      setInterval(() => goToSlide(currentSlide + 1), 4000);
+      // Dot click navigation.
+      dots?.forEach((dot, i) => dot.addEventListener('click', () => goToSlide(i)));
+    }
+
+    // ── Notify form submit ─────────────────────────────────
+    const notifyForm = document.getElementById(`${uid}-notify-form`) as HTMLFormElement | null;
+    const notifyDone = document.getElementById(`${uid}-notify-done`);
+    notifyForm?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      notifyForm.classList.add('hidden');
+      if (notifyDone) notifyDone.classList.remove('hidden');
+    });
+
+    // ── Add to Cart ────────────────────────────────────────────
+    if (ctaAction === 'add-to-cart' && atcBtn && variantId) {
+      atcBtn.addEventListener('click', async () => {
+        if (atcBtn.disabled) return;
+
+        const origLabel = atcBtn.textContent ?? '';
+        atcBtn.disabled = true;
+        atcBtn.textContent = 'Adding…';
+        if (atcMsg) atcMsg.classList.add('hidden');
+
+        const result = await addItem(variantId, 1, { open: true });
+
+        if (result.userErrors?.length) {
+          if (atcMsg) {
+            atcMsg.textContent = result.userErrors[0].message;
+            atcMsg.classList.remove('hidden');
+          }
+          atcBtn.disabled = false;
+          atcBtn.textContent = origLabel;
+        } else if (result.cart) {
+          atcBtn.textContent = 'Added!';
+          if (atcMsg) {
+            atcMsg.textContent = 'Item added to your cart.';
+            atcMsg.classList.remove('hidden');
+          }
+          setTimeout(() => {
+            atcBtn.disabled = false;
+            atcBtn.textContent = origLabel;
+            if (atcMsg) atcMsg.classList.add('hidden');
+          }, 2500);
+        } else {
+          if (atcMsg) {
+            atcMsg.textContent = 'Could not add to cart. Please try again.';
+            atcMsg.classList.remove('hidden');
+          }
+          atcBtn.disabled = false;
+          atcBtn.textContent = origLabel;
+        }
+      });
+    }
+
+    // ── Start ──────────────────────────────────────────────────
+    if (targetMs) {
+      tick();
+      setInterval(tick, 1000);
+    }
+  });
+</script>

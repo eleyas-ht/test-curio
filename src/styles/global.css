@@ -1,0 +1,318 @@
+@import "tailwindcss";
+
+/* ============================================================
+   Curio Editorial — design tokens (Tailwind v4 @theme)
+   Editorial palette: warm cream paper, ink + clay accent,
+   Newsreader serif headlines with italic accent words,
+   Inter body, mono/uppercase spec eyebrows.
+   ============================================================ */
+@theme {
+  /* Surfaces & ink */
+  --color-ink: #111111;         /* primary text, dark CTAs */
+  --color-cream: #f7f2ea;       /* page background (paper) */
+  --color-cream-deep: #efe8dc;  /* alternate section background */
+  --color-warm-white: #fffcf7;  /* cards / raised surfaces */
+  --color-sand: #e7d8c5;        /* soft fill */
+  --color-sand-deep: #d9c7b0;   /* borders / stronger fill */
+  --color-clay: #9a6b4f;        /* accent — links, kickers, rules */
+  --color-clay-deep: #7a523b;   /* accent strong (AA on cream) */
+  --color-dusty-blue: #6c7a89;  /* secondary accent */
+  --color-muted: #6f6a64;       /* secondary text */
+  --color-muted-light: #a09a92; /* tertiary text */
+  --color-cocoa: #2a211c;       /* dark sections / primary button */
+  --color-paper: #ffffff;
+
+  /* Back-compat aliases: map the boilerplate's original class names
+     onto the editorial palette so any component not yet reskinned
+     still renders on-brand. Prefer the semantic names above in new code. */
+  --color-snow: #f7f2ea;          /* → cream */
+  --color-graphite: #6f6a64;      /* → muted */
+  --color-mist: #a09a92;          /* → muted-light */
+  --color-line: #d9c7b0;          /* → sand-deep */
+  --color-fog: #e7d8c5;           /* → sand */
+  --color-accent: #9a6b4f;        /* → clay */
+  --color-accent-strong: #7a523b; /* → clay-deep */
+
+  /* Status */
+  --color-success: #3f7d5c;
+  --color-danger: #b3401f;
+
+  /* Type — Newsreader (serif display) + Inter (sans UI/body) */
+  --font-serif: "Newsreader", "Times New Roman", Georgia, serif;
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-display: "Newsreader", "Times New Roman", Georgia, serif;
+
+  /* Radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-pill: 999px;
+
+  /* Motion */
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Layout */
+  --spacing-gutter: 30px;
+
+  /* Z-index scale */
+  --z-header: 50;
+  --z-overlay: 90;
+  --z-drawer: 100;
+}
+
+/* ============================================================
+   Base
+   ============================================================ */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    font-family: var(--font-sans);
+    color: var(--color-ink);
+    background: var(--color-cream);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    line-height: 1.75;
+    font-size: 16px;
+    overflow-x: hidden;
+  }
+
+  /* Display headings use the Newsreader serif. */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    color: var(--color-ink);
+    letter-spacing: -0.012em;
+    line-height: 1.12;
+    margin: 0;
+  }
+
+  /* Italic accent words — the editorial signature. */
+  em, i {
+    font-style: italic;
+    font-family: var(--font-serif);
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  img, svg, video {
+    display: block;
+    max-width: 100%;
+  }
+
+  button {
+    font: inherit;
+    cursor: pointer;
+    background: none;
+    border: none;
+    color: inherit;
+  }
+
+  input, textarea, select {
+    font: inherit;
+    color: inherit;
+  }
+
+  /* Accessible, on-brand focus ring. */
+  :focus-visible {
+    outline: 2px solid var(--color-clay);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  ::selection {
+    background: var(--color-clay);
+    color: var(--color-warm-white);
+  }
+
+  /* Astro hydration wrappers are inline by default, which collapses
+     aspect-ratio children (e.g. the PDP gallery). Make them transparent
+     to layout so island roots inherit their grid/flex cell. */
+  astro-island {
+    display: contents;
+  }
+}
+
+/* ============================================================
+   Custom utilities (Tailwind v4 @utility)
+   ============================================================ */
+
+/* Page max-width wrapper with responsive gutters. */
+@utility wrap {
+  width: 100%;
+  max-width: 1470px;
+  margin-inline: auto;
+  padding-inline: clamp(20px, 5vw, 30px);
+}
+
+/* Narrow container for account / form pages — mirrors wrap but at 900 px. */
+@utility account-shell {
+  width: 100%;
+  max-width: 900px;
+  margin-inline: auto;
+  padding-inline: clamp(20px, 5vw, 30px);
+}
+
+/* Oversized editorial serif headline. */
+@utility masthead {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.02;
+  text-wrap: balance;
+}
+
+/* Mono-ish uppercase eyebrow / spec label. */
+@utility eyebrow {
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+/* Hairline divider in the editorial line color. */
+@utility hairline {
+  border-color: var(--color-sand-deep);
+}
+
+/* Smooth transition default. */
+@utility transition-fluid {
+  transition-timing-function: var(--ease-out);
+  transition-duration: 320ms;
+}
+
+/* ============================================================
+   Reusable component-ish helpers
+   ============================================================ */
+@layer components {
+  /* Editorial label: rule + uppercase tracked text. */
+  .ed-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--font-sans);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--color-clay);
+  }
+  .ed-label::before {
+    content: "";
+    width: 24px;
+    height: 1px;
+    background: var(--color-clay);
+  }
+  .ed-label.is-center {
+    justify-content: center;
+  }
+  .ed-label.is-center::after {
+    content: "";
+    width: 24px;
+    height: 1px;
+    background: var(--color-clay);
+  }
+
+  /* Animated entrance, gated on reduced-motion below. */
+  .reveal {
+    opacity: 0;
+    transform: translateY(14px);
+    animation: reveal 0.7s var(--ease-out) forwards;
+  }
+
+  /* Rich text from Shopify (descriptionHtml / page body). */
+  .rte {
+    color: var(--color-muted);
+    line-height: 1.8;
+  }
+  .rte > * + * {
+    margin-top: 1rem;
+  }
+  .rte h2, .rte h3, .rte h4 {
+    color: var(--color-ink);
+    margin-top: 2rem;
+  }
+  .rte h2 { font-size: 1.6rem; }
+  .rte h3 { font-size: 1.3rem; }
+  .rte a {
+    color: var(--color-clay-deep);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .rte strong { color: var(--color-ink); font-weight: 600; }
+  .rte ul, .rte ol { padding-left: 1.25rem; }
+  .rte ul { list-style: disc; }
+  .rte ol { list-style: decimal; }
+  .rte li + li { margin-top: 0.4rem; }
+  .rte img { border-radius: var(--radius-lg); margin-block: 1.5rem; }
+  .rte blockquote {
+    border-left: 2px solid var(--color-clay);
+    padding-left: 1rem;
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 1.2rem;
+    color: var(--color-ink);
+  }
+
+  /* Infinite marquee track. */
+  .marquee-track {
+    display: flex;
+    width: max-content;
+    animation: marquee 30s linear infinite;
+  }
+}
+
+@keyframes reveal {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* ============================================================
+   Reduced motion — honor the OS setting everywhere.
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+  .marquee-track {
+    animation: none;
+  }
+}

@@ -1,0 +1,474 @@
+---
+// ============================================================
+//  /account/orders — full order history
+// ============================================================
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import PageHeader from '~/components/layout/PageHeader.astro';
+import {
+  createCustomerClient,
+  CUSTOMER_ORDERS_QUERY,
+  getPublicOrigin,
+  NotAuthenticatedError,
+} from '~/lib/shopify/customer';
+
+export const prerender = false;
+
+const client = createCustomerClient(Astro.cookies, getPublicOrigin(Astro.request, Astro.url));
+
+if (!client.isLoggedIn()) {
+  return Astro.redirect('/account/login?return_to=/account/orders');
+}
+
+interface OrderNode {
+  id: string;
+  name: string;
+  processedAt: string;
+  financialStatus?: string | null;
+  fulfillmentStatus?: string | null;
+  totalPrice: { amount: string; currencyCode: string } | null;
+  lineItems?: {
+    nodes: Array<{ image: { url: string; altText?: string | null } | null; title: string }>;
+  };
+}
+
+interface OrdersResult {
+  customer: {
+    orders: { nodes: OrderNode[] };
+  } | null;
+}
+
+let orders: OrderNode[] = [];
+let error: string | null = null;
+
+try {
+  const data = await client.query<OrdersResult>(CUSTOMER_ORDERS_QUERY, { first: 50 });
+  orders = data.customer?.orders?.nodes ?? [];
+} catch (err) {
+  if (err instanceof NotAuthenticatedError) {
+    return Astro.redirect('/account/login?return_to=/account/orders');
+  }
+  error = (err as Error).message;
+}
+
+// URL-based filter (server-side)
+const filterOrder = Astro.url.searchParams.get('order') ?? '';
+const filterConfirm = Astro.url.searchParams.get('confirm') ?? '';
+
+const filteredOrders = orders.filter((o) => {
+  if (filterOrder && !o.name.toLowerCase().includes(filterOrder.toLowerCase())) return false;
+  return true;
+});
+
+const fmtMoney = (m: { amount: string; currencyCode: string } | null | undefined) =>
+  m
+    ? new Intl.NumberFormat('en-US', { style: 'currency', currency: m.currencyCode }).format(Number(m.amount))
+    : '—';
+
+const fmtDate = (iso: string) =>
+  new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(new Date(iso));
+
+const encodeOrderId = (gid: string) =>
+  btoa(gid).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+---
+
+<BaseLayout title="Order History">
+  <PageHeader eyebrow="My account" title="Order *history*" />
+
+  <div class="container account-section">
+    <nav class="account-nav">
+      <a href="/account" class="account-nav-link">Overview</a>
+      <a href="/account/orders" class="account-nav-link active" aria-current="page">Orders</a>
+      <a href="/account/profile" class="account-nav-link">Profile</a>
+      <a href="/account/addresses" class="account-nav-link">Addresses</a>
+      <a href="/account/logout" class="account-nav-link account-nav-link--logout">Sign out</a>
+    </nav>
+
+    {error && (
+      <p class="account-alert">
+        Couldn't load orders: {error}
+      </p>
+    )}
+
+    {/* ── Filter section ─────────────────────────────────────── */}
+    <section class="filter-box">
+      <span class="filter-label">Filter Orders</span>
+      <form method="get" action="/account/orders" class="filter-form">
+        <input
+          type="text"
+          name="order"
+          placeholder="Order #"
+          value={filterOrder}
+          class="filter-input"
+          aria-label="Filter by order number"
+        />
+        <input
+          type="text"
+          name="confirm"
+          placeholder="Confirmation #"
+          value={filterConfirm}
+          class="filter-input"
+          aria-label="Filter by confirmation number"
+        />
+        <div class="filter-actions">
+          <button type="submit" class="filter-btn">Search</button>
+          {(filterOrder || filterConfirm) && (
+            <a href="/account/orders" class="filter-clear">Clear</a>
+          )}
+        </div>
+      </form>
+    </section>
+
+    {filteredOrders.length === 0 ? (
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" width="44" height="44" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+        </svg>
+        <p>{orders.length === 0 ? 'No orders yet. When you place an order it will appear here.' : 'No orders match your filter.'}</p>
+        {orders.length === 0 ? (
+          <a href="/products" class="btn-outline">Browse products</a>
+        ) : (
+          <a href="/account/orders" class="btn-outline">Clear filter</a>
+        )}
+      </div>
+    ) : (
+      <div class="orders-list">
+        {filteredOrders.map((order) => {
+          const thumb = order.lineItems?.nodes?.[0]?.image;
+          const thumbAlt = order.lineItems?.nodes?.[0]?.title ?? order.name;
+          const itemCount = order.lineItems?.nodes?.length ?? 0;
+          const href = `/account/orders/${encodeOrderId(order.id)}`;
+          return (
+            <div class="order-card">
+              {/* Thumbnail */}
+              <a href={href} class="order-thumb-link" tabindex="-1" aria-hidden="true">
+                {thumb ? (
+                  <img
+                    src={thumb.url}
+                    alt={thumb.altText ?? thumbAlt}
+                    width="56"
+                    height="56"
+                    class="order-thumb"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div class="order-thumb order-thumb--placeholder" aria-hidden="true" />
+                )}
+              </a>
+
+              {/* Main info */}
+              <a href={href} class="order-info">
+                <span class="order-name">{order.name}</span>
+                <span class="order-items">{itemCount} {itemCount === 1 ? 'item' : 'items'}</span>
+              </a>
+
+              {/* Status + date */}
+              <div class="order-meta hide-mobile">
+                {order.financialStatus && (
+                  <span class="order-status">{order.financialStatus.replace(/_/g, ' ')}</span>
+                )}
+                <span class="order-date">{fmtDate(order.processedAt)}</span>
+              </div>
+
+              {/* Price */}
+              <span class="order-price tabular">{fmtMoney(order.totalPrice)}</span>
+
+              {/* Actions */}
+              <div class="order-actions">
+                <button
+                  type="button"
+                  class="order-menu-btn"
+                  aria-label={`Order ${order.name} options`}
+                  data-order-href={href}
+                  onclick={`window.location='${href}'`}
+                >
+                  <span class="order-menu-dot" aria-hidden="true" />
+                  <span class="order-menu-dot" aria-hidden="true" />
+                  <span class="order-menu-dot" aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    )}
+  </div>
+</BaseLayout>
+
+<style>
+  /* ── Page section vertical padding ───────────────────────── */
+  .account-section {
+    padding-top: 0;
+    padding-bottom: 64px;
+  }
+  @media (max-width: 640px) {
+    .account-section {
+      padding-top: 0;
+      padding-bottom: 48px;
+    }
+  }
+
+  /* ── Alert ────────────────────────────────────────────────── */
+  .account-alert {
+    margin-bottom: 28px;
+    padding: 12px 16px;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    line-height: 1.5;
+    background: rgba(179, 64, 31, 0.05);
+    border: 1px solid rgba(179, 64, 31, 0.3);
+    color: var(--color-danger);
+  }
+
+  /* ── Account nav ──────────────────────────────────────────── */
+  .account-nav {
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid var(--color-sand-deep);
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin-bottom: 40px;
+  }
+  .account-nav::-webkit-scrollbar { display: none; }
+  .account-nav-link {
+    display: inline-block;
+    padding: 10px 18px 10px 0;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-muted);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    white-space: nowrap;
+    text-decoration: none;
+    transition: color 180ms, border-color 180ms;
+  }
+  .account-nav-link:hover { color: var(--color-ink); }
+  .account-nav-link.active { color: var(--color-ink); border-bottom-color: var(--color-clay); }
+  .account-nav-link--logout { margin-left: auto; padding-right: 0; color: var(--color-muted-light); }
+  .account-nav-link--logout:hover { color: var(--color-danger); }
+
+  /* ── Filter box ───────────────────────────────────────────── */
+  .filter-box {
+    position: relative;
+    border: 1px solid var(--color-sand-deep);
+    border-radius: var(--radius-lg);
+    padding: 28px 24px 24px;
+    background: var(--color-warm-white);
+    margin-bottom: 32px;
+  }
+  .filter-label {
+    position: absolute;
+    top: -10px;
+    left: 16px;
+    background: var(--color-warm-white);
+    padding: 0 6px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-muted-light);
+  }
+  .filter-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  @media (min-width: 600px) {
+    .filter-form {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .filter-actions { grid-column: 1 / -1; }
+  }
+  .filter-input {
+    width: 100%;
+    height: 44px;
+    padding: 0 14px;
+    font-size: 14px;
+    font-family: var(--font-sans);
+    color: var(--color-ink);
+    background: var(--color-cream, #f7f2ea);
+    border: 1.5px solid var(--color-sand-deep);
+    border-radius: var(--radius-md);
+    outline: none;
+    transition: border-color 160ms;
+  }
+  .filter-input::placeholder { color: var(--color-muted-light); }
+  .filter-input:focus { border-color: var(--color-clay); }
+  .filter-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding-top: 4px;
+  }
+  .filter-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    padding: 0 28px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: var(--color-cocoa);
+    color: var(--color-warm-white);
+    border: none;
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    transition: opacity 160ms;
+  }
+  .filter-btn:hover { opacity: 0.82; }
+  .filter-clear {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-muted);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    transition: color 150ms;
+  }
+  .filter-clear:hover { color: var(--color-ink); }
+
+  /* ── Orders list ──────────────────────────────────────────── */
+  .orders-list {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--color-sand-deep);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: var(--color-warm-white);
+  }
+
+  .order-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--color-sand);
+    transition: background 150ms;
+  }
+  .order-card:last-child { border-bottom: none; }
+  .order-card:hover { background: var(--color-sand); }
+
+  .order-thumb-link { flex-shrink: 0; display: block; }
+  .order-thumb {
+    width: 56px;
+    height: 56px;
+    object-fit: cover;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-sand-deep);
+    background: var(--color-cream-deep);
+    display: block;
+  }
+  .order-thumb--placeholder { background: var(--color-cream-deep); }
+
+  .order-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-decoration: none;
+  }
+  .order-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-ink);
+    letter-spacing: 0.01em;
+  }
+  .order-items {
+    font-size: 12px;
+    color: var(--color-muted);
+  }
+
+  .order-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    min-width: 80px;
+  }
+  .order-status {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+  .order-date { font-size: 12px; color: var(--color-muted-light); }
+
+  .order-price {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-ink);
+    flex-shrink: 0;
+    min-width: 72px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .order-actions { flex-shrink: 0; margin-left: 4px; }
+  .order-menu-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: background 150ms;
+  }
+  .order-menu-btn:hover { background: var(--color-sand-deep); }
+  .order-menu-dot {
+    display: block;
+    width: 3.5px;
+    height: 3.5px;
+    border-radius: 50%;
+    background: var(--color-muted);
+  }
+
+  /* ── Empty state ──────────────────────────────────────────── */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 64px 24px;
+    text-align: center;
+    color: var(--color-muted);
+    font-size: 14px;
+    line-height: 1.6;
+    background: var(--color-warm-white);
+    border: 1px solid var(--color-sand-deep);
+    border-radius: var(--radius-lg);
+  }
+
+  .btn-outline {
+    display: inline-block;
+    padding: 10px 24px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border: 1.5px solid var(--color-sand-deep);
+    border-radius: var(--radius-md);
+    color: var(--color-ink);
+    text-decoration: none;
+    transition: background 180ms, border-color 180ms;
+  }
+  .btn-outline:hover { background: var(--color-sand); border-color: var(--color-clay); }
+
+  .hide-mobile { display: none; }
+  @media (min-width: 600px) { .hide-mobile { display: flex; } }
+
+  /* mobile: tighten row padding, hide order-meta column */
+  @media (max-width: 480px) {
+    .order-card { padding: 12px 16px; gap: 12px; }
+    .order-thumb { width: 44px; height: 44px; }
+    .order-meta { display: none; }
+  }
+</style>

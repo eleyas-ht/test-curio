@@ -1,0 +1,208 @@
+---
+// Featured products — supports two tab modes:
+//   collection-tabs: each tab is a separate Shopify collection (pass `tabs`)
+//   product-type:    single product list, tabs filter by productType (pass `products`)
+import ProductFeatCard from '~/components/product/ProductFeatCard.astro';
+import type { ProductCard } from '~/lib/shopify/types';
+
+interface CollectionTab {
+  label: string;
+  products: ProductCard[];
+}
+
+interface Props {
+  // collection-tabs mode
+  tabs?: CollectionTab[];
+  // product-type mode (legacy)
+  products?: ProductCard[];
+  label?: string;
+  title?: string;
+  // How many products to show initially; extras are hidden behind Load More.
+  productLimit?: number;
+}
+
+const {
+  tabs,
+  products,
+  label = "This Season's Selection",
+  title = 'Curated, not <em>catalogued</em>.',
+  productLimit = 8,
+} = Astro.props;
+
+const slug = (s?: string) => (s ?? 'other').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+const renderTitle = (t: string) => t.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+const isCollectionMode = tabs && tabs.length > 0;
+
+// product-type mode setup
+const items = !isCollectionMode && products ? products.slice(0, productLimit) : [];
+const types = Array.from(
+  new Set(items.map((p) => p.productType).filter((t): t is string => !!t))
+).slice(0, 4);
+const ptTabs = [{ label: 'All', key: 'all' }, ...types.map((t) => ({ label: t, key: slug(t) }))];
+---
+
+<section class="section-featured" id="featured" data-feat-mode={isCollectionMode ? 'collection-tabs' : 'product-type'}>
+  <div class="container">
+    <div class="feat-header">
+      <div class="feat-header-left">
+        <span class="feat-kicker">{label}</span>
+        <h2 class="section-title" set:html={renderTitle(title)} />
+      </div>
+
+      {isCollectionMode ? (
+        <div class="feat-tabs" role="tablist">
+          {tabs.map((tab, i) => (
+            <button
+              class={`feat-tab${i === 0 ? ' active' : ''}`}
+              data-tab={`col-${i}`}
+              role="tab"
+              aria-selected={i === 0 ? 'true' : 'false'}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div class="feat-tabs" role="tablist">
+          {ptTabs.map((t, i) => (
+            <button
+              class={`feat-tab${i === 0 ? ' active' : ''}`}
+              data-tab={t.key}
+              role="tab"
+              aria-selected={i === 0 ? 'true' : 'false'}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+
+    {isCollectionMode ? (
+      tabs.map((tab, i) => (
+        <div data-feat-panel={`col-${i}`} role="tabpanel" hidden={i > 0}>
+          <div class="feat-grid">
+            {tab.products.map((p, j) => (
+              // display:contents makes the wrapper transparent to the CSS grid so
+              // .feat-card articles remain direct grid children.
+              // display:none fully hides extras until Load More is clicked.
+              <div
+                style={j < productLimit ? 'display:contents' : 'display:none'}
+                data-feat-extra={j >= productLimit ? '' : undefined}
+              >
+                <ProductFeatCard product={p} actions />
+              </div>
+            ))}
+          </div>
+          {tab.products.length > productLimit && (
+            <div class="feat-load-more-wrap">
+              <button class="feat-load-more" data-batch={String(productLimit)}>
+                Load More
+              </button>
+            </div>
+          )}
+        </div>
+      ))
+    ) : (
+      <div class="feat-grid">
+        {items.map((p) => <ProductFeatCard product={p} actions />)}
+      </div>
+    )}
+  </div>
+</section>
+
+<style>
+  .feat-load-more-wrap {
+    display: flex;
+    justify-content: center;
+    padding-top: 2.5rem;
+  }
+
+  .feat-load-more {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.75rem 2rem;
+    border: 1px solid currentColor;
+    background: transparent;
+    font-family: inherit;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.18s, color 0.18s;
+  }
+
+  .feat-load-more:hover {
+    background: var(--color-ink, #111);
+    color: var(--color-cream, #fff);
+  }
+
+  .feat-load-more-count {
+    font-size: 0.6875rem;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    text-transform: none;
+    opacity: 0.6;
+  }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLElement>('.section-featured').forEach((section) => {
+    const mode = section.dataset.featMode;
+    const tabBtns = section.querySelectorAll<HTMLButtonElement>('.feat-tab');
+
+    // ── Tab switching ────────────────────────────────────────────────────────
+    tabBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        tabBtns.forEach((t) => {
+          t.classList.toggle('active', t === btn);
+          t.setAttribute('aria-selected', t === btn ? 'true' : 'false');
+        });
+
+        const key = btn.dataset.tab!;
+
+        if (mode === 'collection-tabs') {
+          section.querySelectorAll<HTMLElement>('[data-feat-panel]').forEach((panel) => {
+            panel.hidden = panel.dataset.featPanel !== key;
+          });
+        } else {
+          section.querySelectorAll<HTMLElement>('.feat-card').forEach((c) => {
+            c.style.display = key === 'all' || c.dataset.category === key ? '' : 'none';
+          });
+        }
+      });
+    });
+
+    // ── Load More ────────────────────────────────────────────────────────────
+    section.querySelectorAll<HTMLButtonElement>('.feat-load-more').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const panel = btn.closest<HTMLElement>('[data-feat-panel]');
+        if (!panel) return;
+
+        const batch = parseInt(btn.dataset.batch ?? '8', 10);
+        const extras = Array.from(panel.querySelectorAll<HTMLElement>('[data-feat-extra]'));
+
+        // Reveal the next batch
+        extras.slice(0, batch).forEach((el) => {
+          el.style.display = 'contents';
+          el.removeAttribute('data-feat-extra');
+        });
+
+        const remaining = panel.querySelectorAll<HTMLElement>('[data-feat-extra]').length;
+        const wrap = btn.closest<HTMLElement>('.feat-load-more-wrap')!;
+
+        if (remaining === 0) {
+          wrap.hidden = true;
+        } else {
+          // Update the remaining count label
+          const countEl = btn.querySelector<HTMLElement>('.feat-load-more-count');
+          if (countEl) countEl.textContent = `${Math.min(batch, remaining)} of ${remaining} remaining`;
+        }
+      });
+    });
+  });
+</script>

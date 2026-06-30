@@ -1,0 +1,52 @@
+---
+// Page header band — editorial eyebrow + serif title + optional
+// description. `title` supports *italic* accents. Used by account
+// and other simple pages.
+interface Props {
+  eyebrow?: string;
+  title: string;
+  description?: string;
+}
+const { eyebrow, title, description } = Astro.props;
+const titleHtml = title.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+---
+
+<section class="page-header">
+  <div class="container">
+    <h1 class="masthead page-header-title" set:html={titleHtml} />
+    {description && <p class="page-header-desc" set:html={description} />}
+  </div>
+</section>
+
+<style>
+  .page-header {
+    padding-top: 56px;
+    padding-bottom: 48px;
+  }
+
+  @media (min-width: 768px) {
+    .page-header {
+      padding-top: 72px;
+      padding-bottom: 56px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .page-header {
+      padding-top: 36px;
+      padding-bottom: 32px;
+    }
+  }
+
+  .page-header-title {
+    font-size: clamp(2.2rem, 5vw, 3.4rem);
+  }
+
+  .page-header-desc {
+    margin-top: 16px;
+    max-width: 560px;
+    font-size: 15px;
+    line-height: 1.65;
+    color: var(--color-muted);
+  }
+</style>

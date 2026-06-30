@@ -1,0 +1,38 @@
+---
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import StyleGuideBody from '~/components/pages/StyleGuideBody.astro';
+import '~/styles/pages/style-guide.css';
+
+if (!import.meta.env.DEV) {
+  return Astro.redirect('/404', 302);
+}
+---
+
+<BaseLayout
+  title="Style Guide"
+  description="Color tokens, typography scale, buttons, form elements, and component primitives that define the Curio editorial aesthetic."
+>
+  <StyleGuideBody />
+</BaseLayout>
+
+<script>
+  // Highlight nav link for the visible section.
+  const navLinks = document.querySelectorAll<HTMLAnchorElement>('.sg-nav-link');
+  const sections = document.querySelectorAll<HTMLElement>('.sg-section');
+
+  const obs = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((e) => {
+        if (e.isIntersecting) {
+          const id = e.target.id;
+          navLinks.forEach((a) => {
+            a.classList.toggle('active', a.getAttribute('href') === `#${id}`);
+          });
+        }
+      });
+    },
+    { rootMargin: '-30% 0px -60% 0px' },
+  );
+
+  sections.forEach((s) => obs.observe(s));
+</script>

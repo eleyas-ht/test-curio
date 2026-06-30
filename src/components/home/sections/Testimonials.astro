@@ -1,0 +1,563 @@
+---
+// ============================================================
+//  Testimonials — Editorial filmstrip carousel
+//
+//  Props
+//  ─────
+//  testimonials  Resolved testimonial array. Each entry has the
+//                full quote, author, rating, avatar path, and an
+//                optional `chip` object (product name/price/image)
+//                already resolved from Shopify or the inline
+//                config fallback. Built in index.astro.
+//
+//  settings      Section settings: label, autoPlay, autoPlayInterval.
+//
+//  Carousel behaviour (matches the HTML reference exactly)
+//  ───────────────────────────────────────────────────────
+//  • Clicking any filmstrip avatar cross-fades the quote + meta.
+//  • Arrow-key navigation (← / → or ↑ / ↓).
+//  • Optional auto-advance timer (configurable via settings).
+//  • Active avatar scales up with a clay ring; inactive ones are
+//    dimmed and restore on hover.
+//
+//  Responsive breakpoints (from CSS reference)
+//  ───────────────────────────────────────────
+//  ≤ 900 px  — quote shrinks, meta stacks vertically, timer hidden.
+//  ≤ 550 px  — quote allows more height, avatar badges hidden.
+// ============================================================
+
+export interface ResolvedChip {
+  name: string;
+  price: string;
+  image: string;
+}
+
+export interface ResolvedTestimonial {
+  text: string;
+  stars: number;
+  name: string;
+  role?: string;
+  avatar: string;
+  avatarAlt?: string;
+  chip?: ResolvedChip | null;
+}
+
+interface Props {
+  testimonials: ResolvedTestimonial[];
+  settings?: {
+    label?: string;
+    autoPlay?: boolean;
+    autoPlayInterval?: number;
+  };
+}
+
+const { testimonials, settings = {} } = Astro.props;
+const {
+  label = 'The Verdict',
+  autoPlay = true,
+  autoPlayInterval = 5000,
+} = settings;
+
+// Serialise data for the client-side carousel script.
+// Using a data attribute keeps the script free of inline eval.
+const testimonialsJson = JSON.stringify(
+  testimonials.map((t) => ({
+    text: t.text,
+    stars: t.stars,
+    name: t.name,
+    role: t.role ?? '',
+    chip: t.chip ?? null,
+    chipImg: t.chip?.image ?? '',
+  }))
+);
+
+const first = testimonials[0];
+---
+
+<section
+  class="section-testimonials"
+  data-testimonials={testimonialsJson}
+  data-autoplay={autoPlay ? 'true' : 'false'}
+  data-interval={autoPlayInterval}
+  id="testimonials-section"
+>
+  {label && <div class="testimonials-label container">{label}</div>}
+
+  <div class="testimonials-stage">
+    <div class="testimonials-quote-wrap">
+      <span class="testimonials-quote-mark">&ldquo;</span>
+      <div class="testimonials-quote" id="verdict-quote" set:html={first?.text ?? ''} />
+    </div>
+
+    <div class="testimonials-meta">
+      <div class="testimonials-rating" id="verdict-rating">
+        {Array.from({ length: 5 }, (_, i) => (
+          <span class={i >= (first?.stars ?? 5) ? 'star-empty' : ''}>★</span>
+        ))}
+      </div>
+      <div class="testimonials-byline">
+        <span class="testimonials-byline-name" id="verdict-name">{first?.name ?? ''}</span>
+        {(first?.role) && (
+          <>
+            <span class="testimonials-byline-sep" />
+            <span id="verdict-role">{first.role}</span>
+          </>
+        )}
+        {!(first?.role) && <span id="verdict-role" style="display:none" />}
+      </div>
+
+      {/* Product chip — hidden when first testimonial has no chip */}
+      <div
+        class="testimonials-product-chip"
+        id="verdict-chip"
+        style={first?.chip ? '' : 'display:none'}
+      >
+        <span class="testimonials-product-chip-avatar">
+          <img
+            id="verdict-chip-img"
+            src={first?.chip?.image ?? ''}
+            alt={first?.chip?.name ?? ''}
+          />
+        </span>
+        <span>
+          <span class="testimonials-product-chip-name" id="verdict-chip-name">
+            {first?.chip?.name ?? ''}
+          </span>
+          <span id="verdict-chip-price"> · {first?.chip?.price ?? ''}</span>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="testimonials-filmstrip" id="filmstrip">
+    {testimonials.map((t, i) => (
+      <button
+        class={`testimonials-film-frame${i === 0 ? ' active' : ''}`}
+        data-index={i}
+        aria-label={`View testimonial from ${t.name}`}
+        type="button"
+      >
+        <img src={t.avatar} alt={t.avatarAlt ?? t.name} loading="lazy" />
+        <span class="frame-num">{i + 1}</span>
+      </button>
+    ))}
+  </div>
+</section>
+
+<style>
+  /* ============================================================
+     TESTIMONIALS — Editorial carousel
+  ============================================================ */
+  .section-testimonials {
+    padding: 110px 0;
+    background: var(--cream);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .section-testimonials::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--sand-deep), transparent);
+  }
+
+  .section-testimonials::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--sand-deep), transparent);
+  }
+
+  /* Optional section label */
+  .testimonials-label {
+    font-family: var(--font-sans);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--clay);
+    text-align: center;
+    margin-bottom: 48px;
+  }
+
+  /* Stage — centred quote + inline product chip */
+  .testimonials-stage {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 var(--pad);
+    position: relative;
+  }
+
+  .testimonials-quote-wrap {
+    position: relative;
+    padding: 0 60px;
+  }
+
+  .testimonials-quote-mark {
+    position: absolute;
+    top: -20px;
+    left: 0;
+    font-family: var(--font-serif);
+    font-size: 120px;
+    line-height: 0.7;
+    color: var(--clay);
+    opacity: 0.18;
+    font-style: italic;
+    user-select: none;
+    pointer-events: none;
+  }
+
+  .testimonials-quote {
+    font-family: var(--font-serif);
+    font-size: clamp(26px, 3.2vw, 42px);
+    font-style: italic;
+    font-weight: 400;
+    line-height: 1.3;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+    text-align: center;
+    min-height: 3.6em;
+    transition: opacity 350ms ease, transform 350ms ease;
+    margin-bottom: 36px;
+  }
+
+  .testimonials-quote :global(strong) {
+    color: var(--clay);
+    font-weight: 500;
+    font-style: normal;
+  }
+
+  .testimonials-meta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 30px;
+    flex-wrap: wrap;
+    margin-bottom: 60px;
+  }
+
+  .testimonials-rating {
+    display: flex;
+    gap: 3px;
+    font-size: 13px;
+    color: var(--clay);
+    letter-spacing: 2px;
+  }
+
+  .testimonials-rating :global(.star-empty) {
+    color: var(--sand-deep);
+  }
+
+  .testimonials-byline {
+    font-family: var(--font-sans);
+    font-size: 14px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .testimonials-byline-name {
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .testimonials-byline-sep {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: var(--sand-deep);
+    display: inline-block;
+  }
+
+  .testimonials-product-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px 6px 10px;
+    background: var(--warm-white);
+    border: 1px solid var(--sand);
+    border-radius: var(--r-pill);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    color: var(--muted);
+    transition: border-color var(--t-base) var(--ease);
+  }
+
+  .testimonials-product-chip:hover {
+    border-color: var(--clay);
+  }
+
+  .testimonials-product-chip-avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--sand);
+    flex-shrink: 0;
+  }
+
+  .testimonials-product-chip-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .testimonials-product-chip-name {
+    font-weight: 600;
+    color: var(--cocoa);
+  }
+
+  /* Filmstrip navigation */
+  .testimonials-filmstrip {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 0 var(--pad);
+  }
+
+  .testimonials-film-frame {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--sand);
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition:
+      border-color var(--t-base) var(--ease),
+      opacity var(--t-base) var(--ease),
+      transform var(--t-base) var(--ease),
+      box-shadow var(--t-base) var(--ease);
+    opacity: 0.4;
+    flex-shrink: 0;
+    position: relative;
+    padding: 0;
+  }
+
+  .testimonials-film-frame:hover {
+    opacity: 0.7;
+  }
+
+  .testimonials-film-frame.active {
+    opacity: 1;
+    border-color: var(--clay);
+    transform: scale(1.12);
+    box-shadow: 0 0 0 4px rgba(154, 107, 79, 0.1);
+  }
+
+  .testimonials-film-frame img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .testimonials-film-frame .frame-num {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 18px;
+    height: 18px;
+    background: var(--clay);
+    color: var(--warm-white);
+    font-family: var(--font-sans);
+    font-size: 8px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50% 0 0 0;
+  }
+
+  @media (max-width: 900px) {
+    .testimonials-quote-wrap {
+      padding: 0 20px;
+    }
+
+    .testimonials-quote-mark {
+      font-size: 80px;
+      top: -12px;
+    }
+
+    .testimonials-quote {
+      font-size: clamp(22px, 5vw, 28px);
+      min-height: 5em;
+    }
+
+    .testimonials-meta {
+      gap: 18px;
+      flex-direction: column;
+      text-align: center;
+    }
+
+    .testimonials-filmstrip {
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .testimonials-film-frame {
+      width: 48px;
+      height: 48px;
+    }
+  }
+
+  @media (max-width: 550px) {
+    .testimonials-quote {
+      min-height: 7em;
+    }
+
+    .testimonials-film-frame {
+      width: 40px;
+      height: 40px;
+    }
+
+    .testimonials-film-frame .frame-num {
+      display: none;
+    }
+  }
+</style>
+
+<script>
+  (function () {
+    const section = document.getElementById('testimonials-section');
+    if (!section) return;
+
+    // Read serialised testimonial data from the data attribute.
+    const raw = section.dataset.testimonials;
+    if (!raw) return;
+    const testimonials: {
+      text: string;
+      stars: number;
+      name: string;
+      role: string;
+      chip: { name: string; price: string; image: string } | null;
+      chipImg: string;
+    }[] = JSON.parse(raw);
+    if (!testimonials.length) return;
+
+    const autoPlay = section.dataset.autoplay === 'true';
+    const interval = parseInt(section.dataset.interval ?? '5000', 10);
+
+    // DOM references
+    const quoteEl = document.getElementById('verdict-quote');
+    const nameEl = document.getElementById('verdict-name');
+    const roleEl = document.getElementById('verdict-role') as HTMLElement | null;
+    const ratingEl = document.getElementById('verdict-rating');
+    const chipEl = document.getElementById('verdict-chip') as HTMLElement | null;
+    const chipNameEl = document.getElementById('verdict-chip-name');
+    const chipPriceEl = document.getElementById('verdict-chip-price');
+    const chipImgEl = document.getElementById('verdict-chip-img') as HTMLImageElement | null;
+    const frames = section.querySelectorAll<HTMLButtonElement>('.testimonials-film-frame');
+
+    let current = 0;
+    let timer: ReturnType<typeof setInterval> | null = null;
+
+    function goTo(idx: number) {
+      if (testimonials.length === 0) return;
+      if (idx < 0) idx = testimonials.length - 1;
+      if (idx >= testimonials.length) idx = 0;
+      current = idx;
+      const t = testimonials[current];
+
+      // Fade quote out
+      if (quoteEl) {
+        quoteEl.style.opacity = '0';
+        quoteEl.style.transform = 'translateY(10px)';
+      }
+
+      setTimeout(() => {
+        // Swap content while invisible
+        if (quoteEl) {
+          quoteEl.innerHTML = t.text;
+          quoteEl.style.opacity = '1';
+          quoteEl.style.transform = 'translateY(0)';
+        }
+        if (nameEl) nameEl.textContent = t.name;
+
+        // Role — show/hide separator + role text
+        if (roleEl) {
+          roleEl.textContent = t.role;
+          roleEl.style.display = t.role ? '' : 'none';
+        }
+        const sep = section.querySelector<HTMLElement>('.testimonials-byline-sep');
+        if (sep) sep.style.display = t.role ? '' : 'none';
+
+        // Product chip
+        if (chipEl) {
+          if (t.chip) {
+            chipEl.style.display = '';
+            if (chipNameEl) chipNameEl.textContent = t.chip.name;
+            if (chipPriceEl) chipPriceEl.textContent = ' · ' + t.chip.price;
+            if (chipImgEl) {
+              chipImgEl.src = t.chip.image;
+              chipImgEl.alt = t.chip.name;
+            }
+          } else {
+            chipEl.style.display = 'none';
+          }
+        }
+      }, 250);
+
+      // Stars — update immediately (no fade needed)
+      if (ratingEl) {
+        let stars = '';
+        for (let i = 0; i < 5; i++) {
+          stars += `<span${i >= t.stars ? ' class="star-empty"' : ''}>★</span>`;
+        }
+        ratingEl.innerHTML = stars;
+      }
+
+      // Filmstrip — update active frame
+      frames.forEach((f, i) => {
+        f.classList.toggle('active', i === current);
+      });
+    }
+
+    // Wire up filmstrip buttons
+    frames.forEach((btn, i) => {
+      btn.addEventListener('click', () => {
+        goTo(i);
+        // Reset auto-play timer on manual interaction
+        if (autoPlay && timer !== null) {
+          clearInterval(timer);
+          timer = setInterval(advance, interval);
+        }
+      });
+    });
+
+    // Keyboard navigation (scoped to the section)
+    document.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') goTo(current - 1);
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') goTo(current + 1);
+    });
+
+    function advance() {
+      goTo(current + 1);
+    }
+
+    // Pause auto-play while the user hovers the section
+    if (autoPlay) {
+      timer = setInterval(advance, interval);
+      section.addEventListener('mouseenter', () => {
+        if (timer !== null) clearInterval(timer);
+      });
+      section.addEventListener('mouseleave', () => {
+        timer = setInterval(advance, interval);
+      });
+    }
+
+    // Initialise to first slide
+    goTo(0);
+  })();
+</script>

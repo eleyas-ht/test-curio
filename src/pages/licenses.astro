@@ -1,0 +1,16 @@
+---
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import LicensesBody from '~/components/pages/LicensesBody.astro';
+import '~/styles/pages/licenses.css';
+
+if (!import.meta.env.DEV) {
+  return Astro.redirect('/404', 302);
+}
+---
+
+<BaseLayout
+  title="Licenses"
+  description="Open source software licenses for every library and typeface used in the Curio editorial theme."
+>
+  <LicensesBody />
+</BaseLayout>

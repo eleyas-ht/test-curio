@@ -1,0 +1,225 @@
+---
+// FAQ body — editorial accordion layout with category filter tabs.
+const categories = [
+  { key: 'all',        label: 'All Questions' },
+  { key: 'orders',     label: 'Orders & Shipping' },
+  { key: 'returns',    label: 'Returns & Warranty' },
+  { key: 'curation',   label: 'The Edit' },
+  { key: 'products',   label: 'Products & Compatibility' },
+  { key: 'account',    label: 'Account & Loyalty' },
+];
+
+const faqs: { cat: string; q: string; a: string }[] = [
+  // Orders & Shipping
+  {
+    cat: 'orders',
+    q: 'How long does standard delivery take?',
+    a: 'Standard delivery runs 3–5 business days. Express (1–2 days) and same-day options are available at checkout for eligible postcodes. You\'ll receive a tracking link as soon as your order leaves our warehouse.',
+  },
+  {
+    cat: 'orders',
+    q: 'Do you ship internationally?',
+    a: 'Yes — we ship to over 40 countries. International delivery times vary by destination (typically 7–14 business days). Duties and import taxes are calculated at checkout so there are no surprise charges on arrival.',
+  },
+  {
+    cat: 'orders',
+    q: 'Can I change or cancel my order after placing it?',
+    a: 'Orders can be modified or cancelled within 30 minutes of placement via your account order page. After that window the fulfilment process begins. Contact us immediately at <a href="/contact">our support page</a> and we\'ll do our best to intercept it.',
+  },
+  {
+    cat: 'orders',
+    q: 'Is my payment information secure?',
+    a: 'All transactions are processed over Shopify Payments, which is PCI-DSS Level 1 compliant. We never store raw card data on our servers — your browser communicates directly with the payment processor.',
+  },
+
+  // Returns & Warranty
+  {
+    cat: 'returns',
+    q: 'What is your return policy?',
+    a: 'We offer a 30-day no-hassle return window on all items in original condition. Open-box is fine — if you tested it and it\'s not right for you, send it back. Start a return from your account dashboard and we\'ll email you a prepaid label.',
+  },
+  {
+    cat: 'returns',
+    q: 'How long do refunds take to process?',
+    a: 'Once we receive your return and inspect it (usually within 2 business days), refunds are issued to your original payment method within 3–5 business days. You\'ll receive an email confirmation at each step.',
+  },
+  {
+    cat: 'returns',
+    q: 'What warranty coverage do products carry?',
+    a: 'Every item carries the manufacturer\'s warranty, and many brands extend additional cover for Curio customers — check each product page for details. For defects within 12 months of purchase we always advocate directly with the manufacturer on your behalf.',
+  },
+  {
+    cat: 'returns',
+    q: 'What if my item arrives damaged?',
+    a: 'Take a photo and <a href="/contact">contact us</a> within 48 hours of delivery. We\'ll arrange a replacement or full refund at no cost to you — no return shipping required for damage claims.',
+  },
+
+  // The Edit / Curation
+  {
+    cat: 'curation',
+    q: 'How do you decide what makes the edit?',
+    a: 'Every product is assessed by at least two editors across build quality, value at price, long-term reliability data, and real-world usability. We don\'t accept paid placements. If it wouldn\'t live on an editor\'s desk, it doesn\'t go on the site.',
+  },
+  {
+    cat: 'curation',
+    q: 'Do you accept vendor submissions?',
+    a: 'Yes — brands can submit products for editorial review via our <a href="/contact">vendor enquiry form</a>. Acceptance is entirely based on merit and fit with the current edit. We receive many submissions and cannot respond to all of them.',
+  },
+  {
+    cat: 'curation',
+    q: 'How often is the edit updated?',
+    a: 'We publish a new issue roughly every season (four times a year) and refresh individual picks on a rolling basis as better options emerge or products are discontinued. The current issue is Issue 03 · Spring 2026.',
+  },
+  {
+    cat: 'curation',
+    q: 'Are your reviews truly independent?',
+    a: 'Yes. Editorial decisions are entirely independent from commercial relationships. We may receive affiliate revenue when you click certain links, which is disclosed site-wide, but this never influences which products are selected or how they are reviewed.',
+  },
+
+  // Products & Compatibility
+  {
+    cat: 'products',
+    q: 'How do I know if a product is compatible with my setup?',
+    a: 'Each product page lists detailed compatibility specs. If you\'re unsure, use the "Ask an editor" button on the product page — a real person (not a bot) will reply within one business day.',
+  },
+  {
+    cat: 'products',
+    q: 'Do you sell refurbished or open-box items?',
+    a: 'Occasionally. Refurbished items are clearly labelled, carry the same 30-day return policy, and include a minimum 6-month warranty from Curio. We inspect and test each unit before listing.',
+  },
+  {
+    cat: 'products',
+    q: 'Can I request a product that isn\'t currently in the edit?',
+    a: 'You can submit a request via the <a href="/contact">contact page</a>. Popular requests inform our editorial pipeline — if the product meets our standards it may appear in a future issue.',
+  },
+
+  // Account & Loyalty
+  {
+    cat: 'account',
+    q: 'Do I need an account to place an order?',
+    a: 'No — guest checkout is available. An account gives you order history, saved addresses, return management, and access to the Curio Loyalty programme.',
+  },
+  {
+    cat: 'account',
+    q: 'How does the Curio Loyalty programme work?',
+    a: 'Every purchase earns points at 1 pt per £1 spent. Points unlock editorial perks: early access to new issues, priority support, and occasional surprise rewards. You can check and redeem points from your account dashboard.',
+  },
+  {
+    cat: 'account',
+    q: 'How do I reset my password?',
+    a: 'Use the "Forgot password?" link on the login page. A reset email arrives within a few minutes — check your spam folder if it doesn\'t appear. Passwords must be at least 8 characters.',
+  },
+];
+
+const grouped = categories.slice(1).map(({ key, label }) => ({
+  key,
+  label,
+  items: faqs.filter((f) => f.cat === key),
+}));
+---
+
+<main class="faq">
+
+  <!-- ============ HERO ============ -->
+  <section class="faq-hero">
+    <div class="container">
+      <nav class="cart-breadcrumb" aria-label="Breadcrumb">
+        <a href="/">Home</a><span class="cart-bc-sep">/</span>
+        <span aria-current="page">FAQ</span>
+      </nav>
+
+      <div class="faq-hero-inner">
+        <div class="faq-hero-text">
+          <span class="eyebrow faq-eyebrow">Help Centre · Issue 03</span>
+          <h1 class="faq-title">Frequently<br><em>asked</em> questions.</h1>
+          <p class="faq-lead">The questions our editors get asked most — answered plainly, without
+            the runaround. Can't find what you need?
+            <a href="/contact" class="faq-inline-link">Write to us</a> and a real person replies.</p>
+        </div>
+
+        <div class="faq-hero-stat-col">
+          <div class="faq-stat">
+            <span class="faq-stat-num">30</span>
+            <span class="faq-stat-label">day returns,<br>no questions asked</span>
+          </div>
+          <div class="faq-stat">
+            <span class="faq-stat-num">1 day</span>
+            <span class="faq-stat-label">editor response<br>on product questions</span>
+          </div>
+          <div class="faq-stat">
+            <span class="faq-stat-num">40+</span>
+            <span class="faq-stat-label">countries<br>we ship to</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CATEGORY TABS + ACCORDION ============ -->
+  <section class="faq-body">
+    <div class="container">
+      <!-- Tabs -->
+      <div class="faq-tabs" role="tablist" aria-label="FAQ categories">
+        {categories.map((cat, i) => (
+          <button
+            class={`faq-tab${i === 0 ? ' active' : ''}`}
+            data-cat={cat.key}
+            role="tab"
+            aria-selected={i === 0 ? 'true' : 'false'}
+          >
+            {cat.label}
+          </button>
+        ))}
+      </div>
+
+      <!-- Accordion sections -->
+      <div class="faq-sections">
+        {grouped.map((group) => (
+          <div class="faq-section" data-cat={group.key}>
+            <h2 class="faq-section-title">
+              <span class="ed-label">{group.label}</span>
+            </h2>
+            <div class="faq-list">
+              {group.items.map((item) => (
+                <div class="faq-item">
+                  <button class="faq-q" aria-expanded="false">
+                    <span>{item.q}</span>
+                    <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </button>
+                  <div class="faq-a">
+                    <p set:html={item.a} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ STILL NEED HELP CTA ============ -->
+  <section class="faq-cta">
+    <div class="container">
+      <div class="faq-cta-rule" aria-hidden="true"></div>
+      <div class="faq-cta-inner">
+        <span class="eyebrow">Still need help?</span>
+        <h2 class="faq-cta-title">Talk to an <em>editor</em>.</h2>
+        <p class="faq-cta-body">Our editorial team handles support directly — no ticketing system,
+          no outsourced queue. Every message is read and answered by someone who knows the product.</p>
+        <div class="faq-cta-actions">
+          <a href="/contact" class="btn-primary">
+            Get in touch
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </a>
+          <a href="/about" class="faq-text-link">About Curio</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>

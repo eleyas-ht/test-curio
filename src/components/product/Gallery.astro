@@ -1,0 +1,73 @@
+---
+// ============================================================
+//  Gallery — PDP image gallery (pure Astro, SSR). Main stage +
+//  thumbnail rail; vanilla JS swaps the active image. No island
+//  needed → no hydration cost, no layout-collapse quirk.
+// ============================================================
+import type { Image } from '~/lib/shopify/types';
+
+interface Props {
+  images: Image[];
+  title: string;
+}
+const { images, title } = Astro.props;
+const gallery = images.length ? images : [];
+const main = gallery[0];
+---
+
+<div class="flex flex-col gap-3" data-gallery>
+  {/* Main stage */}
+  <div class="relative aspect-[4/5] w-full overflow-hidden rounded-md border border-sand-deep bg-warm-white">
+    {
+      main ? (
+        <img
+          data-gallery-main
+          src={main.url}
+          alt={main.altText ?? title}
+          width={main.width ?? undefined}
+          height={main.height ?? undefined}
+          fetchpriority="high"
+          class="h-full w-full object-cover"
+        />
+      ) : (
+        <div class="grid h-full place-items-center text-muted-light">No image</div>
+      )
+    }
+    <span class="absolute left-3 top-3 rounded-sm bg-warm-white/90 px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-clay backdrop-blur-sm">
+      Editor's Choice
+    </span>
+  </div>
+
+  {/* Thumbnails */}
+  {
+    gallery.length > 1 && (
+      <div class="flex gap-2 overflow-x-auto pb-1" aria-label={`${title} images`}>
+        {gallery.map((image, i) => (
+          <button
+            type="button"
+            data-gallery-thumb={image.url}
+            aria-pressed={i === 0 ? 'true' : 'false'}
+            aria-label={`Show image ${i + 1}`}
+            class="relative aspect-square w-20 shrink-0 overflow-hidden rounded-md border transition-fluid aria-pressed:border-clay [&:not([aria-pressed='true'])]:border-sand-deep [&:not([aria-pressed='true'])]:opacity-70 hover:opacity-100"
+          >
+            <img src={image.url} alt="" loading="lazy" class="h-full w-full object-cover" />
+          </button>
+        ))}
+      </div>
+    )
+  }
+</div>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-gallery]').forEach((root) => {
+    const main = root.querySelector<HTMLImageElement>('[data-gallery-main]');
+    const thumbs = root.querySelectorAll<HTMLButtonElement>('[data-gallery-thumb]');
+    thumbs.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const url = btn.dataset.galleryThumb;
+        if (main && url) main.src = url;
+        thumbs.forEach((b) => b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'));
+      });
+    });
+  });
+</script>

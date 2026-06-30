@@ -1,0 +1,702 @@
+﻿---
+// SSR-driven PDP — all Shopify data rendered server-side so no placeholder
+// content is ever visible. The client script only wires interactivity.
+import type { ProductCard } from '~/lib/shopify/types';
+import ProductFeatCard from '~/components/product/ProductFeatCard.astro';
+import { formatMoney } from '~/lib/utils';
+import type { JudgeMeWidget } from '~/lib/judgeme';
+
+interface PdVariant {
+  id: string;
+  sku: string;
+  available: boolean;
+  qty: number | null;
+  price: string;
+  priceNum: number;
+  compareAt: string;
+  compareNum: number;
+  image: string;
+  options: { name: string; value: string }[];
+}
+interface PdOption { name: string; values: string[] }
+interface PdImage  { url: string; alt: string }
+interface PdData {
+  id: string;
+  handle: string;
+  title: string;
+  vendor: string;
+  category: string;
+  desc: string;
+  descHtml: string;
+  priceNow: string;
+  priceWas: string;
+  save: string;
+  images: PdImage[];
+  currency: string;
+  options: PdOption[];
+  variants: PdVariant[];
+}
+interface Props {
+  pd: PdData;
+  relProducts?: ProductCard[];
+  delivery?: { cutoff: string; eta: string };
+  reviews?: JudgeMeWidget;
+  shopDomain?: string;
+}
+
+const { pd, relProducts = [], delivery, reviews, shopDomain } = Astro.props;
+
+// Star rendering helper — filled (★) + empty (☆) from a float rating
+function renderStars(rating: number): string {
+  const full = Math.round(rating);
+  return '★'.repeat(Math.min(full, 5)) + '☆'.repeat(Math.max(0, 5 - full));
+}
+
+// Color name → hex (server-side for SSR variant swatches)
+const COLOR: Record<string, string> = {
+  black: '#1a1a1a', white: '#f4f1ec', ivory: '#efe7da', sand: '#cbb89c', silver: '#c9ccce',
+  grey: '#9a9a9a', gray: '#9a9a9a', graphite: '#3a3a3a', titanium: '#8d8b86', gold: '#cdb07a',
+  rose: '#c98b86', red: '#b3401f', blue: '#3b5a78', navy: '#26344a', green: '#5f7355',
+  forest: '#3f5142', 'forest green': '#3f5142', 'midnight blue': '#26344a', cream: '#efe7da',
+  brown: '#6b4e3a', purple: '#6d5b8e', pink: '#d99fb0', yellow: '#d8b34a', orange: '#c06a2e',
+  verdigris: '#5f8a7d', eampit: '#7a6f64', prelude: '#b8a99a',
+};
+const hexFor = (name: string) => COLOR[name.toLowerCase()] ?? '#b9b2a8';
+const isColorOpt = (name: string) => /colou?r/i.test(name);
+
+// Default variant — cheapest, matching the listing card price
+const baseVariant: PdVariant | null =
+  pd.variants.reduce((best: PdVariant | null, v: PdVariant) =>
+    !best || v.priceNum < best.priceNum ? v : best, null) ?? pd.variants[0] ?? null;
+
+const defaultSelected: Record<string, string> = {};
+baseVariant?.options.forEach((o) => { defaultSelected[o.name] = o.value; });
+
+// Is a specific option value available in at least one variant?
+const valueAvailable = (optName: string, val: string): boolean =>
+  pd.variants.some((v) => v.available && v.options.some((o) => o.name === optName && o.value === val));
+
+// Initial display values from base variant
+const initPrice     = baseVariant?.price   ?? pd.priceNow;
+const initCompare   = baseVariant?.compareAt ?? pd.priceWas;
+const initCompareNum = baseVariant?.compareNum ?? 0;
+const initPriceNum  = baseVariant?.priceNum ?? 0;
+const initAvail     = baseVariant?.available ?? true;
+const initSku       = baseVariant?.sku || pd.title.toUpperCase().replace(/[^A-Z0-9]+/g, '-').slice(0, 14);
+const initSave      = initCompareNum > initPriceNum
+  ? 'Save ' + new Intl.NumberFormat('en-US', { style: 'currency', currency: pd.currency, minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(initCompareNum - initPriceNum)
+  : '';
+const initInstal    = initPriceNum > 0
+  ? new Intl.NumberFormat('en-US', { style: 'currency', currency: pd.currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(initPriceNum / 4)
+  : '—';
+
+// Urgency — show real qty when low-stock, else keep generic
+const initUrgencyQty = baseVariant?.qty != null && baseVariant.qty > 0 && baseVariant.qty <= 10
+  ? baseVariant.qty
+  : null;
+
+// Gallery — cap at 5 to keep the rail manageable
+const galleryImages = pd.images.slice(0, 5);
+const mainImage = galleryImages[0];
+
+// Category breadcrumb href
+const categoryHref = pd.category
+  ? `/collections/${pd.category.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+  : '/products';
+
+// Pairs: sidebar (first 4) and related grid (up to 8)
+const pairsItems = relProducts.slice(0, 4);
+const relGrid    = relProducts.slice(0, 8);
+---
+
+  <!-- ============================================================
+     PRODUCT DETAIL
+============================================================ -->
+  <main class="pd">
+    <div class="container">
+
+      <!-- Breadcrumb -->
+      <nav class="pd-breadcrumb" aria-label="Breadcrumb">
+        <a href="/">Home</a><span class="pd-bc-sep">/</span>
+        <a href="/products">Shop</a><span class="pd-bc-sep">/</span>
+        <a href={categoryHref}>{pd.category}</a><span class="pd-bc-sep">/</span>
+        <span aria-current="page">{pd.title}</span>
+      </nav>
+
+      <!-- Hero: gallery + info -->
+      <div class="pd-hero">
+
+        <!-- Gallery -->
+        <div class="pd-gallery">
+          <div class="pd-thumbs" id="pd-thumbs">
+            {galleryImages.map((im, i) => (
+              <button class={`pd-thumb${i === 0 ? ' active' : ''}`} data-full={im.url}>
+                <img src={im.url} alt={im.alt} loading={i === 0 ? 'eager' : 'lazy'}>
+              </button>
+            ))}
+          </div>
+          <div class="pd-stage" id="pd-stage">
+            <span class="pd-stage-badge">Editor's Choice</span>
+            <button class="pd-zoom-btn" id="pd-zoom-btn" aria-label="Toggle zoom" title="Zoom">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-3.5-3.5M11 8v6M8 11h6" stroke-linecap="round" />
+              </svg>
+            </button>
+            {mainImage && <img src={mainImage.url} alt={mainImage.alt} id="pd-main-img">}
+          </div>
+        </div>
+
+        <!-- Info -->
+        <div class="pd-info">
+          <a href={categoryHref} class="pd-brand">{pd.vendor}</a>
+          <h1 class="pd-title">{pd.title}</h1>
+
+          <div class="pd-meta-row">
+            {reviews && reviews.count > 0 ? (
+              <>
+                <span class="pd-stars" aria-label={`Rated ${reviews.rating.toFixed(1)} of 5`}>{renderStars(reviews.rating)}</span>
+                <span class="pd-rating-num">{reviews.rating.toFixed(1)}</span>
+                <a href="#pd-reviews-list" class="pd-review-link">{reviews.count.toLocaleString()} reviews</a>
+              </>
+            ) : (
+              <>
+                <span class="pd-stars" aria-label="No reviews yet">☆☆☆☆☆</span>
+                <a href="#pd-reviews-list" class="pd-review-link">Be the first to review</a>
+              </>
+            )}
+            <span class={`pd-stock ${initAvail ? 'in' : 'out'}`} id="pd-stock">
+              <span></span>{initAvail ? 'In stock' : 'Out of stock'}
+            </span>
+          </div>
+
+          <div class="pd-price">
+            <span class="pd-price-now" id="pd-price">{initPrice}</span>
+            {initCompare && <span class="pd-price-was">{initCompare}</span>}
+            {initSave && <span class="pd-price-save">{initSave}</span>}
+          </div>
+
+          <p class="pd-desc">{pd.desc}</p>
+
+          <!-- Key highlights -->
+          <ul class="pd-highlights">
+            <li><svg viewBox="0 0 20 20" fill="none">
+                <circle cx="10" cy="10" r="10" fill="#9A6B4F" />
+                <path d="M5.8 10.4l2.7 2.6 5-5.8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"
+                  stroke-linejoin="round" />
+              </svg>Authentic, brand-new &amp; sealed — 2-year warranty included</li>
+            <li><svg viewBox="0 0 20 20" fill="none">
+                <circle cx="10" cy="10" r="10" fill="#9A6B4F" />
+                <path d="M5.8 10.4l2.7 2.6 5-5.8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"
+                  stroke-linejoin="round" />
+              </svg>Free express shipping on orders over $75</li>
+            <li><svg viewBox="0 0 20 20" fill="none">
+                <circle cx="10" cy="10" r="10" fill="#9A6B4F" />
+                <path d="M5.8 10.4l2.7 2.6 5-5.8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"
+                  stroke-linejoin="round" />
+              </svg>30-day free returns, no questions asked</li>
+            <li><svg viewBox="0 0 20 20" fill="none">
+                <circle cx="10" cy="10" r="10" fill="#9A6B4F" />
+                <path d="M5.8 10.4l2.7 2.6 5-5.8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"
+                  stroke-linejoin="round" />
+              </svg>Editor-curated pick — tested by our team</li>
+          </ul>
+
+          <!-- Urgency + social proof -->
+          <div class="pd-urgency">
+            <div class="pd-urgency-top">
+              {initUrgencyQty != null
+                ? <span class="pd-urgency-msg">Only <strong>{initUrgencyQty} left</strong> — selling fast</span>
+                : <span class="pd-urgency-msg">Only <strong>8 left</strong> — selling fast</span>
+              }
+              <span class="pd-social">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2s5 4 5 9a5 5 0 0 1-10 0c0-1 .3-2 .8-2.8C8.4 9.6 9 10.5 9 11.5c0 .8.6 1.5 1.4 1.5.9 0 1.6-.7 1.6-1.7C12 9 10 7 12 2Z" />
+                </svg>
+                <strong>24</strong>&nbsp;sold this week
+              </span>
+            </div>
+            <div class="pd-stock-bar"><span style="width:30%"></span></div>
+            <span class="pd-viewing"><span class="pd-viewing-dot"></span><strong>17</strong>&nbsp;people are viewing this right now</span>
+          </div>
+
+          <!-- Variant options (SSR from Shopify) -->
+          {pd.options.map((opt) => (
+            <div class="pd-variant">
+              {isColorOpt(opt.name)
+                ? (
+                  <>
+                    <div class="pd-variant-label">{opt.name}: <strong data-sel={opt.name}>{defaultSelected[opt.name] ?? opt.values[0]}</strong></div>
+                    <div class="pd-swatches">
+                      {opt.values.map((val) => (
+                        <button
+                          class={`pd-swatch${defaultSelected[opt.name] === val ? ' active' : ''}${!valueAvailable(opt.name, val) ? ' unavailable' : ''}`}
+                          data-opt={opt.name}
+                          data-val={val}
+                          style={`--sw:${hexFor(val)}`}
+                          title={val}
+                        ></button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div class="pd-variant-label">{opt.name}</div>
+                    <div class="pd-options">
+                      {opt.values.map((val) => (
+                        <button
+                          class={`pd-option${defaultSelected[opt.name] === val ? ' active' : ''}${!valueAvailable(opt.name, val) ? ' unavailable' : ''}`}
+                          data-opt={opt.name}
+                          data-val={val}
+                        >{val}</button>
+                      ))}
+                    </div>
+                  </>
+                )
+              }
+            </div>
+          ))}
+
+          <!-- Estimated delivery -->
+          <div class="pd-delivery">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M3 7h11v9H3zM14 10h4l3 3v3h-7" stroke-linecap="round" stroke-linejoin="round" />
+              <circle cx="7" cy="17" r="2" />
+              <circle cx="18" cy="17" r="2" />
+            </svg>
+            {delivery
+              ? <p>Order within <strong>{delivery.cutoff}</strong> to get it by <strong>{delivery.eta}</strong></p>
+              : <p>Order within <strong id="pd-cutoff">—</strong> to get it by <strong id="pd-eta">—</strong></p>
+            }
+          </div>
+
+          <!-- Qty + actions -->
+          <div class="pd-buy">
+            <div class="pd-qty" aria-label="Quantity">
+              <button class="pd-qty-btn" id="pd-qty-minus" aria-label="Decrease">&minus;</button>
+              <span class="pd-qty-val" id="pd-qty">1</span>
+              <button class="pd-qty-btn" id="pd-qty-plus" aria-label="Increase">+</button>
+            </div>
+            <button class="pd-atc" id="pd-atc" disabled={!initAvail}>
+              {initAvail ? <Fragment>Add to Cart — <span id="pd-atc-price">{initPrice}</span></Fragment> : 'Sold out'}
+            </button>
+            <button class="pd-wish" id="pd-wish" aria-label="Add to wishlist">
+              <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+              </svg>
+            </button>
+          </div>
+          <button class="pd-buynow">Buy it now</button>
+
+          <!-- Payment / installments -->
+          <div class="pd-pay">
+            <p class="pd-installment">or 4 interest-free payments of <strong id="pd-instal">{initInstal}</strong> with
+              <b>Shop Pay</b>
+            </p>
+            <div class="pd-pay-icons">
+              <span class="pd-pay-badge">VISA</span>
+              <span class="pd-pay-badge">Mastercard</span>
+              <span class="pd-pay-badge">Amex</span>
+              <span class="pd-pay-badge">PayPal</span>
+              <span class="pd-pay-badge">Apple Pay</span>
+              <span class="pd-pay-badge">G Pay</span>
+            </div>
+            <p class="pd-secure">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                <rect x="4" y="11" width="16" height="9" rx="2" />
+                <path d="M8 11V8a4 4 0 0 1 8 0v3" stroke-linecap="round" />
+              </svg>
+              Secure, encrypted checkout — your details are protected
+            </p>
+          </div>
+
+          <!-- Store pickup availability -->
+          <div class="pd-pickup">
+            <svg class="pd-pickup-ico" viewBox="0 0 20 20" fill="none">
+              <circle cx="10" cy="10" r="10" fill="#5f7355" />
+              <path d="M5.8 10.4l2.7 2.6 5-5.8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"
+                stroke-linejoin="round" />
+            </svg>
+            <div class="pd-pickup-text">
+              <p class="pd-pickup-title">Pickup available at <strong>Japan Warehouse</strong></p>
+              <p class="pd-pickup-sub">Usually ready in 24 hours</p>
+            </div>
+            <button class="pd-pickup-link" id="pd-pickup-trigger" aria-haspopup="dialog">Check availability at other stores</button>
+          </div>
+
+          <!-- Assurances -->
+          <ul class="pd-assure">
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M3 7h13v10H3zM16 10h3l2 3v4h-5" stroke-linecap="round" stroke-linejoin="round" />
+                <circle cx="7" cy="17" r="2" />
+                <circle cx="18" cy="17" r="2" />
+              </svg>Free express shipping over $75</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7l8-4z" stroke-linejoin="round" />
+                <path d="m9 12 2 2 4-4" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>2-year warranty, authenticated &amp; brand-new</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M3 12a9 9 0 1 0 3-6.7L3 8" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M3 4v4h4" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>30-day free returns, no questions asked</li>
+          </ul>
+
+          <!-- Footer meta -->
+          <div class="pd-foot-meta">
+            <span>SKU: <strong>{initSku}</strong></span>
+            <span>Category: <a href={categoryHref}>{pd.category}</a></span>
+            <div class="pd-share">Share:
+              <a href="#" aria-label="Share on Twitter"><svg viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M18.9 1.2h3.7l-8 9.1L24 22.8h-7.4l-5.8-7.6-6.6 7.6H.5l8.6-9.8L0 1.2h7.6l5.2 6.9 6.1-6.9Zm-1.3 19.4h2L6.5 3.3H4.3l13.3 17.3Z" /></svg></a>
+              <a href="#" aria-label="Share on Facebook"><svg viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.3c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.3v7A10 10 0 0 0 22 12Z" /></svg></a>
+              <a href="#" aria-label="Share on Pinterest"><svg viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2a10 10 0 0 0-3.6 19.3c-.1-.8-.2-2 0-2.9l1.2-5s-.3-.6-.3-1.5c0-1.4.8-2.4 1.8-2.4.9 0 1.3.6 1.3 1.4 0 .9-.5 2.1-.8 3.3-.2 1 .5 1.8 1.5 1.8 1.8 0 3.1-1.9 3.1-4.6 0-2.4-1.7-4.1-4.2-4.1-2.8 0-4.5 2.1-4.5 4.3 0 .9.3 1.8.7 2.3.1.1.1.2.1.3l-.3 1.1c0 .2-.1.2-.3.1-1.2-.5-1.9-2.2-1.9-3.6 0-2.9 2.1-5.6 6.1-5.6 3.2 0 5.7 2.3 5.7 5.4 0 3.2-2 5.7-4.8 5.7-.9 0-1.8-.5-2.1-1.1l-.6 2.2c-.2.8-.8 1.9-1.2 2.5A10 10 0 1 0 12 2Z" /></svg></a>
+            </div>
+          </div>
+
+          <!-- Pairs well with (mini cross-sell) -->
+          {pairsItems.length > 0 && (
+            <div class="pd-pairs">
+              <div class="pd-pairs-head">
+                <h4 class="pd-pairs-title">Pairs well with</h4>
+                <div class="pd-pairs-nav">
+                    <button class="pd-pairs-arrow" id="pairs-prev" aria-label="Previous slide">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="m15 18-6-6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    </button>
+                    <button class="pd-pairs-arrow" id="pairs-next" aria-label="Next slide">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="m9 18 6-6-6-6" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    </button>
+                </div>
+              </div>
+              <div class="pd-pairs-list" id="pd-pairs-list">
+                {pairsItems.map((p) => {
+                  const min = p.priceRange.minVariantPrice;
+                  return (
+                    <div class="pd-pair">
+                      <img src={p.featuredImage?.url ?? '/images/pd-gallery-01.jpg'} alt={p.featuredImage?.altText ?? p.title} loading="lazy" />
+                      <div class="pd-pair-info">
+                        <span class="pd-pair-name">{p.title}</span>
+                        <span class="pd-pair-price">{formatMoney(min.amount, min.currencyCode)}</span>
+                      </div>
+                      {p.variantId && p.firstVariantAvailable
+                        ? <button class="pd-pair-add" data-pair-variant={p.variantId} aria-label={`Add ${p.title} to cart`}>Add</button>
+                        : <a class="pd-pair-add" href={`/products/${p.handle}`}>View</a>
+                      }
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <!-- Feature highlights -->
+      <div class="pd-features">
+        <div class="pd-feature">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="2" y="7" width="18" height="10" rx="2" />
+            <path d="M22 10v4" stroke-linecap="round" />
+            <path d="M5 10v4M8 10v4" stroke-linecap="round" />
+          </svg>
+          <h4>Free Express Shipping</h4>
+          <p>Orders over $75 ship free, dispatched within 24 hours and arriving in 2–4 business days.</p>
+        </div>
+        <div class="pd-feature">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7l8-4z" stroke-linejoin="round" />
+            <path d="m9 12 2 2 4-4" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <h4>2-Year Warranty</h4>
+          <p>Every product is authenticated, brand-new, and sealed — backed by a genuine two-year warranty.</p>
+        </div>
+        <div class="pd-feature">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M3 12a9 9 0 1 0 3-6.7L3 8" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M3 4v4h4" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <h4>30-Day Returns</h4>
+          <p>Not exactly what you expected? Return it within 30 days for a full refund — no questions asked.</p>
+        </div>
+        <div class="pd-feature">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke-linejoin="round" />
+          </svg>
+          <h4>Secure Checkout</h4>
+          <p>SSL-encrypted, PCI-compliant checkout. Your payment details are never stored on our servers.</p>
+        </div>
+      </div>
+
+      <!-- Full-width product video -->
+      <section class="pd-video">
+        <video class="pd-video-el" autoplay muted loop playsinline poster="/images/gaming-room.jpg">
+          <source src="/video/video-section-01.mp4" type="video/mp4">
+        </video>
+        <div class="pd-video-overlay">
+          <span class="pd-video-eyebrow">In motion</span>
+          <h2 class="pd-video-title">Crafted to <em>perform</em>.</h2>
+          <p class="pd-video-sub">Every product in our edit is tested by real editors — not algorithms. Watch the experience that earned its place.</p>
+          <button class="pd-video-mute" id="pd-video-mute" aria-label="Unmute video">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+              <path d="M11 5 6 9H2v6h4l5 4V5z" stroke-linejoin="round" />
+              <path d="M23 9l-6 6M17 9l6 6" stroke-linecap="round" />
+            </svg>
+          </button>
+        </div>
+      </section>
+
+      <!-- Accordion details + reviews -->
+      <div class="pd-details">
+        <div class="pd-acc">
+          <div class="pd-acc-item open">
+            <button class="pd-acc-trigger">Description<span class="pd-acc-ico"></span></button>
+            <div class="pd-acc-body">
+              <div class="pd-acc-inner">
+                {pd.descHtml
+                  ? <div set:html={pd.descHtml} />
+                  : pd.desc
+                    ? <p>{pd.desc}</p>
+                    : <p>No description available.</p>
+                }
+              </div>
+            </div>
+          </div>
+          <div class="pd-acc-item">
+            <button class="pd-acc-trigger">Specifications<span class="pd-acc-ico"></span></button>
+            <div class="pd-acc-body">
+              <div class="pd-acc-inner">
+                <table class="pd-specs">
+                  <tr><th>Vendor</th><td>{pd.vendor}</td></tr>
+                  <tr><th>Category</th><td>{pd.category}</td></tr>
+                  {baseVariant?.sku && <tr><th>SKU</th><td>{baseVariant.sku}</td></tr>}
+                  {pd.variants.length > 1 && (
+                    <tr>
+                      <th>Available options</th>
+                      <td>{pd.options.map((o) => `${o.name}: ${o.values.join(', ')}`).join(' · ')}</td>
+                    </tr>
+                  )}
+                  <tr><th>Availability</th><td>{initAvail ? 'In stock' : 'Out of stock'}</td></tr>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div class="pd-acc-item">
+            <button class="pd-acc-trigger">Shipping &amp; Returns<span class="pd-acc-ico"></span></button>
+            <div class="pd-acc-body">
+              <div class="pd-acc-inner">
+                <p>Free express shipping on orders over $75, dispatched within 24 hours. Most orders arrive in 2–4
+                  business days. Every item is authenticated, brand-new and sealed.</p>
+                <p>Not the one? Return it within 30 days for a full refund — no questions asked. Covered by a genuine
+                  two-year warranty.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Reviews card — score header + Judge.me widget (histogram + reviews list) -->
+        <aside class="pd-reviews-card" id="pd-reviews-list">
+          {reviews ? (
+            <>
+              <div class="pd-rev-score">
+                <span class="pd-rev-big">{reviews.rating.toFixed(1)}</span>
+                <span class="pd-rev-stars">{renderStars(reviews.rating)}</span>
+                <span class="pd-rev-count">Based on {reviews.count.toLocaleString()} reviews</span>
+              </div>
+              <div class="pd-jdgm-body">
+                <Fragment set:html={reviews.html} />
+              </div>
+              <!-- Inline write-review form (hidden until the button is clicked) -->
+              <div class="pd-rev-form" id="pd-rev-form" data-product-id={reviews.productId} data-handle={pd.handle} hidden>
+                <div class="pd-rev-form-head">
+                  <h4 class="pd-rev-form-title">Write a Review</h4>
+                  <button type="button" class="pd-rev-form-cancel" id="pd-rev-form-cancel">Cancel review</button>
+                </div>
+                <form class="pd-rev-form-body" id="pd-rev-form-el" novalidate>
+                  <div class="pd-rev-form-group">
+                    <span class="pd-rev-form-label">Your rating <em>*</em></span>
+                    <div class="pd-rev-stars-pick">
+                      <button type="button" class="pdrs" data-v="1" aria-label="1 star">★</button>
+                      <button type="button" class="pdrs" data-v="2" aria-label="2 stars">★</button>
+                      <button type="button" class="pdrs" data-v="3" aria-label="3 stars">★</button>
+                      <button type="button" class="pdrs" data-v="4" aria-label="4 stars">★</button>
+                      <button type="button" class="pdrs" data-v="5" aria-label="5 stars">★</button>
+                    </div>
+                    <input type="hidden" id="pd-rev-rating">
+                  </div>
+                  <div class="pd-rev-form-group">
+                    <label class="pd-rev-form-label" for="pd-rev-title">Review title</label>
+                    <input class="pd-rev-form-input" type="text" id="pd-rev-title" name="title" placeholder="Sum up your experience">
+                  </div>
+                  <div class="pd-rev-form-group">
+                    <label class="pd-rev-form-label" for="pd-rev-body">Your review <em>*</em></label>
+                    <textarea class="pd-rev-form-textarea" id="pd-rev-body" name="body" rows="4" placeholder="What did you think?"></textarea>
+                  </div>
+                  <div class="pd-rev-form-group">
+                    <label class="pd-rev-form-label" for="pd-rev-name">Display name <em>*</em></label>
+                    <input class="pd-rev-form-input" type="text" id="pd-rev-name" name="name" placeholder="Your name (shown publicly)">
+                  </div>
+                  <div class="pd-rev-form-group">
+                    <label class="pd-rev-form-label" for="pd-rev-email">Email address <em>*</em></label>
+                    <input class="pd-rev-form-input" type="email" id="pd-rev-email" name="email" placeholder="your@email.com (kept private)">
+                  </div>
+                  <div class="pd-rev-form-foot">
+                    <button type="submit" class="pd-rev-form-submit">Submit Review</button>
+                    <span class="pd-rev-form-note">Email won't be published.</span>
+                  </div>
+                </form>
+                <div class="pd-rev-form-success" id="pd-rev-form-done" hidden>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" stroke-linecap="round" stroke-linejoin="round" />
+                    <polyline points="22 4 12 14.01 9 11.01" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  <p class="pd-rev-success-title">Thank you!</p>
+                  <p class="pd-rev-success-sub">Your review is awaiting moderation and will appear soon.</p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div class="pd-rev-score">
+                <span class="pd-rev-big">—</span>
+                <span class="pd-rev-stars">☆☆☆☆☆</span>
+                <span class="pd-rev-count">No reviews yet</span>
+              </div>
+              <p class="pd-rev-empty">Be the first to share your experience.</p>
+            </>
+          )}
+        </aside>
+      </div>
+
+      <!-- You May Also Like -->
+      {relGrid.length > 0 && (
+        <section class="pd-related">
+          <div class="pd-related-head">
+            <span class="label">Complete your setup</span>
+            <h2 class="pd-related-title">You May Also Like</h2>
+          </div>
+          <div class="pairs-grid" id="pairs-grid">
+            {relGrid.map((p) => <ProductFeatCard product={p} actions />)}
+          </div>
+        </section>
+      )}
+
+    </div>
+
+    <!-- ── Pickup availability drawer ── -->
+    <div class="pd-pickup-overlay" id="pd-pickup-overlay" aria-hidden="true">
+      <div class="pd-pickup-drawer" role="dialog" aria-modal="true" aria-labelledby="pd-pickup-drawer-title">
+        <div class="pd-pickup-drawer-head">
+          <div>
+            <h3 class="pd-pickup-drawer-title" id="pd-pickup-drawer-title">Pickup availability</h3>
+            <p class="pd-pickup-drawer-sub" id="pd-pickup-drawer-sub">&nbsp;</p>
+          </div>
+          <button class="pd-pickup-drawer-close" id="pd-pickup-close" aria-label="Close drawer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M6 6l12 12M18 6 6 18" stroke-linecap="round" />
+            </svg>
+          </button>
+        </div>
+        <div class="pd-pickup-drawer-body" id="pd-pickup-stores">
+          <!-- Store rows injected by JS -->
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Judge.me: CSS + JS for the SSR-injected review widget + inline write-review form -->
+  {reviews && (
+    <Fragment set:html={[
+      `<link rel="stylesheet" href="https://cdn.judge.me/assets/themes/default/widget.css">`,
+      `<script>`,
+      `window.jdgm=window.jdgm||{};`,
+      `window.jdgm.SHOP_DOMAIN=${JSON.stringify(shopDomain ?? '')};`,
+      `window.jdgm.PUBLIC_TOKEN=${JSON.stringify(import.meta.env.JUDGEME_API_TOKEN ?? '')};`,
+      `window.jdgm.PLATFORM='shopify';`,
+      `</script>`,
+      // All elements (.jdgm-write-rev-link, pd-rev-form, .pdrs, etc.) are parsed
+      // before this inline script, so they're already in the DOM when it runs.
+      `<script>(function(){`,
+      // ── Show / hide the inline form ──────────────────────────────
+      `var wlink=document.querySelector('.jdgm-write-rev-link');`,
+      `var form=document.getElementById('pd-rev-form');`,
+      `var cancel=document.getElementById('pd-rev-form-cancel');`,
+      `function openForm(){if(!form)return;form.hidden=false;form.scrollIntoView({behavior:'smooth',block:'nearest'});}`,
+      `function resetForm(){`,
+      `var fel=document.getElementById('pd-rev-form-el');`,
+      `var done=document.getElementById('pd-rev-form-done');`,
+      `if(fel)fel.hidden=false;if(done)done.hidden=true;`,
+      `document.querySelectorAll('.pdrs').forEach(function(s){s.classList.remove('sel','hov');});`,
+      `var ri=document.getElementById('pd-rev-rating');if(ri)ri.value='';`,
+      `var sub=document.querySelector('.pd-rev-form-submit');`,
+      `if(sub){sub.disabled=false;sub.textContent='Submit Review';}`,
+      `}`,
+      `function closeForm(){if(!form)return;form.hidden=true;resetForm();}`,
+      // Capture phase so this fires before any Judge.me bubble handler
+      `if(wlink)wlink.addEventListener('click',function(e){e.preventDefault();e.stopImmediatePropagation();openForm();},true);`,
+      `if(cancel)cancel.addEventListener('click',closeForm);`,
+      // ── Star picker ──────────────────────────────────────────────
+      `var stars=document.querySelectorAll('.pdrs');`,
+      `stars.forEach(function(s,i){`,
+      `s.addEventListener('click',function(){`,
+      `var ri=document.getElementById('pd-rev-rating');if(ri)ri.value=s.dataset.v||'';`,
+      `stars.forEach(function(x,j){x.classList.toggle('sel',j<=i);});`,
+      `});`,
+      `s.addEventListener('mouseover',function(){stars.forEach(function(x,j){x.classList.toggle('hov',j<=i);});});`,
+      `s.addEventListener('mouseout',function(){stars.forEach(function(x){x.classList.remove('hov');});});`,
+      `});`,
+      // ── Form submission → Judge.me public API ────────────────────
+      `var fel=document.getElementById('pd-rev-form-el');`,
+      `if(fel){fel.addEventListener('submit',function(e){`,
+      `e.preventDefault();`,
+      `var ri=document.getElementById('pd-rev-rating');`,
+      `var rating=ri?parseInt(ri.value)||0:0;`,
+      `var t=document.getElementById('pd-rev-title');`,
+      `var b=document.getElementById('pd-rev-body');`,
+      `var n=document.getElementById('pd-rev-name');`,
+      `var em=document.getElementById('pd-rev-email');`,
+      `var tv=t?t.value.trim():'',bv=b?b.value.trim():'',nv=n?n.value.trim():'',ev=em?em.value.trim():'';`,
+      `if(!rating){alert('Please select a star rating.');return;}`,
+      `if(!bv){alert('Please write your review.');return;}`,
+      `if(!nv){alert('Please enter your display name.');return;}`,
+      `if(!ev){alert('Please enter your email address.');return;}`,
+      `var pid=form?parseInt(form.dataset.productId||'0'):0;`,
+      `var hdl=form?form.dataset.handle||'':'';`,
+      `var sub=fel.querySelector('.pd-rev-form-submit');`,
+      `if(sub){sub.disabled=true;sub.textContent='Submitting…';}`,
+      `fetch('/api/reviews/create',{method:'POST',`,
+      `headers:{'Content-Type':'application/json'},`,
+      `body:JSON.stringify({id:pid,handle:hdl,rating:rating,title:tv,body:bv,name:nv,email:ev})`,
+      `}).then(function(r){if(!r.ok)throw new Error(String(r.status));return r.json();}).then(function(){`,
+      `fel.hidden=true;`,
+      `var done=document.getElementById('pd-rev-form-done');if(done)done.hidden=false;`,
+      `}).catch(function(){`,
+      `if(sub){sub.disabled=false;sub.textContent='Submit Review';}`,
+      `alert('Something went wrong. Please try again.');`,
+      `});});}`,
+      `})();<\/script>`,
+      `<script src="https://cdn.judge.me/assets/rev_widget.js" defer><\/script>`,
+    ].join('')} />
+  )}
+
+  <!-- Newsletter CTA -->
+  <section class="section-newsletter">
+    <span class="newsletter-deco">"</span>
+    <div class="container newsletter-inner">
+      <span class="label label-center newsletter-eyebrow">A letter, weekly</span>
+      <h2 class="newsletter-title">Subscribe to <em>The Edit</em>.</h2>
+      <p class="newsletter-body">One thoughtful email a week. Editor's picks, the occasional rant, and what we'd
+        actually recommend to a friend looking for new gear. No deal-of-the-day. No drop-pop FOMO.</p>
+      <form class="newsletter-form" onsubmit="nlSubmit(event)">
+        <input class="newsletter-input" type="email" placeholder="your@email.com" required>
+        <button type="submit" class="newsletter-submit">Subscribe</button>
+      </form>
+      <p class="newsletter-fine">By subscribing you agree to our <a href="#">privacy policy</a>. Unsubscribe in one
+        click, always.</p>
+    </div>
+  </section>

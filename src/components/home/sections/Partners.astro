@@ -1,0 +1,112 @@
+---
+// ============================================================
+// PARTNERS SECTION — Scrolling marquee of partner logos / names
+// ============================================================
+//
+// CONFIGURATION: Edit the PARTNERS array below to customise each item.
+//
+// Each partner entry supports:
+//   name    — Display text (shown when no image is provided)
+//   image   — (optional) Path to logo image, e.g. "/images/logos/apex.svg"
+//   alt     — Alt text for the logo image (for accessibility)
+//   href    — (optional) URL the logo links to. Leave as "" to disable the link.
+//   newTab  — Set to true to open the link in a new browser tab (external URLs).
+//             Set to false (or omit) to navigate in the same tab (internal links).
+//
+// Example with an image logo and external link:
+//   { name: "Apex Audio", image: "/images/logos/apex.svg", alt: "Apex Audio logo", href: "https://apexaudio.com", newTab: true }
+//
+// Example with text only and no link:
+//   { name: "NovaTech", image: "", alt: "", href: "", newTab: false }
+// ============================================================
+
+const PARTNERS = [
+  // --- Partner 1 ---
+  {
+    name: "Apex Audio",
+    image: "",               // Path to logo image, e.g. "/images/logos/apex.svg"
+    alt: "Apex Audio",       // Alt text for the logo image
+    href: "",                // Link URL — leave empty to disable
+    newTab: false,           // true = open in new tab (use for external links)
+  },
+  // --- Partner 2 ---
+  {
+    name: "CrystalView",
+    image: "",
+    alt: "CrystalView",
+    href: "",
+    newTab: false,
+  },
+  // --- Partner 3 ---
+  {
+    name: "SoundWave",
+    image: "",
+    alt: "SoundWave",
+    href: "",
+    newTab: false,
+  },
+  // --- Partner 4 ---
+  {
+    name: "TechSphere",
+    image: "",
+    alt: "TechSphere",
+    href: "",
+    newTab: false,
+  },
+  // --- Partner 5 ---
+  {
+    name: "NovaTech",
+    image: "",
+    alt: "NovaTech",
+    href: "",
+    newTab: false,
+  },
+  // --- Partner 6 ---
+  {
+    name: "Quantum Gear",
+    image: "",
+    alt: "Quantum Gear",
+    href: "",
+    newTab: false,
+  },
+];
+
+// The marquee duplicates the list for a seamless infinite scroll effect.
+const allItems = [...PARTNERS, ...PARTNERS];
+---
+
+<section class="section-partners">
+  <div style="overflow:hidden; width:100%;">
+    <div class="partners-track" id="partners-track">
+      {allItems.map((partner) => {
+        // Render inner content: logo image if provided, otherwise the name text.
+        const inner = partner.image
+          ? <img src={partner.image} alt={partner.alt} class="partner-logo" />
+          : <>{partner.name}</>;
+
+        // Wrap in <a> when a link URL is configured, otherwise use a plain <span>.
+        return partner.href
+          ? (
+            <a
+              class="partner-item"
+              href={partner.href}
+              target={partner.newTab ? "_blank" : undefined}
+              rel={partner.newTab ? "noopener noreferrer" : undefined}
+              aria-label={partner.alt || partner.name}
+            >
+              {inner}
+            </a>
+          )
+          : (
+            <span class="partner-item">
+              {inner}
+            </span>
+          );
+      })}
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+   SHOP BY LIFESTYLE — Clean split with product card overlay
+============================================================ -->

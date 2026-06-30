@@ -1,0 +1,481 @@
+---
+// ============================================================
+//  /account — authenticated customer dashboard
+//  Redirects to /account/login when there is no valid session.
+// ============================================================
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import PageHeader from '~/components/layout/PageHeader.astro';
+import {
+  createCustomerClient,
+  CUSTOMER_OVERVIEW_QUERY,
+  CUSTOMER_PROFILE_QUERY,
+  getPublicOrigin,
+  NotAuthenticatedError,
+} from '~/lib/shopify/customer';
+import type { CustomerOverview, CustomerProfile } from '~/lib/shopify/customer';
+
+export const prerender = false;
+
+const client = createCustomerClient(Astro.cookies, getPublicOrigin(Astro.request, Astro.url));
+
+if (!client.isLoggedIn()) {
+  return Astro.redirect('/account/login?return_to=/account');
+}
+
+let customer: CustomerOverview['customer'] = null;
+let profile: CustomerProfile['customer'] = null;
+let error: string | null = null;
+
+try {
+  const data = await client.query<CustomerOverview>(CUSTOMER_OVERVIEW_QUERY, { first: 5 });
+  customer = data.customer;
+} catch (err) {
+  if (err instanceof NotAuthenticatedError) {
+    return Astro.redirect('/account/login?return_to=/account');
+  }
+  console.error('[account] load failed:', (err as Error).message);
+  error = (err as Error).message;
+}
+
+// Fetch phone + defaultAddress separately — these fields are optional in some
+// Shopify plans and we don't want them to crash the main dashboard.
+try {
+  const profileData = await client.query<CustomerProfile>(CUSTOMER_PROFILE_QUERY, {});
+  profile = profileData.customer;
+} catch {
+  // silently ignore — profile extras are non-critical
+}
+
+const fullName = [customer?.firstName, customer?.lastName].filter(Boolean).join(' ');
+const greeting = fullName || customer?.emailAddress?.emailAddress || 'there';
+const orders = customer?.orders?.nodes ?? [];
+const defaultAddr = profile?.defaultAddress;
+
+const fmtMoney = (m: { amount: string; currencyCode: string } | null | undefined) =>
+  m
+    ? new Intl.NumberFormat('en-US', { style: 'currency', currency: m.currencyCode }).format(
+        Number(m.amount),
+      )
+    : '—';
+
+const fmtDate = (iso: string) =>
+  new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'short', day: 'numeric' }).format(
+    new Date(iso),
+  );
+
+function statusBadgeClass(status: string | null | undefined) {
+  const s = (status ?? '').toLowerCase();
+  if (s === 'paid' || s === 'fulfilled') return 'status-badge status-badge--success';
+  if (s === 'pending' || s === 'in_progress' || s === 'unfulfilled') return 'status-badge status-badge--pending';
+  if (s === 'refunded' || s === 'voided' || s === 'cancelled') return 'status-badge status-badge--muted';
+  return 'status-badge status-badge--default';
+}
+
+const encodeOrderId = (gid: string) =>
+  btoa(gid).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+---
+
+<BaseLayout title="My Account">
+  <PageHeader eyebrow="My account" title={`Welcome back, *${greeting}*`} />
+
+  <div class="container account-section">
+    {error && (
+      <p class="account-alert">
+        Couldn't load your account: {error}
+      </p>
+    )}
+
+    {/* ── Quick nav ────────────────────────────────────────────── */}
+    <nav class="account-nav">
+      <a href="/account" class="account-nav-link active" aria-current="page">Overview</a>
+      <a href="/account/orders" class="account-nav-link">Orders</a>
+      <a href="/account/profile" class="account-nav-link">Profile</a>
+      <a href="/account/addresses" class="account-nav-link">Addresses</a>
+      <a href="/account/logout" class="account-nav-link account-nav-link--logout">Sign out</a>
+    </nav>
+
+    <div class="account-grid">
+
+      {/* ── Profile card ─────────────────────────────────────── */}
+      <section class="account-card">
+        <div class="account-card-head">
+          <h2 class="eyebrow text-muted-light">Profile</h2>
+          <a href="/account/profile" class="account-edit-link">Edit</a>
+        </div>
+        <dl class="account-dl">
+          <div>
+            <dt>Name</dt>
+            <dd>{fullName || '—'}</dd>
+          </div>
+          <div>
+            <dt>Email</dt>
+            <dd>{customer?.emailAddress?.emailAddress || '—'}</dd>
+          </div>
+          {profile?.phoneNumber?.phoneNumber && (
+            <div>
+              <dt>Phone</dt>
+              <dd>{profile.phoneNumber.phoneNumber}</dd>
+            </div>
+          )}
+        </dl>
+      </section>
+
+      {/* ── Default address card ──────────────────────────────── */}
+      <section class="account-card">
+        <div class="account-card-head">
+          <h2 class="eyebrow text-muted-light">Default address</h2>
+          <a href="/account/addresses" class="account-edit-link">Manage</a>
+        </div>
+        {defaultAddr ? (
+          <address class="account-address not-italic text-sm text-muted leading-relaxed">
+            {[defaultAddr.firstName, defaultAddr.lastName].filter(Boolean).join(' ')}<br />
+            {defaultAddr.address1}<br />
+            {defaultAddr.address2 && <>{defaultAddr.address2}<br /></>}
+            {defaultAddr.city}{defaultAddr.province ? `, ${defaultAddr.province}` : ''} {defaultAddr.zip}<br />
+            {defaultAddr.country}
+          </address>
+        ) : (
+          <p class="text-sm text-muted-light">
+            No address saved. <a href="/account/addresses/new" class="text-clay hover:text-clay-deep transition-fluid">Add one</a>
+          </p>
+        )}
+      </section>
+
+    </div>
+
+    {/* ── Recent orders ─────────────────────────────────────────── */}
+    <section class="recent-orders-section">
+      <div class="account-section-head">
+        <h2 class="eyebrow text-muted-light">Recent orders</h2>
+        {orders.length > 0 && (
+          <a href="/account/orders" class="account-edit-link">View all</a>
+        )}
+      </div>
+
+      {orders.length === 0 ? (
+        <div class="account-empty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" width="40" height="40" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+          </svg>
+          <p>You haven't placed any orders yet.</p>
+          <a href="/products" class="btn-outline">Start shopping</a>
+        </div>
+      ) : (
+        <div class="account-orders-list">
+          {orders.map((order) => {
+            const thumbs = (order.lineItems?.nodes ?? []).filter(n => n.image);
+            return (
+              <a href={`/account/orders/${encodeOrderId(order.id)}`} class="account-order-row">
+                <div class="account-order-left">
+                  {thumbs.length > 0 && (
+                    <div class="order-thumbs">
+                      {thumbs.slice(0, 3).map((item) => (
+                        <div class="order-thumb">
+                          <img src={item.image!.url} alt={item.image!.altText ?? item.title} loading="lazy" />
+                        </div>
+                      ))}
+                      {thumbs.length > 3 && (
+                        <div class="order-thumb order-thumb--more">+{thumbs.length - 3}</div>
+                      )}
+                    </div>
+                  )}
+                  <div class="account-order-info">
+                    <span class="order-name">{order.name}</span>
+                    <span class="order-date">{fmtDate(order.processedAt)}</span>
+                  </div>
+                </div>
+                <div class="account-order-meta">
+                  {order.financialStatus && (
+                    <span class={statusBadgeClass(order.financialStatus)}>
+                      {order.financialStatus.replace(/_/g, ' ')}
+                    </span>
+                  )}
+                  <span class="order-price">{fmtMoney(order.totalPrice)}</span>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="16" height="16" aria-hidden="true" class="chevron">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </a>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  </div>
+</BaseLayout>
+
+<style>
+  /* ── Page section vertical padding ───────────────────────── */
+  .account-section {
+    padding-top: 0;
+    padding-bottom: 64px;
+  }
+  @media (max-width: 640px) {
+    .account-section {
+      padding-top: 32px;
+      padding-bottom: 48px;
+    }
+  }
+
+  /* ── Alert (server errors) ────────────────────────────────── */
+  .account-alert {
+    margin-bottom: 32px;
+    padding: 12px 16px;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    line-height: 1.5;
+    background: rgba(179, 64, 31, 0.05);
+    border: 1px solid rgba(179, 64, 31, 0.3);
+    color: var(--color-danger);
+  }
+
+  /* ── Account nav ──────────────────────────────────────────── */
+  .account-nav {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    border-bottom: 1px solid var(--color-sand-deep);
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin-bottom: 40px;
+  }
+  .account-nav::-webkit-scrollbar { display: none; }
+
+  .account-nav-link {
+    display: inline-block;
+    padding: 10px 18px 10px 0;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    color: var(--color-muted);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    white-space: nowrap;
+    transition: color 180ms, border-color 180ms;
+    text-decoration: none;
+  }
+  .account-nav-link:hover { color: var(--color-ink); }
+  .account-nav-link.active {
+    color: var(--color-ink);
+    border-bottom-color: var(--color-clay);
+  }
+  .account-nav-link--logout {
+    margin-left: auto;
+    padding-right: 0;
+    color: var(--color-muted-light);
+  }
+  .account-nav-link--logout:hover { color: var(--color-danger); }
+
+  /* ── Two-col overview grid ────────────────────────────────── */
+  .account-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  @media (min-width: 600px) {
+    .account-grid { grid-template-columns: 1fr 1fr; }
+  }
+
+  /* ── Card ─────────────────────────────────────────────────── */
+  .account-card {
+    background: var(--color-warm-white);
+    border: 1px solid var(--color-sand-deep);
+    border-radius: var(--radius-lg);
+    padding: 24px 28px;
+  }
+  .account-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .account-edit-link {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-clay);
+    transition: color 180ms;
+    text-decoration: none;
+  }
+  .account-edit-link:hover { color: var(--color-clay-deep); }
+
+  /* ── Definition list ──────────────────────────────────────── */
+  .account-dl {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .account-dl > div { display: contents; }
+  .account-dl dt {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-muted-light);
+  }
+  .account-dl dd {
+    font-size: 14px;
+    color: var(--color-ink);
+    margin-top: 2px;
+    margin-bottom: 6px;
+  }
+
+  /* ── Recent orders section ────────────────────────────────── */
+  .recent-orders-section {
+    margin-top: 52px;
+  }
+
+  /* ── Section head ─────────────────────────────────────────── */
+  .account-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  /* ── Empty state ──────────────────────────────────────────── */
+  .account-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 56px 24px;
+    background: var(--color-warm-white);
+    border: 1px solid var(--color-sand-deep);
+    border-radius: var(--radius-lg);
+    color: var(--color-muted);
+    text-align: center;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* ── Orders list ──────────────────────────────────────────── */
+  .account-orders-list {
+    border: 1px solid var(--color-sand-deep);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: var(--color-warm-white);
+    margin-top: 16px;
+  }
+  .account-order-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--color-sand);
+    transition: background 160ms;
+    text-decoration: none;
+  }
+  .account-order-row:last-child { border-bottom: none; }
+  .account-order-row:hover { background: var(--color-sand); }
+
+  .account-order-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+  }
+
+  /* ── Product thumbnails strip ─────────────────────────────── */
+  .order-thumbs {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .order-thumb {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-md);
+    border: 1.5px solid var(--color-sand-deep);
+    background: var(--color-cream);
+    overflow: hidden;
+    margin-left: -8px;
+    flex-shrink: 0;
+  }
+  .order-thumb:first-child { margin-left: 0; }
+  .order-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .order-thumb--more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-muted);
+    background: var(--color-sand);
+  }
+
+  .account-order-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+  .account-order-info .order-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-ink);
+  }
+  .account-order-info .order-date {
+    font-size: 12px;
+    color: var(--color-muted-light);
+  }
+  .account-order-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .order-price {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .chevron { color: var(--color-muted-light); }
+
+  /* ── Status badges ────────────────────────────────────────── */
+  .status-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: var(--radius-pill);
+  }
+  .status-badge--success { background: #d1fae5; color: var(--color-success); }
+  .status-badge--pending { background: #fef3c7; color: #92400e; }
+  .status-badge--muted   { background: var(--color-sand); color: var(--color-muted); }
+  .status-badge--default { background: var(--color-fog);  color: var(--color-muted); }
+
+  /* hide status badges on very small screens */
+  @media (max-width: 480px) {
+    .account-order-meta .status-badge { display: none; }
+  }
+
+  /* ── Button outline ───────────────────────────────────────── */
+  .btn-outline {
+    display: inline-block;
+    padding: 10px 24px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border: 1.5px solid var(--color-sand-deep);
+    border-radius: var(--radius-md);
+    color: var(--color-ink);
+    text-decoration: none;
+    transition: background 180ms, border-color 180ms;
+  }
+  .btn-outline:hover {
+    background: var(--color-sand);
+    border-color: var(--color-clay);
+  }
+</style>
