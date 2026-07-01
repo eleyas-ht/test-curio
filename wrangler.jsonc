@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "curio",
+  "compatibility_date": "2026-06-01",
+  // nodejs_compat provides node:crypto (used by the PKCE helpers) and
+  // populates process.env from the Worker's vars/secrets at runtime.
+  // main, the ASSETS binding, and the session KV binding are supplied
+  // automatically by @astrojs/cloudflare — do not set them here.
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true
+  }
+}

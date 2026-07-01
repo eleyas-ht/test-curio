@@ -1,24 +1,33 @@
 ---
 // ============================================================
 //  Blog listing page — /blogs/[blog]
-//  Fetches all articles from a Shopify blog and renders them
-//  in the editorial journal-grid layout.
+//  Editorial design: masthead → featured lead → filter grid
+//  All data from Shopify Storefront API via getBlogListing()
 // ============================================================
 import BaseLayout from '~/layouts/BaseLayout.astro';
+import Newsletter from '~/components/home/sections/Newsletter.astro';
 import { getBlogListing } from '~/lib/shopify';
 import type { BlogArticle } from '~/lib/shopify/types';
 
 const { blog: blogHandle } = Astro.params;
+const currentPage = Math.max(1, parseInt(Astro.url.searchParams.get('page') ?? '1', 10));
+const afterCursor = Astro.url.searchParams.get('after') ?? undefined;
+// cursorHistory[i] = endCursor from page (i+1), used as `after` to fetch page (i+2)
+const cursorHistory = Astro.url.searchParams.get('cursors')?.split(',').filter(Boolean) ?? [];
 
 let blogTitle = '';
 let articles: BlogArticle[] = [];
 let loadFailed = false;
+let hasNextPage = false;
+let nextCursor: string | null = null;
 
 try {
-  const result = await getBlogListing(blogHandle!, 24);
+  const result = await getBlogListing(blogHandle!, 6, afterCursor);
   if (result) {
     blogTitle = result.title;
     articles = result.articles;
+    hasNextPage = result.pageInfo.hasNextPage;
+    nextCursor = result.pageInfo.endCursor ?? null;
   } else {
     Astro.response.status = 404;
   }
@@ -45,100 +54,425 @@ function truncate(text: string, max: number): string {
   return text.slice(0, max).trimEnd() + '…';
 }
 
-function getExcerpt(a: BlogArticle): string {
+function getExcerpt(a: BlogArticle, max = 180): string {
   const raw = a.excerpt || (a.contentHtml ? stripHtml(a.contentHtml) : '');
-  return truncate(raw, 180);
+  return truncate(raw, max);
 }
+
+function normCat(tag: string): string {
+  return tag.toLowerCase().replace(/\s+/g, '-');
+}
+
+const leadArticle = articles.length > 0 ? articles[0] : null;
+const gridArticles = articles.slice(1);
+
+const leadHref = leadArticle ? `/blogs/${leadArticle.blog.handle}/${leadArticle.handle}` : '';
+const leadCategory = leadArticle?.tags[0] ?? 'Journal';
+const leadExcerpt = leadArticle ? getExcerpt(leadArticle, 260) : '';
+
+// Pagination helpers
+function pageUrl(p: number): string {
+  if (p === 1) return `/blogs/${blogHandle}`;
+  const cursor = cursorHistory[p - 2];
+  if (!cursor) return '#';
+  const cs = cursorHistory.slice(0, p - 1).join(',');
+  return `/blogs/${blogHandle}?page=${p}&after=${encodeURIComponent(cursor)}&cursors=${encodeURIComponent(cs)}`;
+}
+const nextCursors = nextCursor ? [...cursorHistory, nextCursor].join(',') : '';
+const nextPageUrl = hasNextPage && nextCursor
+  ? `/blogs/${blogHandle}?page=${currentPage + 1}&after=${encodeURIComponent(nextCursor)}&cursors=${encodeURIComponent(nextCursors)}`
+  : '';
+const totalKnownPages = hasNextPage ? currentPage + 1 : currentPage;
+const showPagination = totalKnownPages > 1;
+
+// Unique category tabs from all article tags (max 5)
+const seen = new Set<string>();
+const uniqueTabs = articles
+  .map(a => ({ label: a.tags[0] ?? '', key: normCat(a.tags[0] ?? '') }))
+  .filter(t => t.label && !seen.has(t.key) && seen.add(t.key))
+  .slice(0, 5);
 ---
 
 <BaseLayout
-  title={blogTitle || 'Journal'}
-  description={`Latest stories from ${blogTitle || 'the journal'}.`}
+  title={`${blogTitle || 'Journal'} — The Edit`}
+  description="Essays, honest reviews, and the buying guides we'd actually send to a friend. Slow tech writing for people who keep their gear for years."
 >
-  <main class="blog-listing">
-    <div class="container">
+  <main class="journal">
 
-      {/* Breadcrumb */}
-      <nav class="shop-breadcrumb" aria-label="Breadcrumb">
-        <a href="/">Home</a>
-        <span class="shop-bc-sep">/</span>
-        <span aria-current="page">{blogTitle || 'Journal'}</span>
-      </nav>
+    <!-- Masthead -->
+    <section class="jx-mast">
+      <div class="container">
+        <span class="label label-center">The Journal</span>
+        <h1>The Edit, in <em>long form</em>.</h1>
+        <p>Essays, honest reviews, and the buying guides we'd actually send to a friend. Slow tech writing for people who keep their gear for years.</p>
+        {blogTitle && <span class="jx-mast-issue">{blogTitle}</span>}
+      </div>
+    </section>
 
-      {/* Header */}
-      <header class="blog-listing-head">
-        <span class="shop-eyebrow"><span class="shop-eyebrow-dot"></span>The Journal</span>
-        <h1 class="blog-listing-title">{blogTitle || 'Journal'}</h1>
-      </header>
-
-      {loadFailed ? (
-        <p class="blog-listing-empty">Unable to load articles right now. Please try again later.</p>
-      ) : articles.length === 0 ? (
-        <p class="blog-listing-empty">No articles found.</p>
-      ) : (
-        <div class="journal-grid blog-listing-grid">
-          {articles.map((a) => {
-            const href = `/blogs/${a.blog.handle}/${a.handle}`;
-            const category = a.tags[0] ?? 'Journal';
-            const excerpt = getExcerpt(a);
-            return (
-              <article class="journal-card">
-                <a href={href} class="journal-image">
-                  {a.image
-                    ? <img src={a.image.url} alt={a.image.altText ?? a.title} loading="lazy" />
-                    : <div class="journal-image-placeholder" aria-hidden="true" />
-                  }
-                </a>
-                <span class="journal-cat">{category}</span>
-                <h3 class="journal-title">
-                  <a href={href} class="blog-title-link">{a.title}</a>
-                </h3>
-                {excerpt && <p class="journal-excerpt">{excerpt}</p>}
-                <div class="journal-meta">
-                  {a.author?.name && <span>By <em>{a.author.name}</em></span>}
-                  {a.author?.name && <span class="dot" />}
-                  <span>{formatDate(a.publishedAt)}</span>
-                </div>
-              </article>
-            );
-          })}
+    <!-- Featured lead (first article) -->
+    {!loadFailed && leadArticle && (
+      <section class="jx-lead">
+        <div class="container">
+          <div class="jx-lead-grid">
+            <a href={leadHref} class="jx-lead-media">
+              {leadArticle.image
+                ? <img src={leadArticle.image.url} alt={leadArticle.image.altText ?? leadArticle.title} loading="eager" />
+                : <span class="jx-lead-placeholder" aria-hidden="true" />
+              }
+            </a>
+            <div class="jx-lead-body">
+              <span class="jx-lead-cat">{leadCategory} &middot; Cover Story</span>
+              <h2><a href={leadHref}>{leadArticle.title}</a></h2>
+              {leadExcerpt && <p class="jx-lead-excerpt">{leadExcerpt}</p>}
+              <div class="jx-lead-meta">
+                {leadArticle.author?.name && (
+                  <>
+                    <span>By <em>{leadArticle.author.name}</em></span>
+                    <span class="dot" />
+                  </>
+                )}
+                <span>{formatDate(leadArticle.publishedAt)}</span>
+              </div>
+              <a href={leadHref} class="btn-link">
+                Read the article
+                <svg viewBox="0 0 16 16" fill="currentColor">
+                  <path fill-rule="evenodd" d="M8.22 2.97a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06l2.97-2.97H3.75a.75.75 0 0 1 0-1.5h7.44L8.22 4.03a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
+                </svg>
+              </a>
+            </div>
+          </div>
         </div>
-      )}
+      </section>
+    )}
 
-    </div>
+    <!-- Latest grid -->
+    {loadFailed ? (
+      <section class="jx-latest">
+        <div class="container">
+          <p class="jx-empty">Unable to load articles right now. Please try again later.</p>
+        </div>
+      </section>
+    ) : articles.length === 0 ? (
+      <section class="jx-latest">
+        <div class="container">
+          <p class="jx-empty">No articles found in this journal.</p>
+        </div>
+      </section>
+    ) : gridArticles.length > 0 ? (
+      <section class="jx-latest">
+        <div class="container">
+          <div class="section-head">
+            <span class="label">Latest</span>
+            <div class="section-head-row">
+              <h2 class="section-title">Fresh from <em>the desk</em>.</h2>
+              {uniqueTabs.length > 1 && (
+                <div class="jx-filter" id="jxFilter">
+                  <button class="jx-tab active" type="button" data-filter="all">All</button>
+                  {uniqueTabs.map(t => (
+                    <button class="jx-tab" type="button" data-filter={t.key}>{t.label}</button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div class="journal-grid" id="jxGrid">
+            {gridArticles.map((a, i) => {
+              const href = `/blogs/${a.blog.handle}/${a.handle}`;
+              const cat = a.tags[0] ?? 'Journal';
+              const catKey = normCat(cat);
+              const excerpt = getExcerpt(a, 160);
+              const isExtra = i >= 9;
+              return (
+                <article
+                  class={`journal-card${isExtra ? ' jx-more-item is-hidden' : ''}`}
+                  data-cat={catKey}
+                >
+                  <a href={href} class="journal-image">
+                    {a.image
+                      ? <img src={a.image.url} alt={a.image.altText ?? a.title} loading="lazy" />
+                      : <div class="journal-image-placeholder" aria-hidden="true" />
+                    }
+                  </a>
+                  <span class="journal-cat">{cat}</span>
+                  <h3 class="journal-title"><a href={href} class="jx-card-link">{a.title}</a></h3>
+                  {excerpt && <p class="journal-excerpt">{excerpt}</p>}
+                  <div class="journal-meta">
+                    {a.author?.name && (
+                      <>
+                        <span>By <em>{a.author.name}</em></span>
+                        <span class="dot" />
+                      </>
+                    )}
+                    <span>{formatDate(a.publishedAt)}</span>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+
+          {gridArticles.length > 9 && (
+            <div class="jx-more">
+              <button class="btn-ghost" type="button" id="jxLoadMore">Load more stories</button>
+            </div>
+          )}
+
+          {showPagination && (
+            <nav class="jx-pagination" aria-label="Blog pagination">
+              {currentPage > 1 && (
+                <a href={pageUrl(currentPage - 1)} class="jx-page-nav">Prev</a>
+              )}
+              {Array.from({ length: totalKnownPages }, (_, i) => i + 1).map(p => (
+                p === currentPage
+                  ? <span class="jx-page-num is-active" aria-current="page">{p}</span>
+                  : <a href={p < currentPage ? pageUrl(p) : nextPageUrl} class="jx-page-num">{p}</a>
+              ))}
+              {hasNextPage && (
+                <a href={nextPageUrl} class="jx-page-nav">Next</a>
+              )}
+            </nav>
+          )}
+        </div>
+      </section>
+    ) : null}
+
+    <Newsletter />
+
+    <script is:inline>
+    (function () {
+      var grid = document.getElementById('jxGrid');
+      if (!grid) return;
+      var tabs = document.querySelectorAll('#jxFilter .jx-tab');
+      var cards = grid.querySelectorAll('.journal-card');
+      var moreItems = grid.querySelectorAll('.jx-more-item');
+      var btn = document.getElementById('jxLoadMore');
+      var currentFilter = 'all';
+      var shownMore = 0;
+      var BATCH = 3;
+
+      function apply() {
+        var moreIdx = 0;
+        cards.forEach(function (c) {
+          var matchCat = (currentFilter === 'all' || c.getAttribute('data-cat') === currentFilter);
+          var isMore = c.classList.contains('jx-more-item');
+          var revealed = true;
+          if (isMore) { revealed = (moreIdx < shownMore); moreIdx++; }
+          c.classList.toggle('is-hidden', !(matchCat && revealed));
+        });
+        if (btn) btn.style.display = (shownMore >= moreItems.length) ? 'none' : '';
+      }
+
+      tabs.forEach(function (t) {
+        t.addEventListener('click', function () {
+          tabs.forEach(function (x) { x.classList.remove('active'); });
+          t.classList.add('active');
+          currentFilter = t.getAttribute('data-filter') || 'all';
+          shownMore = 0;
+          apply();
+        });
+      });
+
+      if (btn) {
+        btn.addEventListener('click', function () {
+          shownMore = Math.min(shownMore + BATCH, moreItems.length);
+          apply();
+        });
+      }
+
+      apply();
+    })();
+    </script>
   </main>
 </BaseLayout>
 
 <style>
-  .blog-listing {
-    padding: 40px 0 100px;
-  }
-  .blog-listing-head {
-    padding-bottom: 40px;
+  /* ===== EDITORIAL JOURNAL — blog index ===== */
+  .journal { background: var(--warm-white, #FFFCF7); }
+
+  /* ---- Masthead ---- */
+  .jx-mast {
+    padding: clamp(56px, 7vw, 104px) 0 clamp(34px, 4vw, 52px);
+    text-align: center;
     border-bottom: 1px solid var(--sand);
-    margin-bottom: 48px;
   }
-  .blog-listing-title {
+  .jx-mast h1 {
     font-family: var(--font-serif);
-    font-size: clamp(36px, 5vw, 64px);
     font-weight: 400;
-    line-height: 1.05;
-    letter-spacing: -0.025em;
+    font-size: clamp(40px, 6.4vw, 84px);
+    line-height: 1.04;
+    letter-spacing: -0.012em;
     color: var(--ink);
-    margin-top: 10px;
+    margin: 20px 0 0;
   }
-  .blog-listing-grid {
-    /* Reuse the .journal-grid class from editorial.css but with more rows */
+  .jx-mast h1 em { font-style: italic; color: var(--clay); }
+  .jx-mast p {
+    font-family: var(--font-sans);
+    font-size: clamp(16px, 1.8vw, 19px);
+    line-height: 1.62;
+    color: var(--muted);
+    max-width: 620px;
+    margin: 22px auto 0;
   }
-  .blog-title-link {
+  .jx-mast-issue {
+    display: inline-block;
+    font-family: var(--font-sans);
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted-light, #A09A92);
+    margin-top: 28px;
+  }
+
+  /* ---- Featured lead ---- */
+  .jx-lead {
+    padding: clamp(50px, 6vw, 92px) 0;
+    border-bottom: 1px solid var(--sand);
+  }
+  .jx-lead-grid {
+    display: grid;
+    grid-template-columns: 1.18fr 1fr;
+    gap: clamp(34px, 5vw, 72px);
+    align-items: center;
+  }
+  .jx-lead-media {
+    display: block;
+    aspect-ratio: 4/3;
+    border-radius: var(--r-md);
+    overflow: hidden;
+    background: var(--sand);
+  }
+  .jx-lead-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform var(--t-slow, 550ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+  }
+  .jx-lead-media:hover img { transform: scale(1.03); }
+  .jx-lead-placeholder { display: block; width: 100%; height: 100%; }
+  .jx-lead-cat {
+    display: block;
+    font-family: var(--font-sans);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--clay);
+    margin-bottom: 14px;
+  }
+  .jx-lead h2 {
+    font-family: var(--font-serif);
+    font-weight: 400;
+    font-size: clamp(30px, 4vw, 56px);
+    line-height: 1.05;
+    letter-spacing: -0.012em;
+    color: var(--ink);
+    margin: 0;
+  }
+  .jx-lead h2 a {
     color: inherit;
     text-decoration: none;
+    transition: color var(--t-fast, 200ms);
   }
-  .blog-title-link:hover {
-    color: var(--clay);
-  }
-  .blog-listing-empty {
+  .jx-lead h2 a:hover { color: var(--clay); }
+  .jx-lead-excerpt {
+    font-family: var(--font-serif);
+    font-size: clamp(17px, 1.9vw, 20px);
+    line-height: 1.62;
     color: var(--muted);
-    padding: 40px 0;
+    margin: 20px 0 0;
+    max-width: 520px;
+  }
+  .jx-lead-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 22px;
+    font-family: var(--font-sans);
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .jx-lead-meta em { font-style: italic; color: var(--ink); }
+  .jx-lead .btn-link { margin-top: 28px; }
+
+  /* ---- Filter tabs ---- */
+  .jx-filter { display: flex; flex-wrap: wrap; gap: 7px; }
+  .jx-tab {
+    font-family: var(--font-sans);
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--muted);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--r-pill);
+    padding: 8px 17px;
+    cursor: pointer;
+    transition: all var(--t-fast, 200ms);
+  }
+  .jx-tab:hover { color: var(--ink); }
+  .jx-tab.active {
+    color: var(--ink);
+    background: var(--cream-deep);
+    border-color: var(--sand);
+  }
+
+  /* ---- Latest section ---- */
+  .jx-latest { padding: clamp(44px, 5vw, 72px) 0 clamp(80px, 10vw, 120px); }
+  .journal-card.is-hidden { display: none; }
+  .jx-more { display: flex; justify-content: center; margin-top: clamp(40px, 5vw, 64px); }
+  .jx-empty {
+    color: var(--muted);
+    padding: 80px 0;
+    font-family: var(--font-sans);
+    font-size: 15px;
+  }
+
+  /* card title link */
+  .jx-card-link { color: inherit; text-decoration: none; }
+  .jx-card-link:hover { color: var(--clay); }
+
+  /* ---- Pagination ---- */
+  .jx-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    margin-top: clamp(44px, 5vw, 64px);
+    padding-top: 30px;
+    border-top: 1px solid var(--sand);
+  }
+  .jx-page-num {
+    font-family: var(--font-sans);
+    font-size: 15px;
+    color: var(--muted);
+    padding: 6px 11px;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: color var(--t-fast, 200ms);
+    line-height: 1;
+  }
+  .jx-page-num:hover { color: var(--ink); }
+  .jx-page-num.is-active {
+    color: var(--ink);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    text-decoration-thickness: 1.5px;
+  }
+  .jx-page-nav {
+    font-family: var(--font-sans);
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--clay);
+    padding: 6px 11px;
+    line-height: 1;
+    transition: color var(--t-fast, 200ms);
+  }
+  .jx-page-nav:hover { color: var(--clay-deep, #7a4f36); }
+
+  /* ---- Responsive ---- */
+  @media (max-width: 880px) {
+    .jx-lead-grid { grid-template-columns: 1fr; gap: 28px; }
+    .section-head-row { flex-direction: column; align-items: flex-start; gap: 18px; }
   }
 </style>

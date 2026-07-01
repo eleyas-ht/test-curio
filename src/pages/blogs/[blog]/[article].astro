@@ -1,17 +1,20 @@
 ---
 // ============================================================
 //  Blog article detail page — /blogs/[blog]/[article]
-//  Fetches a single Shopify blog article and renders the full
-//  body in the editorial rich-text layout.
+//  Editorial design: cover masthead → hero → prose body with
+//  sticky share rail → author bio → continue reading grid.
+//  All data from Shopify Storefront API.
 // ============================================================
 import BaseLayout from '~/layouts/BaseLayout.astro';
-import { getArticle } from '~/lib/shopify';
+import Newsletter from '~/components/home/sections/Newsletter.astro';
+import { getArticle, getBlogArticles } from '~/lib/shopify';
 import type { BlogArticle } from '~/lib/shopify/types';
 
 const { blog: blogHandle, article: articleHandle } = Astro.params;
 
 let blogTitle = '';
 let article: BlogArticle | null = null;
+let relatedArticles: BlogArticle[] = [];
 let loadFailed = false;
 
 try {
@@ -28,6 +31,16 @@ try {
   Astro.response.status = 503;
 }
 
+// Fetch related articles separately (non-fatal)
+if (article) {
+  try {
+    const all = await getBlogArticles(blogHandle!, 4);
+    relatedArticles = all.filter(a => a.handle !== articleHandle).slice(0, 3);
+  } catch {
+    // Continue reading section just won't render
+  }
+}
+
 function formatDate(iso: string): string {
   try {
     return new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).format(new Date(iso));
@@ -36,8 +49,30 @@ function formatDate(iso: string): string {
   }
 }
 
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function truncate(text: string, max: number): string {
+  if (text.length <= max) return text;
+  return text.slice(0, max).trimEnd() + '…';
+}
+
+function getExcerpt(a: BlogArticle, max = 160): string {
+  const raw = a.excerpt || (a.contentHtml ? stripHtml(a.contentHtml) : '');
+  return truncate(raw, max);
+}
+
+function readTime(html: string): string {
+  const words = html.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length;
+  return `${Math.max(1, Math.round(words / 200))} min`;
+}
+
 const category = article?.tags[0] ?? 'Journal';
 const blogHref = `/blogs/${blogHandle}`;
+const articleUrl = Astro.url.href;
+const twitterShareUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(articleUrl)}&text=${encodeURIComponent(article?.title ?? '')}`;
+const fbShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(articleUrl)}`;
 ---
 
 <BaseLayout
@@ -57,172 +92,659 @@ const blogHref = `/blogs/${blogHandle}`;
         ? { '@type': 'Person', name: article.author.name }
         : { '@type': 'Organization', name: 'Curio' },
       publisher: { '@type': 'Organization', name: 'Curio', url: Astro.url.origin },
-      url: new URL(`/blogs/${blogHandle}/${articleHandle}`, Astro.url.origin).href,
-      mainEntityOfPage: { '@type': 'WebPage', '@id': new URL(`/blogs/${blogHandle}/${articleHandle}`, Astro.url.origin).href },
+      url: articleUrl,
+      mainEntityOfPage: { '@type': 'WebPage', '@id': articleUrl },
     })} is:inline />
   )}
-  <main class="article-page">
-    <div class="container-narrow">
 
-      {/* Breadcrumb */}
-      <nav class="shop-breadcrumb" aria-label="Breadcrumb">
-        <a href="/">Home</a>
-        <span class="shop-bc-sep">/</span>
-        <a href={blogHref}>{blogTitle || 'Journal'}</a>
-        <span class="shop-bc-sep">/</span>
-        <span aria-current="page">{article?.title ?? articleHandle}</span>
-      </nav>
+  <main class="article">
 
-      {loadFailed ? (
-        <div class="article-error">
-          <p>Unable to load this article right now. Please try again later.</p>
-          <a href={blogHref} class="btn-link" style="margin-top:20px;">← Back to journal</a>
-        </div>
-      ) : !article ? (
-        <div class="article-error">
-          <p>This article could not be found.</p>
-          <a href={blogHref} class="btn-link" style="margin-top:20px;">← Back to journal</a>
-        </div>
-      ) : (
-        <article class="article-body">
+    {loadFailed ? (
+      <div class="ax-wrap ax-error">
+        <p>Unable to load this article right now. Please try again later.</p>
+        <a href={blogHref} class="btn-link" style="margin-top:20px;">← Back to journal</a>
+      </div>
+    ) : !article ? (
+      <div class="ax-wrap ax-error">
+        <p>This article could not be found.</p>
+        <a href={blogHref} class="btn-link" style="margin-top:20px;">← Back to journal</a>
+      </div>
+    ) : (
+      <>
+        <!-- Cover masthead -->
+        <header class="ax-cover">
+          <div class="ax-wrap">
+            <nav class="ax-crumb" aria-label="Breadcrumb">
+              <a href="/">Home</a>
+              <span>/</span>
+              <a href={blogHref}>{blogTitle || 'Journal'}</a>
+              <span>/</span>
+              <span class="ax-crumb-now">{category}</span>
+            </nav>
 
-          {/* Category chip */}
-          <span class="journal-cat article-cat">{category}</span>
+            <span class="ax-kicker">{category}</span>
+            <h1 class="ax-title">{article.title}</h1>
+            {article.excerpt && <p class="ax-deck">{article.excerpt}</p>}
 
-          {/* Title */}
-          <h1 class="article-title">{article.title}</h1>
-
-          {/* Meta — author · date */}
-          <div class="article-meta">
-            {article.author?.name && (
-              <>
-                <span>By <em>{article.author.name}</em></span>
-                <span class="dot" />
-              </>
-            )}
-            <span>{formatDate(article.publishedAt)}</span>
+            <div class="ax-byline">
+              {article.author?.name && (
+                <div class="ax-by-text">
+                  <div class="ax-by-name">By <em>{article.author.name}</em></div>
+                  <div class="ax-by-meta">{formatDate(article.publishedAt)}</div>
+                </div>
+              )}
+              {!article.author?.name && (
+                <div class="ax-by-text">
+                  <div class="ax-by-meta">{formatDate(article.publishedAt)}</div>
+                </div>
+              )}
+              {article.contentHtml && (
+                <>
+                  <span class="ax-by-sep" />
+                  <span class="ax-by-stat">
+                    <strong>{readTime(article.contentHtml)}</strong> read time
+                  </span>
+                </>
+              )}
+            </div>
           </div>
+        </header>
 
-          {/* Hero image */}
-          {article.image && (
-            <figure class="article-figure">
-              <img
-                src={article.image.url}
-                alt={article.image.altText ?? article.title}
-                class="article-hero-img"
-                loading="eager"
-              />
-            </figure>
-          )}
+        <!-- Full-bleed hero image -->
+        {article.image && (
+          <figure class="ax-hero ax-wrap">
+            <img
+              class="ax-hero-img"
+              src={article.image.url}
+              alt={article.image.altText ?? article.title}
+              loading="eager"
+            />
+          </figure>
+        )}
 
-          {/* Body */}
-          {article.contentHtml ? (
-            <div class="rte article-rte" set:html={article.contentHtml} />
-          ) : (
-            <p class="article-no-content">No content available for this article.</p>
-          )}
+        <!-- Body region -->
+        <section class="ax-region">
+          <!-- Sticky vertical share rail -->
+          <aside class="ax-share" id="axShare" aria-label="Share this article">
+            <span class="ax-share-label">Share</span>
+            <a href={twitterShareUrl} target="_blank" rel="noopener noreferrer" aria-label="Share on Twitter">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M18 4h3l-7 8 8 11h-6l-5-7-6 7H2l8-9L2 4h6l4 6 6-6Z"/>
+              </svg>
+            </a>
+            <a href={fbShareUrl} target="_blank" rel="noopener noreferrer" aria-label="Share on Facebook">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M14 9h3V5h-3a4 4 0 0 0-4 4v2H7v4h3v6h4v-6h3l1-4h-4V9a1 1 0 0 1 1-1Z"/>
+              </svg>
+            </a>
+            <a href="#" id="ax-copy-link" data-url={articleUrl} aria-label="Copy link">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                <path d="M9 13a4 4 0 0 0 5.7.5l3-3a4 4 0 0 0-5.7-5.7l-1.5 1.5" stroke-linecap="round"/>
+                <path d="M15 11a4 4 0 0 0-5.7-.5l-3 3a4 4 0 0 0 5.7 5.7l1.5-1.5" stroke-linecap="round"/>
+              </svg>
+            </a>
+          </aside>
 
-          {/* Back link */}
-          <a href={blogHref} class="article-back btn-link">
-            <svg viewBox="0 0 16 16" fill="currentColor" style="transform:rotate(180deg)">
-              <path fill-rule="evenodd" d="M8.22 2.97a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06l2.97-2.97H3.75a.75.75 0 0 1 0-1.5h7.44L8.22 4.03a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
-            </svg>
-            Back to {blogTitle || 'Journal'}
-          </a>
+          <div class="ax-wrap">
+            <div class="ax-col">
+              <!-- Article prose body -->
+              {article.contentHtml
+                ? <div class="ax-prose" set:html={article.contentHtml} />
+                : <p class="ax-no-content">No content available for this article.</p>
+              }
 
-        </article>
-      )}
+              <!-- Tags + share footer -->
+              <div class="ax-foot">
+                {article.tags.length > 0 && (
+                  <div class="ax-tags">
+                    {article.tags.map(tag => (
+                      <span class="ax-tag">{tag}</span>
+                    ))}
+                  </div>
+                )}
+                <div class="ax-foot-share">
+                  <span>Share</span>
+                  <a href={twitterShareUrl} target="_blank" rel="noopener noreferrer" aria-label="Share on Twitter">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M18 4h3l-7 8 8 11h-6l-5-7-6 7H2l8-9L2 4h6l4 6 6-6Z"/>
+                    </svg>
+                  </a>
+                  <a href={fbShareUrl} target="_blank" rel="noopener noreferrer" aria-label="Share on Facebook">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M14 9h3V5h-3a4 4 0 0 0-4 4v2H7v4h3v6h4v-6h3l1-4h-4V9a1 1 0 0 1 1-1Z"/>
+                    </svg>
+                  </a>
+                  <a href="#" class="ax-copy-link-foot" data-url={articleUrl} aria-label="Copy link">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                      <path d="M9 13a4 4 0 0 0 5.7.5l3-3a4 4 0 0 0-5.7-5.7l-1.5 1.5" stroke-linecap="round"/>
+                      <path d="M15 11a4 4 0 0 0-5.7-.5l-3 3a4 4 0 0 0 5.7 5.7l1.5-1.5" stroke-linecap="round"/>
+                    </svg>
+                  </a>
+                </div>
+              </div>
 
-    </div>
+              <!-- Author bio -->
+              {article.author?.name && (
+                <div class="ax-author">
+                  <div class="ax-author-initial" aria-hidden="true">
+                    {article.author.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <div class="ax-author-eyebrow">Written by</div>
+                    <h3 class="ax-author-name">{article.author.name}</h3>
+                    <p class="ax-author-role">Contributor &middot; {blogTitle || 'The Journal'}</p>
+                    <div class="ax-author-links">
+                      <a href={blogHref}>
+                        Back to journal
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+
+        <!-- Continue reading -->
+        {relatedArticles.length > 0 && (
+          <section class="ax-next">
+            <div class="container">
+              <div class="ax-next-head">
+                <div>
+                  <span class="label">Keep reading</span>
+                  <h2 class="section-title" style="margin-top:18px;">More from <em>The Journal</em></h2>
+                </div>
+                <a href={blogHref} class="btn-link">
+                  All stories
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </a>
+              </div>
+
+              <div class="journal-grid">
+                {relatedArticles.map(a => {
+                  const href = `/blogs/${a.blog.handle}/${a.handle}`;
+                  const cat = a.tags[0] ?? 'Journal';
+                  const excerpt = getExcerpt(a, 160);
+                  return (
+                    <article class="journal-card">
+                      <a href={href} class="journal-image">
+                        {a.image
+                          ? <img src={a.image.url} alt={a.image.altText ?? a.title} loading="lazy" />
+                          : <div class="journal-image-placeholder" aria-hidden="true" />
+                        }
+                      </a>
+                      <span class="journal-cat">{cat}</span>
+                      <h3 class="journal-title"><a href={href} class="ax-card-link">{a.title}</a></h3>
+                      {excerpt && <p class="journal-excerpt">{excerpt}</p>}
+                      <div class="journal-meta">
+                        {a.author?.name && (
+                          <>
+                            <span>By <em>{a.author.name}</em></span>
+                            <span class="dot" />
+                          </>
+                        )}
+                        <span>{formatDate(a.publishedAt)}</span>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+        )}
+
+        <Newsletter />
+      </>
+    )}
+
+    <script is:inline>
+    /* Copy link buttons */
+    (function () {
+      function copyUrl(btn) {
+        btn.addEventListener('click', function (e) {
+          e.preventDefault();
+          var url = btn.getAttribute('data-url') || window.location.href;
+          if (navigator.clipboard) navigator.clipboard.writeText(url).catch(function () {});
+        });
+      }
+      var rail = document.getElementById('ax-copy-link');
+      var foot = document.querySelectorAll('.ax-copy-link-foot');
+      if (rail) copyUrl(rail);
+      foot.forEach(copyUrl);
+    })();
+
+    /* Sticky share rail (desktop only) */
+    (function () {
+      var rail = document.getElementById('axShare');
+      var region = document.querySelector('.ax-region');
+      if (!rail || !region) return;
+      var mq = window.matchMedia('(min-width: 1181px)');
+      function onScroll() {
+        if (!mq.matches) { rail.classList.remove('is-stuck'); return; }
+        var r = region.getBoundingClientRect();
+        rail.classList.toggle('is-stuck', r.top <= 120 && r.bottom > 320);
+      }
+      window.addEventListener('scroll', onScroll, { passive: true });
+      window.addEventListener('resize', onScroll);
+      onScroll();
+    })();
+    </script>
   </main>
 </BaseLayout>
 
 <style>
-  .article-page {
-    padding: 40px 0 100px;
-  }
+  /* ===== EDITORIAL ARTICLE — single / long-read ===== */
+  .article { background: var(--warm-white, #FFFCF7); }
 
-  .article-cat {
-    display: inline-block;
-    margin-bottom: 18px;
+  /* ---- Layout helpers ---- */
+  .ax-wrap {
+    max-width: 1470px;
+    margin: 0 auto;
+    padding-left: var(--pad, 30px);
+    padding-right: var(--pad, 30px);
   }
-
-  .article-title {
-    font-family: var(--font-serif);
-    font-size: clamp(28px, 4.5vw, 52px);
-    font-weight: 400;
-    line-height: 1.1;
-    letter-spacing: -0.02em;
-    color: var(--ink);
-    margin-bottom: 20px;
+  .ax-col {
+    max-width: 720px;
+    margin: 0 auto;
   }
-
-  .article-meta {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 13px;
+  .ax-error {
+    padding: 80px 0;
     color: var(--muted);
-    margin-bottom: 36px;
-    padding-bottom: 28px;
-    border-bottom: 1px solid var(--sand);
+    font-family: var(--font-sans);
+    font-size: 15px;
   }
 
-  .article-meta em {
-    font-family: var(--font-serif);
-    font-style: italic;
-    color: var(--clay);
+  /* ---- Cover masthead ---- */
+  .ax-cover {
+    padding: clamp(48px, 6vw, 88px) 0 clamp(34px, 4vw, 48px);
+    text-align: center;
   }
-
-  .article-figure {
-    margin: 0 0 40px;
-    border-radius: var(--r-lg);
-    overflow: hidden;
-  }
-
-  .article-hero-img {
-    width: 100%;
-    height: auto;
-    display: block;
-    aspect-ratio: 16/9;
-    object-fit: cover;
-  }
-
-  /* Reuse the .rte class from pages/[handle].astro */
-  .article-rte {
-    color: var(--muted);
-    line-height: 1.85;
-    padding-bottom: 60px;
-  }
-  .article-rte > * + * { margin-top: 1.1rem; }
-  .article-rte h2, .article-rte h3 { font-family: var(--font-serif); color: var(--ink); margin-top: 2rem; font-weight: 500; }
-  .article-rte h2 { font-size: 1.7rem; }
-  .article-rte h3 { font-size: 1.35rem; }
-  .article-rte a { color: var(--clay-deep); text-decoration: underline; text-underline-offset: 3px; }
-  .article-rte ul, .article-rte ol { padding-left: 1.3rem; }
-  .article-rte ul { list-style: disc; }
-  .article-rte ol { list-style: decimal; }
-  .article-rte img { border-radius: var(--r-lg); margin-block: 1.5rem; max-width: 100%; }
-  .article-rte blockquote { border-left: 3px solid var(--clay); padding-left: 1.2rem; color: var(--ink); font-family: var(--font-serif); font-style: italic; font-size: 1.15rem; }
-
-  .article-back {
+  .ax-crumb {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    margin-top: 20px;
+    gap: 9px;
+    font-family: var(--font-sans);
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-bottom: 30px;
   }
-  .article-back svg {
-    width: 16px;
-    height: 16px;
+  .ax-crumb a { color: var(--muted); transition: color 200ms; }
+  .ax-crumb a:hover { color: var(--clay-deep); }
+  .ax-crumb > span { color: var(--sand-deep); }
+  .ax-crumb-now { color: var(--ink) !important; }
+
+  .ax-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--font-sans);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--clay);
+    margin-bottom: 26px;
+  }
+  .ax-kicker::before,
+  .ax-kicker::after {
+    content: '';
+    width: 26px;
+    height: 1px;
+    background: var(--clay);
   }
 
-  .article-error {
-    padding: 40px 0;
+  .ax-title {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    color: var(--ink);
+    font-size: clamp(40px, 6.2vw, 84px);
+    line-height: 1.04;
+    letter-spacing: -0.022em;
+    max-width: 16ch;
+    margin: 0 auto 28px;
+  }
+  .ax-title em { font-style: italic; color: var(--clay-deep); }
+
+  .ax-deck {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 300;
+    font-size: clamp(19px, 2.1vw, 26px);
+    line-height: 1.5;
     color: var(--muted);
+    max-width: 44ch;
+    margin: 0 auto;
   }
 
-  .article-no-content {
+  /* Byline */
+  .ax-byline {
+    display: inline-flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 40px;
+    padding-top: 26px;
+    border-top: 1px solid var(--sand);
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .ax-by-text { text-align: left; }
+  .ax-by-name {
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .ax-by-name em {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 500;
+    color: var(--clay-deep);
+  }
+  .ax-by-meta {
+    font-family: var(--font-sans);
+    font-size: 12.5px;
     color: var(--muted);
+    margin-top: 2px;
+  }
+  .ax-by-sep {
+    display: inline-block;
+    width: 1px;
+    height: 30px;
+    background: var(--sand);
+  }
+  .ax-by-stat {
+    font-family: var(--font-sans);
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+  .ax-by-stat strong {
+    display: block;
+    font-size: 13.5px;
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  /* ---- Hero image ---- */
+  .ax-hero {
+    display: block;
+    margin-top: clamp(30px, 3.6vw, 48px);
+  }
+  .ax-hero-img {
+    width: 100%;
+    aspect-ratio: 21/9;
+    object-fit: cover;
+    border-radius: var(--r-lg);
+    background: var(--sand);
+    display: block;
+  }
+
+  /* ---- Body region ---- */
+  .ax-region {
+    position: relative;
+    padding: clamp(52px, 6vw, 84px) 0 clamp(40px, 5vw, 72px);
+  }
+
+  /* Sticky share rail */
+  .ax-share {
+    position: absolute;
+    top: clamp(52px, 6vw, 84px);
+    left: max(var(--pad, 30px), calc(50% - 560px));
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+  }
+  .ax-share.is-stuck {
+    position: fixed;
+    top: 120px;
+  }
+  .ax-share-label {
+    writing-mode: vertical-rl;
+    font-family: var(--font-sans);
+    font-size: 10.5px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--muted-light, #A09A92);
+    margin-bottom: 6px;
+  }
+  .ax-share a {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--sand);
+    color: var(--cocoa);
+    background: var(--warm-white, #FFFCF7);
+    transition: background 200ms, color 200ms, border-color 200ms, transform 200ms;
+  }
+  .ax-share a:hover {
+    background: var(--cocoa);
+    color: var(--warm-white, #FFFCF7);
+    border-color: var(--cocoa);
+    transform: translateY(-2px);
+  }
+  .ax-share svg { width: 16px; height: 16px; }
+
+  /* ---- Article prose ---- */
+  .ax-prose {
+    font-family: var(--font-sans);
+    font-size: 18px;
+    line-height: 1.78;
+    color: var(--cocoa);
+    padding-bottom: 20px;
+  }
+  .ax-prose > * + * { margin-top: 1.4rem; }
+  .ax-prose p { color: var(--cocoa); margin-bottom: 28px; }
+  .ax-prose h2,
+  .ax-prose h3,
+  .ax-prose h4 {
+    font-family: var(--font-serif);
+    color: var(--ink);
+    font-weight: 500;
+    letter-spacing: -0.012em;
+    margin-top: 2.4rem;
+    margin-bottom: 0.8rem;
+  }
+  .ax-prose h2 { font-size: clamp(24px, 2.8vw, 32px); }
+  .ax-prose h3 { font-size: clamp(20px, 2.2vw, 26px); }
+  .ax-prose a {
+    color: var(--clay-deep);
+    border-bottom: 1px solid var(--sand-deep);
+    transition: border-color 200ms;
+  }
+  .ax-prose a:hover { border-bottom-color: var(--clay); }
+  .ax-prose strong { color: var(--ink); font-weight: 600; }
+  .ax-prose ul,
+  .ax-prose ol { padding-left: 1.4rem; margin-bottom: 28px; }
+  .ax-prose ul { list-style: disc; }
+  .ax-prose ol { list-style: decimal; }
+  .ax-prose li { margin-bottom: 0.4rem; color: var(--cocoa); }
+  .ax-prose blockquote {
+    border-left: 3px solid var(--clay);
+    padding-left: 1.4rem;
+    color: var(--ink);
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 1.2rem;
+    line-height: 1.5;
+    margin: 2rem 0;
+  }
+  .ax-prose img {
+    border-radius: var(--r-lg);
+    margin-block: 2rem;
+    max-width: 100%;
+  }
+  .ax-prose hr {
+    border: none;
+    border-top: 1px solid var(--sand);
+    margin: 3rem 0;
+  }
+  .ax-no-content {
+    color: var(--muted);
+    font-family: var(--font-sans);
     padding: 40px 0;
+  }
+
+  /* ---- Tags + share footer ---- */
+  .ax-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 28px;
+    flex-wrap: wrap;
+    margin-top: 56px;
+    padding-top: 30px;
+    border-top: 1px solid var(--sand);
+  }
+  .ax-tags { display: flex; flex-wrap: wrap; gap: 10px; }
+  .ax-tag {
+    font-family: var(--font-sans);
+    font-size: 12.5px;
+    color: var(--cocoa);
+    padding: 8px 16px;
+    border: 1px solid var(--sand);
+    border-radius: var(--r-pill);
+    transition: background 200ms, border-color 200ms, color 200ms;
+  }
+  .ax-tag:hover {
+    background: var(--cocoa);
+    color: var(--warm-white, #FFFCF7);
+    border-color: var(--cocoa);
+  }
+  .ax-foot-share { display: flex; align-items: center; gap: 12px; }
+  .ax-foot-share > span {
+    font-family: var(--font-sans);
+    font-size: 12.5px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .ax-foot-share a {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--sand);
+    color: var(--cocoa);
+    transition: background 200ms, color 200ms, transform 200ms;
+  }
+  .ax-foot-share a:hover {
+    background: var(--cocoa);
+    color: var(--warm-white, #FFFCF7);
+    transform: translateY(-2px);
+  }
+  .ax-foot-share svg { width: 15px; height: 15px; }
+
+  /* ---- Author bio ---- */
+  .ax-author {
+    margin: 64px 0 0;
+    padding: clamp(30px, 3.5vw, 44px);
+    background: var(--cream-deep);
+    border: 1px solid var(--sand);
+    border-radius: var(--r-lg);
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 30px;
+    align-items: start;
+  }
+  .ax-author-initial {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: var(--sand);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-serif);
+    font-size: 28px;
+    color: var(--clay);
+    font-weight: 500;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+  .ax-author-eyebrow {
+    font-family: var(--font-sans);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--clay);
+    margin-bottom: 10px;
+  }
+  .ax-author-name {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    font-size: 26px;
+    color: var(--ink);
+    margin-bottom: 6px;
+  }
+  .ax-author-role {
+    font-family: var(--font-sans);
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+  .ax-author-links { display: flex; align-items: center; gap: 22px; }
+  .ax-author-links a {
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--clay-deep);
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    transition: gap var(--t-base, 320ms);
+  }
+  .ax-author-links a:hover { gap: 11px; }
+  .ax-author-links svg { width: 14px; height: 14px; }
+
+  /* ---- Continue reading ---- */
+  .ax-next {
+    padding: clamp(64px, 7vw, 104px) 0 clamp(40px, 4vw, 64px);
+    border-top: 1px solid var(--sand);
+  }
+  .ax-next-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 32px;
+    flex-wrap: wrap;
+    margin-bottom: 52px;
+  }
+
+  /* card link */
+  .ax-card-link { color: inherit; text-decoration: none; }
+  .ax-card-link:hover { color: var(--clay); }
+
+  /* ---- Responsive ---- */
+  @media (max-width: 1180px) {
+    .ax-share {
+      position: static;
+      flex-direction: row;
+      justify-content: center;
+      margin-bottom: 8px;
+    }
+    .ax-share.is-stuck { position: static; }
+    .ax-share-label { writing-mode: horizontal-tb; margin: 0 6px 0 0; }
+  }
+  @media (max-width: 760px) {
+    .ax-prose { font-size: 16.5px; }
+    .ax-by-sep,
+    .ax-by-stat { display: none; }
+    .ax-author { grid-template-columns: 1fr; gap: 18px; }
+    .ax-author-initial { width: 52px; height: 52px; font-size: 22px; }
+    .ax-foot { flex-direction: column; align-items: flex-start; gap: 22px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ax-share a,
+    .ax-foot-share a,
+    .ax-author-links a { transition: none; }
   }
 </style>

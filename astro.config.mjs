@@ -2,16 +2,21 @@
 import { defineConfig } from "astro/config";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@astrojs/react";
-import node from "@astrojs/node";
+import cloudflare from "@astrojs/cloudflare";
 import sitemap from "@astrojs/sitemap";
 
 // Headless Shopify storefront — server-rendered so the private
 // Storefront token stays on the server and cart cookies work.
+// Deployed to Cloudflare Workers (workerd runtime).
 // https://astro.build/config
 export default defineConfig({
   site: process.env.PUBLIC_SITE_URL ?? "https://your-domain.com",
   output: "server",
-  adapter: node({ mode: "standalone" }),
+  adapter: cloudflare({
+    // Optimize local images at build time instead of using the runtime
+    // Cloudflare Images binding, so no Images product setup is required.
+    imageService: "compile",
+  }),
   integrations: [react(), sitemap()],
   vite: {
     plugins: [tailwindcss()],

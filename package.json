@@ -39,7 +39,7 @@
     "release:major": "npm version major -m \"chore: release %s\" && git push && git push --tags"
   },
   "dependencies": {
-    "@astrojs/node": "^10",
+    "@astrojs/cloudflare": "^13.7.0",
     "@astrojs/react": "^4",
     "@astrojs/sitemap": "^3.7.3",
     "@nanostores/react": "^0.8",

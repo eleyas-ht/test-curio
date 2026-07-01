@@ -25,19 +25,18 @@ export const POST: APIRoute = async ({ request }) => {
     return err('Missing required fields', 400);
   }
 
+  // Judge.me's POST /api/v1/reviews expects FLAT fields — not a nested
+  // `review`/`reviewer` object. Nesting makes it treat name/email/rating/body
+  // as missing and return 422.
   const payload: Record<string, unknown> = {
     api_token: token,
     shop_domain: shop,
     platform: 'shopify',
-    review: {
-      rating: Number(rating),
-      title: String(title ?? '').trim(),
-      body: String(reviewBody).trim(),
-      reviewer: {
-        email: String(email).trim(),
-        name: String(name).trim(),
-      },
-    },
+    name: String(name).trim(),
+    email: String(email).trim(),
+    rating: Number(rating),
+    title: String(title ?? '').trim(),
+    body: String(reviewBody).trim(),
   };
 
   // Include id when non-zero, always include handle

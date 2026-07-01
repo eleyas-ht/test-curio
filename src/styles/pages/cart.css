@@ -43,6 +43,8 @@
     .cart-qty button:hover { background: var(--cream-deep); }
     .cart-qty span { min-width: 34px; text-align: center; font-size: 14px; font-weight: 600; }
     .cart-line-total { text-align: right; font-size: 16px; font-weight: 600; color: var(--ink); }
+    .cart-line-was { display: block; font-size: 13px; font-weight: 500; color: var(--muted); text-decoration: line-through; }
+    .cart-line-now { display: block; color: var(--clay); }
 
     /* Summary */
     .cart-summary { position: sticky; top: 120px; background: var(--warm-white); border: 1px solid var(--sand); border-radius: var(--r-lg); padding: 28px; }

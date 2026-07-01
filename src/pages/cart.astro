@@ -53,6 +53,20 @@ const giftEnabled = !!giftVariantId;
   const money = (n: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: Number.isInteger(n) ? 0 : 2 }).format(n);
 
+  // Per-line discount — mirrors the cart drawer. Prefer Shopify's real
+  // discountAllocations (valid discount code); fall back to the _bundleDiscount
+  // attribute stamped on the line by the bundle section at add-to-cart time.
+  const lineDiscountOf = (line: any): number => {
+    const originalLineTotal = Number(line.cost.totalAmount.amount);
+    const allocDiscount = (line.discountAllocations ?? []).reduce(
+      (s: number, a: any) => s + Number(a.discountedAmount.amount), 0);
+    if (allocDiscount > 0) return allocDiscount;
+    const attrPct = Number(
+      (line.attributes ?? []).find((a: any) => a.key === '_bundleDiscount')?.value ?? '0');
+    if (attrPct > 0) return Math.round(originalLineTotal * attrPct) / 100;
+    return 0;
+  };
+
   // DOM refs used by render() and handlers
   const layout = document.getElementById('cart-layout');
   const empty = document.getElementById('cart-empty');
@@ -127,6 +141,10 @@ const giftEnabled = !!giftVariantId;
           const variant = it.merchandise.selectedOptions.filter((o) => o.value !== 'Default Title').map((o) => o.value).join(' · ');
           const unit = Number(it.merchandise.price.amount);
           const lineTotal = Number(it.cost.totalAmount.amount);
+          const lineDisc = lineDiscountOf(it);
+          const lineTotalHtml = lineDisc > 0
+            ? `<span class="cart-line-was">${money(lineTotal)}</span><span class="cart-line-now">${money(lineTotal - lineDisc)}</span>`
+            : money(lineTotal);
           return `<div class="cart-item">
             <div class="cart-item-product">
               <div class="cart-item-img"><a href="/products/${it.merchandise.product.handle}"><img src="${img?.url ?? ''}" alt="${it.merchandise.product.title}"></a></div>
@@ -138,7 +156,7 @@ const giftEnabled = !!giftVariantId;
               </div>
             </div>
             <div class="cart-qty"><button onclick="cpQty('${it.id}',-1)" aria-label="Decrease">&minus;</button><span>${it.quantity}</span><button onclick="cpQty('${it.id}',1)" aria-label="Increase">+</button></div>
-            <div class="cart-line-total">${money(lineTotal)}</div>
+            <div class="cart-line-total">${lineTotalHtml}</div>
           </div>`;
         })
         .join('');
@@ -146,11 +164,18 @@ const giftEnabled = !!giftVariantId;
 
     const subtotal = Number(cart.cost.subtotalAmount.amount);
     const total = Number(cart.cost.totalAmount.amount);
+    // Discount shown = the larger of Shopify's real discount (subtotal − total)
+    // and the summed _bundleDiscount fallback, so the bundle savings surface even
+    // before/without a valid Shopify discount code. effectiveTotal drives the summary total.
+    const realDiscount = Math.max(0, subtotal - total);
+    const attrDiscount = lines.reduce((s: number, l: any) => s + lineDiscountOf(l), 0);
+    const discount = Math.max(realDiscount, attrDiscount);
+    const effectiveTotal = subtotal - discount;
     const isFreeShipping = subtotal >= FREE;
     const displayShipping = isFreeShipping ? 0 : SHIPPING;
     const set = (id: string, v: string) => { const n = document.getElementById(id); if (n) n.textContent = v; };
     set('cart-sum-subtotal', money(subtotal));
-    set('cart-sum-total', money(total + displayShipping));
+    set('cart-sum-total', money(effectiveTotal + displayShipping));
 
     // Shipping row — style as free (clay/italic) or show the cost
     const shipEl = document.getElementById('cart-sum-ship');
@@ -173,7 +198,6 @@ const giftEnabled = !!giftVariantId;
     }
 
     // Discount row
-    const discount = Math.max(0, subtotal - total);
     const discountRow = document.getElementById('cart-sum-discount-row');
     const discountEl = document.getElementById('cart-sum-discount');
     if (discountRow) discountRow.style.display = discount > 0.001 ? '' : 'none';
