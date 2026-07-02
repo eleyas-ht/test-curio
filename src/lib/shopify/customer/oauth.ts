@@ -5,10 +5,9 @@
 // Customer Account API "Application setup". For that client type the
 // `authorization_code` token response already returns an access token that
 // is used directly as the GraphQL Authorization header — there is NO second
-// token-exchange step. (The token-exchange/audience dance is Hydrogen-only:
-// its audience is Hydrogen's own client ID, so this client rejects that
-// grant with `unsupported_grant_type`.) Refresh just repeats authorization
-// with the refresh_token grant.
+// token-exchange step. (This client rejects the token-exchange grant with
+// `unsupported_grant_type`; the audience/exchange dance is Hydrogen-only.)
+// Refresh just repeats authorization with the refresh_token grant.
 import {
   AUTHORIZE_ENDPOINT,
   CLIENT_ID,

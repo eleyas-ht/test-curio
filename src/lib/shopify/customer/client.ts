@@ -67,6 +67,14 @@ export function createCustomerClient(cookies: AstroCookies, origin: string): Cus
           'Content-Type': 'application/json',
           // Customer Account API expects the raw token — NOT "Bearer <token>".
           Authorization: accessToken,
+          // Public clients must send Origin so Shopify can validate the request
+          // against the registered JavaScript origin. Without it the GraphQL
+          // endpoint replies 403 Forbidden with a non-JSON body.
+          Origin: origin,
+          // Shopify's edge blocks server-side requests that lack a User-Agent
+          // (Node's fetch sends none by default), returning 403 with an HTML
+          // body. The token endpoint tolerates it, but GraphQL does not.
+          'User-Agent': 'Astro Shopify Customer Account',
         },
         body: JSON.stringify({ query, variables }),
       });

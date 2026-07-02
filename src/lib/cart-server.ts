@@ -25,6 +25,19 @@ export function json(data: unknown, status = 200): Response {
   });
 }
 
+/**
+ * The buyer's IP, forwarded to Shopify for tax/duty estimation and fraud
+ * signals. On Cloudflare Workers `Astro.clientAddress` throws, so we read
+ * the IP from the edge headers instead (CF-Connecting-IP, then XFF).
+ */
+export function buyerIpFrom(request: Request): string | undefined {
+  return (
+    request.headers.get('cf-connecting-ip') ??
+    request.headers.get('x-forwarded-for')?.split(',')[0].trim() ??
+    undefined
+  );
+}
+
 /** Fetch the current cart from the cookie; self-heals stale ids. */
 export async function readCart(cookies: AstroCookies, buyerIp?: string): Promise<CartResult> {
   const id = getCartId(cookies);
