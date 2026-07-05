@@ -35,6 +35,9 @@ pnpm-debug.log*
 # vscode
 .vscode/
 
+# claude
+.claude/
+
 # planning & reference docs
 CONVERSION-PLAN.md
 SHOPIFY_STOREFRONT_API_2026-04_REFERENCE.md
