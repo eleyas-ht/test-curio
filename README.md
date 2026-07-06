@@ -63,7 +63,7 @@
 ### 1. Get your Shopify Storefront API token
 
 1. Sign in to [Shopify Admin](https://accounts.shopify.com/store-login).
-2. Install the **Headless** channel (**Settings → Apps and sales channels → Shopify App Store → Headless**).
+2. Install the **[Headless](https://apps.shopify.com/headless)** channel (**Settings → Apps and sales channels → Shopify App Store → Headless**).
 3. Open the **Headless** channel and click **Add storefront**.
 4. In **Storefront API**, reveal and copy the **Private access token** (starts with `shpat_`).
 5. Note your `*.myshopify.com` store domain.
