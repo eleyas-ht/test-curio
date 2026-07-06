@@ -1,7 +1,7 @@
 // ============================================================
 //  Search services — full + predictive (2026-04)
 // ============================================================
-import { shopifyFetch } from '../client';
+import { shopifyFetch, type ShopifyFetchOptions } from '../client';
 import { SEARCH_QUERY, PREDICTIVE_SEARCH_QUERY, SEARCH_CONTENT_QUERY } from '../graphql/search';
 import { cursorVars } from '../pagination';
 import { mapProductCard, paginate } from '../transforms';
@@ -21,14 +21,21 @@ export interface SearchResult extends Paginated<ProductCard> {
 }
 
 /** Full product search results page. */
-export async function searchProducts(params: SearchParams): Promise<SearchResult> {
-  const data = await shopifyFetch<{ search: any }>(SEARCH_QUERY, {
-    query: params.query,
-    ...cursorVars({ pageSize: params.pageSize ?? 24, after: params.after, before: params.before }),
-    sortKey: params.sortKey ?? 'RELEVANCE',
-    reverse: params.reverse ?? false,
-    types: ['PRODUCT'],
-  });
+export async function searchProducts(
+  params: SearchParams,
+  opts: ShopifyFetchOptions = {},
+): Promise<SearchResult> {
+  const data = await shopifyFetch<{ search: any }>(
+    SEARCH_QUERY,
+    {
+      query: params.query,
+      ...cursorVars({ pageSize: params.pageSize ?? 24, after: params.after, before: params.before }),
+      sortKey: params.sortKey ?? 'RELEVANCE',
+      reverse: params.reverse ?? false,
+      types: ['PRODUCT'],
+    },
+    opts,
+  );
   const page = paginate<any, ProductCard>(data.search, mapProductCard);
   return { ...page, totalCount: data.search?.totalCount ?? page.items.length };
 }
@@ -66,8 +73,15 @@ export interface PredictiveResult {
 }
 
 /** Instant search for the header autocomplete — products, collections, pages, articles, suggestions. */
-export async function predictiveSearch(query: string): Promise<PredictiveResult> {
-  const data = await shopifyFetch<{ predictiveSearch: any }>(PREDICTIVE_SEARCH_QUERY, { query });
+export async function predictiveSearch(
+  query: string,
+  opts: ShopifyFetchOptions = {},
+): Promise<PredictiveResult> {
+  const data = await shopifyFetch<{ predictiveSearch: any }>(
+    PREDICTIVE_SEARCH_QUERY,
+    { query },
+    opts,
+  );
   return {
     queries: data.predictiveSearch?.queries ?? [],
     products: data.predictiveSearch?.products ?? [],
@@ -106,13 +120,18 @@ export interface ContentSearchResult<T> {
 /** Search pages or articles. Pass `type: 'PAGE'` or `type: 'ARTICLE'`. */
 export async function searchContent<T extends PageResult | ArticleResult>(
   params: SearchParams & { type: 'PAGE' | 'ARTICLE' },
+  opts: ShopifyFetchOptions = {},
 ): Promise<ContentSearchResult<T>> {
-  const data = await shopifyFetch<{ search: any }>(SEARCH_CONTENT_QUERY, {
-    query: params.query,
-    first: params.pageSize ?? 24,
-    after: params.after ?? undefined,
-    types: [params.type],
-  });
+  const data = await shopifyFetch<{ search: any }>(
+    SEARCH_CONTENT_QUERY,
+    {
+      query: params.query,
+      first: params.pageSize ?? 24,
+      after: params.after ?? undefined,
+      types: [params.type],
+    },
+    opts,
+  );
   const edges = data.search?.edges ?? [];
   const items = edges.map((e: any) => e.node).filter(Boolean) as T[];
   return {

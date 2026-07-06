@@ -15,7 +15,8 @@ export const SEARCH_QUERY = /* GraphQL */ `
     $types: [SearchType!] = [PRODUCT]
     $sortKey: SearchSortKeys = RELEVANCE
     $reverse: Boolean = false
-  ) {
+    $country: CountryCode
+  ) @inContext(country: $country) {
     search(
       query: $query
       first: $first
@@ -52,7 +53,8 @@ export const PREDICTIVE_SEARCH_QUERY = /* GraphQL */ `
     $limit: Int = 5
     $types: [PredictiveSearchType!] = [PRODUCT, COLLECTION, QUERY, PAGE, ARTICLE]
     $limitScope: PredictiveSearchLimitScope = EACH
-  ) {
+    $country: CountryCode
+  ) @inContext(country: $country) {
     predictiveSearch(query: $query, limit: $limit, types: $types, limitScope: $limitScope) {
       queries {
         text

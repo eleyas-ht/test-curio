@@ -31,6 +31,10 @@
 // ============================================================
 
 import { getProductsByHandles } from '~/lib/shopify';
+import { buyerIpFrom } from '~/lib/shopify/buyer-ip';
+import { countryFrom } from '~/lib/shopify/country';
+import { formatMoney } from '~/lib/utils';
+import { imgUrl } from '~/lib/assets';
 
 // ── Section configuration ─────────────────────────────────────────────────────
 const TABS = [
@@ -165,17 +169,11 @@ const allHandles = [...new Set(
 
 // Batch-fetch from Shopify in a single request (no-op when no handles are set).
 const shopifyProducts = allHandles.length > 0
-  ? await getProductsByHandles(allHandles)
+  ? await getProductsByHandles(allHandles, { buyerIp: buyerIpFrom(Astro.request), country: countryFrom(Astro.request) })
   : [];
 
 // Build a fast lookup: handle → ProductCard
 const productMap = new Map(shopifyProducts.map(p => [p.handle, p]));
-
-// Helper: format a Shopify Money amount into a display string ("$649.00")
-function formatPrice(amount: string): string {
-  const n = parseFloat(amount);
-  return isNaN(n) ? amount : `$${n.toFixed(2)}`;
-}
 
 // Merge Shopify data into each pin, falling back to static values when no handle
 // is configured or the product isn't found in the store.
@@ -188,7 +186,7 @@ const tabs = TABS.map(tab => ({
       ...pin,
       name:  sp.title                                  ?? pin.name,
       price: sp.priceRange?.minVariantPrice?.amount
-               ? formatPrice(sp.priceRange.minVariantPrice.amount)
+               ? formatMoney(sp.priceRange.minVariantPrice.amount, sp.priceRange.minVariantPrice.currencyCode)
                : pin.price,
       image: sp.featuredImage?.url                     ?? pin.image,
       href:  `/products/${sp.handle}`,
@@ -211,7 +209,7 @@ const tabs = TABS.map(tab => ({
         <div class={`inspo-slide${tabIdx === 0 ? ' is-active' : ''}`} data-idx={tabIdx}>
 
           {/* Lifestyle / room image */}
-          <img src={tab.image} alt={tab.imageAlt} />
+          <img src={imgUrl(tab.image)} alt={tab.imageAlt} />
 
           {/* Product hotspot pins */}
           {tab.pins.map(pin => (
@@ -229,7 +227,7 @@ const tabs = TABS.map(tab => ({
 
               {/* Product card — shown on hover */}
               <div class="inspo-pin-card">
-                <img src={pin.image} alt={pin.name} />
+                <img src={imgUrl(pin.image)} alt={pin.name} />
                 <div class="inspo-pin-card-body">
                   <div class="inspo-pin-name">{pin.name}</div>
                   <div class="inspo-pin-price">{pin.price}</div>
@@ -293,7 +291,7 @@ const tabs = TABS.map(tab => ({
 <style is:global>
   /* ── Section shell ────────────────────────────────────────── */
   .section-inspo {
-    padding: 80px 0 60px;
+    padding: 110px 0 90px;
     background: var(--color-cream-deep, #efe8dc);
   }
 
@@ -515,6 +513,10 @@ const tabs = TABS.map(tab => ({
 
   /* ── Responsive ───────────────────────────────────────────── */
   @media (max-width: 1024px) {
+    .section-inspo {
+      padding: 88px 0 72px;
+    }
+
     .inspo-scene {
       height: 520px;
     }
@@ -522,7 +524,7 @@ const tabs = TABS.map(tab => ({
 
   @media (max-width: 640px) {
     .section-inspo {
-      padding: 52px 0 40px;
+      padding: 64px 0 52px;
     }
 
     .inspo-scene {

@@ -1,3 +1,5 @@
+import { imgUrl } from '~/lib/assets';
+
 ﻿// ============================================================
 //  About Page Configuration
 //
@@ -28,9 +30,9 @@ export const ABOUT_HERO = {
   tagsub:
     "From flagship audio to everyday carry — every piece is hand-picked and tested in real life. Only what we'd keep on our own desks makes the edit.",
   slides: [
-    { src: '/images/about-hero-showcase.jpg', alt: 'Curated tech — headphones, phone & watch' },
-    { src: '/images/showcase-image-02.jpg', alt: 'Curated audio & wearables' },
-    { src: '/images/showcase-image-03.jpg', alt: 'The latest in the edit' },
+    { src: imgUrl('/images/about-hero-showcase.jpg'), alt: 'Curated tech — headphones, phone & watch' },
+    { src: imgUrl('/images/showcase-image-02.jpg'), alt: 'Curated audio & wearables' },
+    { src: imgUrl('/images/showcase-image-03.jpg'), alt: 'The latest in the edit' },
   ],
   stats: [
     { num: '9', sup: '', label: 'Years\ncurating' },
@@ -60,8 +62,8 @@ export const ABOUT_STORY = {
     "Nine years later that promise hasn't moved. We're bigger, but the filter is the same — if it's not good enough for our own desks, it doesn't make the edit.",
   ],
   estYear: '2016',
-  img1: { src: '/images/editorial-gallery-02.jpg', alt: 'The Curio workbench' },
-  img2: { src: '/images/editorial-gallery-01.jpg', alt: 'The early Curio days' },
+  img1: { src: imgUrl('/images/editorial-gallery-02.jpg'), alt: 'The Curio workbench' },
+  img2: { src: imgUrl('/images/editorial-gallery-01.jpg'), alt: 'The early Curio days' },
 } as const;
 
 // ——— CORE VALUES ——————————————————————————————————————————
@@ -129,7 +131,7 @@ export const ABOUT_JOURNEY: JourneyMilestone[] = [
     year: '2016',
     label: 'The spark',
     stamp: "'16",
-    img: { src: '/images/history-2016.jpg', alt: 'The idea sparked — 2016' },
+    img: { src: imgUrl('/images/history-2016.jpg'), alt: 'The idea sparked — 2016' },
     chapter: 'Chapter 01',
     title: 'The idea sparked',
     text: "Three friends, one notebook, and endless arguments about gear. We started writing honest reviews — which headphones actually sounded good, which \"flagship\" was just marketing — and people started listening.",
@@ -139,7 +141,7 @@ export const ABOUT_JOURNEY: JourneyMilestone[] = [
     year: '2019',
     label: 'The leap',
     stamp: "'19",
-    img: { src: '/images/history-2019.jpg', alt: 'The store opened — 2019' },
+    img: { src: imgUrl('/images/history-2019.jpg'), alt: 'The store opened — 2019' },
     chapter: 'Chapter 02',
     title: 'Launching the Online Platform',
     text: "Readers kept asking where to buy. So we opened the shop with a single rule: only sell what we'd recommend to people we like. Detailed guides and honest support came built in from day one.",
@@ -149,7 +151,7 @@ export const ABOUT_JOURNEY: JourneyMilestone[] = [
     year: '2022',
     label: 'The space',
     stamp: "'22",
-    img: { src: '/images/history-2022.jpg', alt: 'First flagship space — 2022' },
+    img: { src: imgUrl('/images/history-2022.jpg'), alt: 'First flagship space — 2022' },
     chapter: 'Chapter 03',
     title: 'First flagship space',
     text: 'Our first physical showroom — part store, part studio, where we test everything before it makes the edit. A place to see, hold, and hear the collection, with real specialists on hand.',
@@ -159,7 +161,7 @@ export const ABOUT_JOURNEY: JourneyMilestone[] = [
     year: '2024',
     label: 'The expansion',
     stamp: "'24",
-    img: { src: '/images/history-2023.jpg', alt: 'Expansion across the country — 2024' },
+    img: { src: imgUrl('/images/history-2023.jpg'), alt: 'Expansion across the country — 2024' },
     chapter: 'Chapter 04',
     title: 'Expansion across the country',
     text: 'Demand grew, and so did we. New stores and faster delivery brought Curio to cities across the country, while our concierge team scaled to keep every single experience personal.',
@@ -169,7 +171,7 @@ export const ABOUT_JOURNEY: JourneyMilestone[] = [
     year: '2025',
     label: 'Today',
     stamp: "'25",
-    img: { src: '/images/journey-2025.jpg', alt: '120k customers — 2025' },
+    img: { src: imgUrl('/images/journey-2025.jpg'), alt: '120k customers — 2025' },
     chapter: 'Chapter 05',
     title: 'Still Growing, Still Grounded',
     text: "Bigger team, wider edit, worldwide shipping — but the filter hasn't moved an inch. If it's not good enough for our own desks, it doesn't make the edit. That's still the only rule that matters.",
@@ -181,7 +183,7 @@ export const ABOUT_JOURNEY: JourneyMilestone[] = [
 
 export const ABOUT_VIDEO = {
   src: '/video/video-section-01.mp4',
-  poster: '/images/creator-studio.jpg',
+  poster: imgUrl('/images/creator-studio.jpg'),
   eyebrow: 'Behind the edit',
   /** innerHTML */
   title: 'Every product earns its <em>place</em>.',
@@ -200,7 +202,7 @@ export const ABOUT_NOTE = {
   founder: {
     name: 'Amara Akhon',
     role: 'Founder & Editor-in-Chief · Curio',
-    avatar: '/images/editorial-team-01.jpg',
+    avatar: imgUrl('/images/editorial-team-01.jpg'),
   },
 } as const;
 
@@ -237,7 +239,7 @@ export const ABOUT_TEAM: TeamMember[] = [
       "Nine years on, she still personally signs off on every audio product that makes the edit. If the soundstage isn't right, it doesn't ship. If the build feels cheap, it doesn't ship. She's the reason Curio's catalogue is smaller than the competition — and why it's trusted more.",
       "Outside the office she's a passionate live-music attendee, an amateur recording engineer, and the only person in the building who still owns a turntable she bought new.",
     ],
-    image: '/images/editorial-team-01.jpg',
+    image: imgUrl('/images/editorial-team-01.jpg'),
     social: { twitter: '#', linkedin: '#', email: 'amara@curio.com' },
   },
   {
@@ -251,7 +253,7 @@ export const ABOUT_TEAM: TeamMember[] = [
       "His process is methodical and merciless. Every product is tested against its closest competitors, its stated specifications are verified, and its long-term durability is assessed before he writes a single word of the report.",
       "His background is in consumer electronics journalism, where he spent six years writing teardowns and long-term reviews. He brought that scepticism to Curio and never let it go. Off the clock, he builds mechanical keyboards and has very strong opinions about switches.",
     ],
-    image: '/images/editorial-team-02.jpg',
+    image: imgUrl('/images/editorial-team-02.jpg'),
     social: { twitter: '#', linkedin: '#', email: 'marcus@curio.com' },
   },
   {
@@ -265,7 +267,7 @@ export const ABOUT_TEAM: TeamMember[] = [
       "She joined in 2020 after five years writing long-form features for a technology magazine. She brought a journalist's rigour and a novelist's ear — the guides she writes are genuinely enjoyable to read, which is harder than it sounds.",
       "Her specialities are cameras, laptops, and anything you'd put on a desk. She also runs the monthly Editor's Letter, the most-forwarded email Curio sends.",
     ],
-    image: '/images/editorial-team-03.jpg',
+    image: imgUrl('/images/editorial-team-03.jpg'),
     social: { twitter: '#', linkedin: '#', email: 'sofia@curio.com' },
   },
   {
@@ -279,7 +281,7 @@ export const ABOUT_TEAM: TeamMember[] = [
       "He joined in 2021 from a luxury retail background where he learned that real service isn't about policies, it's about listening. At Curio, that philosophy means customers get honest answers, including 'that product isn't right for you — here's why.'",
       "He knows the catalogue in depth because he tests everything himself before recommending it. If you've ever received a suspiciously useful reply to a complicated product question, there's a good chance Daniel wrote it.",
     ],
-    image: '/images/editorial-team-04.jpg',
+    image: imgUrl('/images/editorial-team-04.jpg'),
     social: { twitter: '#', linkedin: '#', email: 'daniel@curio.com' },
   },
 ];

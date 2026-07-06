@@ -10,6 +10,7 @@ import {
   CART_LINES_REMOVE_MUTATION,
   CART_DISCOUNT_CODES_UPDATE_MUTATION,
   CART_NOTE_UPDATE_MUTATION,
+  CART_BUYER_IDENTITY_UPDATE_MUTATION,
 } from '../graphql/cart';
 import { mapCart } from '../transforms';
 import type { Cart } from '../types';
@@ -43,10 +44,11 @@ function result(mutationPayload: any): CartResult {
   };
 }
 
-/** Create a cart, optionally with initial lines. */
+/** Create a cart, optionally with initial lines and a known buyer email. */
 export async function createCart(
   lines: CartLineInput[] = [],
   opts: ShopifyFetchOptions = {},
+  buyerEmail?: string,
 ): Promise<CartResult> {
   const data = await shopifyFetch<{ cartCreate: any }>(
     CART_CREATE_MUTATION,
@@ -54,11 +56,31 @@ export async function createCart(
       input: {
         lines,
         attributes: [{ key: 'source', value: 'astro-storefront' }],
+        ...(buyerEmail ? { buyerIdentity: { email: buyerEmail } } : {}),
       },
     },
     opts,
   );
   return result(data.cartCreate);
+}
+
+/**
+ * Associate the cart with a logged-in customer's email so the resulting
+ * order is attributed to their account (and shows up under Order History).
+ * Without this, an order can complete and appear in Shopify Admin while
+ * never being linked to the customer that placed it.
+ */
+export async function updateCartBuyerIdentity(
+  cartId: string,
+  email: string,
+  opts: ShopifyFetchOptions = {},
+): Promise<CartResult> {
+  const data = await shopifyFetch<{ cartBuyerIdentityUpdate: any }>(
+    CART_BUYER_IDENTITY_UPDATE_MUTATION,
+    { cartId, buyerIdentity: { email } },
+    opts,
+  );
+  return result(data.cartBuyerIdentityUpdate);
 }
 
 /** Fetch a cart by id; returns null when the cart no longer exists. */

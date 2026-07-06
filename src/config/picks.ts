@@ -1,3 +1,5 @@
+import { imgUrl } from '~/lib/assets';
+
 ﻿// ============================================================
 //  Picks Section Configuration
 //
@@ -177,7 +179,7 @@ export const PICKS: PicksConfig[] = [
     customItems: [
       {
         // Card 1 ─────────────────────────────────────────────────────────────
-        image: '/images/mp3wg2xy-01.jpg',
+        image: imgUrl('/images/mp3wg2xy-01.jpg'),
         imageAlt: 'AudioCraft Pro X Wireless',
         kicker: 'The Sound',
         title: 'A new benchmark for noise cancellation.',
@@ -189,7 +191,7 @@ export const PICKS: PicksConfig[] = [
       },
       {
         // Card 2 ─────────────────────────────────────────────────────────────
-        image: '/images/mp3wg2y0-02.jpg',
+        image: imgUrl('/images/mp3wg2y0-02.jpg'),
         imageAlt: 'ChronoX Elite Watch',
         kicker: 'The Wrist',
         title: 'Swiss craft, meet five-day battery.',
@@ -201,7 +203,7 @@ export const PICKS: PicksConfig[] = [
       },
       {
         // Card 3 ─────────────────────────────────────────────────────────────
-        image: '/images/mp3wg2y5-03.jpg',
+        image: imgUrl('/images/mp3wg2y5-03.jpg'),
         imageAlt: 'ProBook Ultra X1 Laptop',
         kicker: 'The Workhorse',
         title: 'The laptop that finally got out of the way.',

@@ -101,6 +101,8 @@ const recCount = SITE.cartRecommendations.count;
     background: var(--ink); color: var(--cream); font-size: 12px; line-height: 1; cursor: pointer; border: 0;
   }
   .cart-coupon-tag button:hover { background: var(--clay); }
+
+  .cart-item-price-was { display: block; font-size: 12px; color: var(--mist, #9a9a9a); text-decoration: line-through; }
 </style>
 
 <script>
@@ -111,10 +113,25 @@ const recCount = SITE.cartRecommendations.count;
   const FREE = Number(drawer?.dataset.free ?? 75);
   const SHIPPING = Number(drawer?.dataset.shipping ?? 9.99);
 
+  let currentCurrency = 'USD';
   const money = (n: number) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: Number.isInteger(n) ? 0 : 2 }).format(n);
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: currentCurrency, minimumFractionDigits: Number.isInteger(n) ? 0 : 2 }).format(n);
 
   const $ = (id: string) => document.getElementById(id);
+
+  // Per-line discount — mirrors the full cart page. Prefer Shopify's real
+  // discountAllocations (valid discount code); fall back to the _bundleDiscount
+  // attribute stamped on the line by the bundle section at add-to-cart time.
+  function lineDiscountOf(line: any): number {
+    const originalLineTotal = Number(line.cost.totalAmount.amount);
+    const allocDiscount = (line.discountAllocations ?? []).reduce(
+      (s: number, a: any) => s + Number(a.discountedAmount.amount), 0);
+    if (allocDiscount > 0) return allocDiscount;
+    const attrPct = Number(
+      (line.attributes ?? []).find((a: any) => a.key === '_bundleDiscount')?.value ?? '0');
+    if (attrPct > 0) return Math.round(originalLineTotal * attrPct) / 100;
+    return 0;
+  }
 
   // ── Open / close (driven by the shared store) ──
   $cartOpen.subscribe((open) => {
@@ -150,6 +167,10 @@ const recCount = SITE.cartRecommendations.count;
     // Per-unit variant price from Shopify — stable regardless of quantity.
     // (Quantity is shown by the stepper; the subtotal/total aggregate it.)
     const unitPrice = Number(line.merchandise.price.amount);
+    const lineDiscount = lineDiscountOf(line);
+    const priceHtml = lineDiscount > 0
+      ? `<span class="cart-item-price-was">${money(unitPrice)}</span><span class="cart-item-price">${money(unitPrice - lineDiscount / line.quantity)}</span>`
+      : `<span class="cart-item-price">${money(unitPrice)}</span>`;
     return `<div class="cart-item">
       <div class="cart-item-img"><a href="/products/${line.merchandise.product.handle}"><img src="${img?.url ?? ''}" alt="${line.merchandise.product.title}"></a></div>
       <div class="cart-item-info">
@@ -162,7 +183,7 @@ const recCount = SITE.cartRecommendations.count;
         </div>
       </div>
       <div class="cart-item-right">
-        <span class="cart-item-price">${money(unitPrice)}</span>
+        ${priceHtml}
         <button class="cart-item-remove" data-remove="${line.id}">Remove</button>
       </div>
     </div>`;
@@ -192,6 +213,11 @@ const recCount = SITE.cartRecommendations.count;
     [foot, shipBar].forEach((el) => el && (el.style.display = 'block'));
     if (recs) recs.style.display = 'block';
 
+    // Set before any money() calls below (including itemHtml's line prices) so
+    // every price in this render pass uses the cart's actual currency, not a
+    // stale value from a previous render.
+    currentCurrency = cart!.cost.subtotalAmount.currencyCode ?? 'USD';
+
     if (items) {
       items.innerHTML = lines.map(itemHtml).join('');
       items.querySelectorAll<HTMLButtonElement>('[data-dec]').forEach((b) =>
@@ -205,12 +231,18 @@ const recCount = SITE.cartRecommendations.count;
     // Totals
     const subtotal = Number(cart!.cost.subtotalAmount.amount);
     const total = Number(cart!.cost.totalAmount.amount);
-    const discount = Math.max(0, subtotal - total);
+    // Discount shown = the larger of Shopify's real discount (subtotal − total)
+    // and the summed _bundleDiscount fallback, so bundle savings surface even
+    // before/without a valid Shopify discount code.
+    const realDiscount = Math.max(0, subtotal - total);
+    const attrDiscount = lines.reduce((s: number, l: any) => s + lineDiscountOf(l), 0);
+    const discount = Math.max(realDiscount, attrDiscount);
+    const effectiveTotal = subtotal - discount;
     const isFreeShipping = subtotal >= FREE;
     const displayShipping = isFreeShipping ? 0 : SHIPPING;
     const setTxt = (id: string, v: string) => { const n = $(id); if (n) n.textContent = v; };
     setTxt('cart-subtotal', money(subtotal));
-    setTxt('cart-total', money(total + displayShipping));
+    setTxt('cart-total', money(effectiveTotal + displayShipping));
     const dRow = $('cart-discount-row');
     if (dRow) { dRow.style.display = discount > 0.001 ? 'flex' : 'none'; setTxt('cart-discount', `-${money(discount)}`); }
     const shipVal = $('cart-shipping-val');

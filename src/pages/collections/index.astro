@@ -5,11 +5,13 @@ import BaseLayout from '~/layouts/BaseLayout.astro';
 import CollectionCard from '~/components/collection/CollectionCard.astro';
 import '~/styles/pages/shop.css';
 import { getAllCollections } from '~/lib/shopify';
+import { buyerIpFrom } from '~/lib/shopify/buyer-ip';
+import { countryFrom } from '~/lib/shopify/country';
 import type { Collection } from '~/lib/shopify/types';
 
 let collections: Collection[] = [];
 try {
-  collections = await getAllCollections();
+  collections = await getAllCollections(50, { buyerIp: buyerIpFrom(Astro.request), country: countryFrom(Astro.request) });
 } catch (err) {
   console.error('[collections] load failed:', (err as Error).message);
 }

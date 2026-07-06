@@ -199,6 +199,7 @@ export function mapCart(c: Raw | null | undefined): Cart | null {
     checkoutUrl: c.checkoutUrl,
     totalQuantity: c.totalQuantity ?? 0,
     note: c.note ?? null,
+    buyerIdentity: c.buyerIdentity ?? null,
     discountCodes: c.discountCodes ?? [],
     cost: c.cost,
     lines: nodes(c.lines).map(mapCartLine),

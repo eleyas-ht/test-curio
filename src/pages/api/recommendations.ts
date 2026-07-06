@@ -15,6 +15,8 @@
 // ============================================================
 import type { APIRoute } from 'astro';
 import { getCollection, getProducts, getProductsByHandles } from '~/lib/shopify';
+import { buyerIpFrom } from '~/lib/shopify/buyer-ip';
+import { countryFrom } from '~/lib/shopify/country';
 import { SITE } from '~/config/site';
 import { formatMoney } from '~/lib/utils';
 import type { ProductCard } from '~/lib/shopify/types';
@@ -43,14 +45,15 @@ function shape(p: ProductCard) {
 // the remainder are accessible via the slider. Enough for any reasonable count.
 const MAX_RECS = 8;
 
-export const GET: APIRoute = async ({ url }) => {
+export const GET: APIRoute = async ({ url, request }) => {
   const exclude = new Set((url.searchParams.get('exclude') ?? '').split(',').filter(Boolean));
   const { mode, handles: configHandles } = SITE.cartRecommendations;
+  const opts = { buyerIp: buyerIpFrom(request), country: countryFrom(request) };
 
   try {
     if (mode === 'custom') {
       // Fetch the merchant-specified handles in order, skip missing/unavailable
-      const products = await getProductsByHandles(configHandles as string[]);
+      const products = await getProductsByHandles(configHandles as string[], opts);
       const recs = products
         .filter((p) => !exclude.has(p.handle) && p.availableForSale && p.variantId)
         .slice(0, MAX_RECS)
@@ -59,7 +62,7 @@ export const GET: APIRoute = async ({ url }) => {
     }
 
     // mode === 'shopify': try the curated collection first
-    const col = await getCollection({ handle: REC_COLLECTION, pageSize: MAX_RECS });
+    const col = await getCollection({ handle: REC_COLLECTION, pageSize: MAX_RECS }, opts);
     if (col) {
       const recs = col.products.items
         .filter((p) => !exclude.has(p.handle) && p.availableForSale && p.variantId)
@@ -69,7 +72,7 @@ export const GET: APIRoute = async ({ url }) => {
     }
 
     // Fallback: best-sellers store-wide
-    const page = await getProducts({ pageSize: MAX_RECS + 4, sortKey: 'BEST_SELLING' });
+    const page = await getProducts({ pageSize: MAX_RECS + 4, sortKey: 'BEST_SELLING' }, opts);
     const recs = page.items
       .filter((p) => !exclude.has(p.handle) && p.availableForSale && p.variantId)
       .slice(0, MAX_RECS)

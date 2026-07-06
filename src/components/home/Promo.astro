@@ -18,6 +18,9 @@
 // ============================================================
 import { PROMO } from '~/config/promos';
 import { getCollectionMeta } from '~/lib/shopify';
+import { buyerIpFrom } from '~/lib/shopify/buyer-ip';
+import { countryFrom } from '~/lib/shopify/country';
+import { imgUrl } from '~/lib/assets';
 
 interface ResolvedCard {
   badge: string;
@@ -35,7 +38,7 @@ if (PROMO.mode === 'collection') {
   // Fetch all collection handles in parallel.
   const results = await Promise.all(
     PROMO.collectionConfig.handles.map(async (handle) => {
-      const col = await getCollectionMeta(handle).catch(() => null);
+      const col = await getCollectionMeta(handle, { buyerIp: buyerIpFrom(Astro.request), country: countryFrom(Astro.request) }).catch(() => null);
       if (!col) return null;
 
       // image, title, description, and URL come directly from Shopify.
@@ -60,7 +63,7 @@ if (PROMO.mode === 'collection') {
     title:       item.title,
     ctaText:     item.ctaText ?? `Shop ${item.description}`,
     link:        item.link,
-    imageSrc:    `/images/${item.image}`,
+    imageSrc:    imgUrl(item.image),
     imageAlt:    item.title,
   }));
 }

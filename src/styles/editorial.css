@@ -396,6 +396,8 @@
       display: flex;
       align-items: center;
       gap: 18px;
+      min-width: 0;
+      padding-left: 15px;
     }
 
     .header-issue {
@@ -405,6 +407,9 @@
       letter-spacing: 0.18em;
       text-transform: uppercase;
       color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .header-issue em {
@@ -449,6 +454,7 @@
       align-items: center;
       justify-content: flex-end;
       gap: 4px;
+      min-width: 0;
     }
 
     .header-icon {
@@ -971,10 +977,6 @@
     }
 
     /* RIGHT — TOC list */
-    .dept-toc {
-      border-top: 1px solid var(--sand);
-    }
-
     .dept-row {
       display: grid;
       grid-template-columns: 60px 1fr auto 36px;
@@ -982,7 +984,6 @@
       gap: 32px;
       padding: 30px 0;
       text-decoration: none;
-      border-bottom: 1px solid var(--sand);
       position: relative;
       transition: padding 0.45s cubic-bezier(.4, 0, .2, 1);
     }
@@ -4252,6 +4253,11 @@
       display: flex;
       gap: 10px;
       margin-top: auto;
+    }
+
+    .qv-actions .btn-primary,
+    .qv-actions .btn-ghost {
+      justify-content: center;
     }
 
     /* ============================================================

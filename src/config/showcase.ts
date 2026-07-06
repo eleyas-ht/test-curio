@@ -24,6 +24,8 @@
 //  the design/layout — only the content and behaviour knobs.
 // ============================================================
 
+import { imgUrl } from '~/lib/assets';
+
 export type ShowcaseMode = 'shopify' | 'custom';
 
 // ── Custom slide shape (used when mode === 'custom') ─────────────────────────
@@ -144,7 +146,7 @@ export const SHOWCASE: ShowcaseConfig = {
   customItems: [
     {
       // Slide 1 ────────────────────────────────────────────────────────────
-      image: '/images/most-demand-01.png',
+      image: imgUrl('/images/most-demand-01.png'),
       imageAlt: 'BeatCore Mini portable speaker',
       kicker: 'Portable Speaker',
       title: 'BeatCore *Mini*', // *Mini* → italic clay accent
@@ -155,7 +157,7 @@ export const SHOWCASE: ShowcaseConfig = {
     },
     {
       // Slide 2 ────────────────────────────────────────────────────────────
-      image: '/images/most-demand-02.png',
+      image: imgUrl('/images/most-demand-02.png'),
       imageAlt: 'FlexFold Pro flip smartphone',
       kicker: 'Flip Smartphone',
       title: 'FlexFold *Pro*',
@@ -166,7 +168,7 @@ export const SHOWCASE: ShowcaseConfig = {
     },
     {
       // Slide 3 ────────────────────────────────────────────────────────────
-      image: '/images/most-demand-03.png',
+      image: imgUrl('/images/most-demand-03.png'),
       imageAlt: 'AuraBuds Air wireless earbuds',
       kicker: 'Wireless Earbuds',
       title: 'AuraBuds *Air*',
@@ -177,7 +179,7 @@ export const SHOWCASE: ShowcaseConfig = {
     },
     {
       // Slide 4 ────────────────────────────────────────────────────────────
-      image: '/images/most-demand-04.png',
+      image: imgUrl('/images/most-demand-04.png'),
       imageAlt: 'ChronoX Sport smartwatch',
       kicker: 'Smartwatch',
       title: 'ChronoX *Sport*',

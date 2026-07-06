@@ -35,6 +35,8 @@
 //  customer headshot. Path is relative to /public.
 // ============================================================
 
+import { imgUrl } from '~/lib/assets';
+
 export interface TestimonialInlineProduct {
   name: string;   // Product title shown in the chip
   price: string;  // Pre-formatted price string, e.g. '$249'
@@ -106,7 +108,7 @@ export const TESTIMONIALS: TestimonialsConfig = {
       stars: 5,
       name: 'Sarah Chen',
       role: 'Product Designer at Muybridge',
-      avatar: '/images/mp51zozi-earbuds.jpg',
+      avatar: imgUrl('/images/mp51zozi-earbuds.jpg'),
       avatarAlt: 'AuraPhones Pro earbuds',
       // ─ Set a Shopify handle to load live product data:
       productHandle: '', // e.g. 'auraphones-pro'
@@ -114,7 +116,7 @@ export const TESTIMONIALS: TestimonialsConfig = {
       product: {
         name: 'AuraPhones Pro',
         price: '$249',
-        image: '/images/mp51zozi-earbuds.jpg',
+        image: imgUrl('/images/mp51zozi-earbuds.jpg'),
       },
     },
     {
@@ -123,13 +125,13 @@ export const TESTIMONIALS: TestimonialsConfig = {
       stars: 5,
       name: 'James Okonkwo',
       role: 'Photographer at Studio North',
-      avatar: '/images/mp51zozf-camera.jpg',
+      avatar: imgUrl('/images/mp51zozf-camera.jpg'),
       avatarAlt: 'AuraPhone 15 Pro camera',
       productHandle: '', // e.g. 'auraphone-15-pro'
       product: {
         name: 'AuraPhone 15 Pro',
         price: '$1,149',
-        image: '/images/mp51zozf-camera.jpg',
+        image: imgUrl('/images/mp51zozf-camera.jpg'),
       },
     },
     {
@@ -138,13 +140,13 @@ export const TESTIMONIALS: TestimonialsConfig = {
       stars: 4,
       name: 'Elena Rossi',
       role: 'Chef at Trattoria Moderna',
-      avatar: '/images/mp51zp5u-speaker.jpg',
+      avatar: imgUrl('/images/mp51zp5u-speaker.jpg'),
       avatarAlt: 'BeatCore Mini speaker',
       productHandle: '', // e.g. 'beatcore-mini'
       product: {
         name: 'BeatCore Mini',
         price: '$199',
-        image: '/images/mp51zp5u-speaker.jpg',
+        image: imgUrl('/images/mp51zp5u-speaker.jpg'),
       },
     },
     {
@@ -153,13 +155,13 @@ export const TESTIMONIALS: TestimonialsConfig = {
       stars: 5,
       name: 'David Kim',
       role: 'Software Engineer at Relay',
-      avatar: '/images/mp51zozm-smartphone.jpg',
+      avatar: imgUrl('/images/mp51zozm-smartphone.jpg'),
       avatarAlt: 'CoreBook Air laptop',
       productHandle: '', // e.g. 'corebook-air'
       product: {
         name: 'CoreBook Air',
         price: '$1,499',
-        image: '/images/mp51zozm-smartphone.jpg',
+        image: imgUrl('/images/mp51zozm-smartphone.jpg'),
       },
     },
     {
@@ -168,13 +170,13 @@ export const TESTIMONIALS: TestimonialsConfig = {
       stars: 5,
       name: 'Maya Torres',
       role: "Cardiologist at St. Luke's",
-      avatar: '/images/mp51zozp-smartwatch.jpg',
+      avatar: imgUrl('/images/mp51zozp-smartwatch.jpg'),
       avatarAlt: 'ChronoX Elite smartwatch',
       productHandle: '', // e.g. 'chronox-elite'
       product: {
         name: 'ChronoX Elite',
         price: '$649',
-        image: '/images/mp51zozp-smartwatch.jpg',
+        image: imgUrl('/images/mp51zozp-smartwatch.jpg'),
       },
     },
     {
@@ -183,13 +185,13 @@ export const TESTIMONIALS: TestimonialsConfig = {
       stars: 4,
       name: 'Anika Sharma',
       role: 'UI Designer at Freelance',
-      avatar: '/images/mp51zp5y-tab.jpg',
+      avatar: imgUrl('/images/mp51zp5y-tab.jpg'),
       avatarAlt: 'TabView Pro tablet',
       productHandle: '', // e.g. 'tabview-pro'
       product: {
         name: 'TabView Pro',
         price: '$899',
-        image: '/images/mp51zp5y-tab.jpg',
+        image: imgUrl('/images/mp51zp5y-tab.jpg'),
       },
     },
   ],

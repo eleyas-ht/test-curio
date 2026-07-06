@@ -134,8 +134,11 @@ const encodeOrderId = (gid: string) =>
       <div class="orders-list">
         {filteredOrders.map((order) => {
           const thumb = order.lineItems?.nodes?.[0]?.image;
-          const thumbAlt = order.lineItems?.nodes?.[0]?.title ?? order.name;
+          const firstTitle = order.lineItems?.nodes?.[0]?.title;
+          const thumbAlt = firstTitle ?? order.name;
           const itemCount = order.lineItems?.nodes?.length ?? 0;
+          const productSummary =
+            itemCount > 1 && firstTitle ? `${firstTitle} +${itemCount - 1} more` : firstTitle;
           const href = `/account/orders/${encodeOrderId(order.id)}`;
           return (
             <div class="order-card">
@@ -158,6 +161,7 @@ const encodeOrderId = (gid: string) =>
               {/* Main info */}
               <a href={href} class="order-info">
                 <span class="order-name">{order.name}</span>
+                {productSummary && <span class="order-product-title">{productSummary}</span>}
                 <span class="order-items">{itemCount} {itemCount === 1 ? 'item' : 'items'}</span>
               </a>
 
@@ -375,6 +379,13 @@ const encodeOrderId = (gid: string) =>
     font-weight: 600;
     color: var(--color-ink);
     letter-spacing: 0.01em;
+  }
+  .order-product-title {
+    font-size: 13px;
+    color: var(--color-ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .order-items {
     font-size: 12px;

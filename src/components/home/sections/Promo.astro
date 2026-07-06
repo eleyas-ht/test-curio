@@ -1,11 +1,12 @@
 ---
 // 1:1 verbatim from home-editorial.html (paths/links fixed)
+import { imgUrl } from '~/lib/assets';
 ---
   <section class="section-promo-grid">
     <div class="container">
       <div class="promo-grid">
         <div class="promo-card">
-          <img class="promo-card-img" src="/images/close-up-camera-tripod-sandy-beach-camera-with-lens.jpg"
+          <img class="promo-card-img" src={imgUrl("/images/close-up-camera-tripod-sandy-beach-camera-with-lens.jpg")}
             alt="Camera collection" loading="lazy">
           <div class="promo-overlay"></div>
           <span class="promo-badge">New Arrivals</span>
@@ -23,7 +24,7 @@
         </div>
         <div class="promo-card">
           <img class="promo-card-img"
-            src="/images/person-wearing-health-technology-like-smartwatch-monitoring-vital-signs-exercise.jpg"
+            src={imgUrl("/images/person-wearing-health-technology-like-smartwatch-monitoring-vital-signs-exercise.jpg")}
             alt="Smartwatch collection" loading="lazy">
           <div class="promo-overlay"></div>
           <span class="promo-badge">Best Seller</span>
@@ -40,7 +41,7 @@
           </div>
         </div>
         <div class="promo-card">
-          <img class="promo-card-img" src="/images/wireless-earbuds-charging-case-dark-surface.jpg" alt="Audio collection"
+          <img class="promo-card-img" src={imgUrl("/images/wireless-earbuds-charging-case-dark-surface.jpg")} alt="Audio collection"
             loading="lazy">
           <div class="promo-overlay"></div>
           <span class="promo-badge">Staff Pick</span>

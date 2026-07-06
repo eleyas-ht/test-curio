@@ -1,5 +1,6 @@
 ---
 // 1:1 verbatim from home-editorial.html (paths/links fixed)
+import { imgUrl } from '~/lib/assets';
 ---
   <section class="hero">
     <span class="hero-vertical-issue">Spring · Vol III · MMXXVI</span>
@@ -7,7 +8,7 @@
       <div class="hero-image-wrap">
         <div class="hero-image">
           <img
-            src="/images/00.jpg"
+            src={imgUrl('/images/00.jpg')}
             alt="Premium wireless headphones in editorial style"
             loading="eager"
             fetchpriority="high">

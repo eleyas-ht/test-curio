@@ -4,6 +4,8 @@
 // ============================================================
 import type { APIRoute } from 'astro';
 import { getProduct } from '~/lib/shopify';
+import { buyerIpFrom } from '~/lib/shopify/buyer-ip';
+import { countryFrom } from '~/lib/shopify/country';
 import { formatMoney, isOnSale } from '~/lib/utils';
 
 export const prerender = false;
@@ -11,11 +13,11 @@ export const prerender = false;
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } });
 
-export const GET: APIRoute = async ({ url }) => {
+export const GET: APIRoute = async ({ url, request }) => {
   const handle = url.searchParams.get('handle') ?? '';
   if (!handle) return json({ error: 'Missing handle' }, 400);
   try {
-    const p = await getProduct(handle);
+    const p = await getProduct(handle, { buyerIp: buyerIpFrom(request), country: countryFrom(request) });
     if (!p) return json({ error: 'Not found' }, 404);
 
     const min = p.priceRange.minVariantPrice;

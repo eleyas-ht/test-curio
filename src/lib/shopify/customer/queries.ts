@@ -67,6 +67,17 @@ export const CUSTOMER_PROFILE_QUERY = /* GraphQL */ `
   }
 `;
 
+/** Just the email — used to attach a cart's buyerIdentity to the logged-in customer. */
+export const CUSTOMER_EMAIL_QUERY = /* GraphQL */ `
+  query CustomerEmail {
+    customer {
+      emailAddress {
+        emailAddress
+      }
+    }
+  }
+`;
+
 // ── Order list (full) ───────────────────────────────────────
 
 export const CUSTOMER_ORDERS_QUERY = /* GraphQL */ `

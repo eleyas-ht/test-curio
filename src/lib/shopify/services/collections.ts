@@ -1,7 +1,7 @@
 // ============================================================
 //  Collection services — fetch + transform
 // ============================================================
-import { shopifyFetch } from '../client';
+import { shopifyFetch, type ShopifyFetchOptions } from '../client';
 import {
   COLLECTION_BY_HANDLE_QUERY,
   COLLECTION_META_QUERY,
@@ -27,14 +27,19 @@ export interface CollectionParams {
 /** A collection with one page of its products, or null if not found. */
 export async function getCollection(
   params: CollectionParams,
+  opts: ShopifyFetchOptions = {},
 ): Promise<CollectionWithProducts | null> {
-  const data = await shopifyFetch<{ collection: any | null }>(COLLECTION_BY_HANDLE_QUERY, {
-    handle: params.handle,
-    ...cursorVars({ pageSize: params.pageSize ?? 12, after: params.after, before: params.before }),
-    sortKey: params.sortKey ?? 'COLLECTION_DEFAULT',
-    reverse: params.reverse ?? false,
-    filters: params.filters ?? null,
-  });
+  const data = await shopifyFetch<{ collection: any | null }>(
+    COLLECTION_BY_HANDLE_QUERY,
+    {
+      handle: params.handle,
+      ...cursorVars({ pageSize: params.pageSize ?? 12, after: params.after, before: params.before }),
+      sortKey: params.sortKey ?? 'COLLECTION_DEFAULT',
+      reverse: params.reverse ?? false,
+      filters: params.filters ?? null,
+    },
+    opts,
+  );
   if (!data.collection) return null;
 
   const products = paginate(data.collection.products, mapProductCard);
@@ -46,8 +51,11 @@ export async function getCollection(
 }
 
 /** Every collection — for the nav and collection index. */
-export async function getAllCollections(first = 50): Promise<Collection[]> {
-  const data = await shopifyFetch<{ collections: any }>(COLLECTIONS_QUERY, { first });
+export async function getAllCollections(
+  first = 50,
+  opts: ShopifyFetchOptions = {},
+): Promise<Collection[]> {
+  const data = await shopifyFetch<{ collections: any }>(COLLECTIONS_QUERY, { first }, opts);
   return (data.collections?.edges ?? []).map((e: any) => mapCollection(e.node));
 }
 
@@ -59,8 +67,9 @@ export async function getAllCollections(first = 50): Promise<Collection[]> {
 export async function getPicksProducts(
   handle: string,
   limit = 6,
+  opts: ShopifyFetchOptions = {},
 ): Promise<{ collectionTitle: string; products: import('../types').ProductCard[] } | null> {
-  const col = await getCollection({ handle, pageSize: limit });
+  const col = await getCollection({ handle, pageSize: limit }, opts);
   if (!col) return null;
   return {
     collectionTitle: col.title,
@@ -69,8 +78,15 @@ export async function getPicksProducts(
 }
 
 /** Lightweight metadata fetch (no products) for a single collection handle. Returns null if not found. */
-export async function getCollectionMeta(handle: string): Promise<Collection | null> {
-  const data = await shopifyFetch<{ collection: any | null }>(COLLECTION_META_QUERY, { handle });
+export async function getCollectionMeta(
+  handle: string,
+  opts: ShopifyFetchOptions = {},
+): Promise<Collection | null> {
+  const data = await shopifyFetch<{ collection: any | null }>(
+    COLLECTION_META_QUERY,
+    { handle },
+    opts,
+  );
   if (!data.collection) return null;
   return mapCollection(data.collection);
 }
@@ -79,8 +95,11 @@ export async function getCollectionMeta(handle: string): Promise<Collection | nu
  * Fetch metadata for multiple collection handles in parallel.
  * Skips handles that resolve to null (collection not found).
  */
-export async function getCollectionsByHandles(handles: string[]): Promise<Collection[]> {
-  const results = await Promise.all(handles.map((h) => getCollectionMeta(h)));
+export async function getCollectionsByHandles(
+  handles: string[],
+  opts: ShopifyFetchOptions = {},
+): Promise<Collection[]> {
+  const results = await Promise.all(handles.map((h) => getCollectionMeta(h, opts)));
   return results.filter((c): c is Collection => c !== null);
 }
 
@@ -96,13 +115,16 @@ export async function getCollectionsByHandles(handles: string[]): Promise<Collec
  * `selectors` is omitted or empty, ALL collections are fetched (up to `limit`,
  * sorted A→Z by Shopify).
  */
-export async function getDepartmentsCollections(opts: {
-  /** Maximum number of collections to return. */
-  limit: number;
-  /** Specific collection handles and/or IDs to show, in order. Leave empty for all. */
-  selectors?: string[];
-}): Promise<Collection[]> {
-  const { limit, selectors } = opts;
+export async function getDepartmentsCollections(
+  params: {
+    /** Maximum number of collections to return. */
+    limit: number;
+    /** Specific collection handles and/or IDs to show, in order. Leave empty for all. */
+    selectors?: string[];
+  },
+  opts: ShopifyFetchOptions = {},
+): Promise<Collection[]> {
+  const { limit, selectors } = params;
 
   if (selectors && selectors.length > 0) {
     // Fetch specific collections in parallel, preserving the requested order.
@@ -113,6 +135,7 @@ export async function getDepartmentsCollections(opts: {
         const data = await shopifyFetch<{ collection: any | null }>(
           isId ? DEPT_COLLECTION_BY_ID_QUERY : DEPT_COLLECTION_BY_HANDLE_QUERY,
           isId ? { id: selector } : { handle: selector },
+          opts,
         );
         return data.collection ? mapCollection(data.collection) : null;
       }),
@@ -121,6 +144,10 @@ export async function getDepartmentsCollections(opts: {
   }
 
   // Fetch all collections up to limit (Shopify returns them A→Z).
-  const data = await shopifyFetch<{ collections: any }>(DEPT_COLLECTIONS_QUERY, { first: limit });
+  const data = await shopifyFetch<{ collections: any }>(
+    DEPT_COLLECTIONS_QUERY,
+    { first: limit },
+    opts,
+  );
   return (data.collections?.edges ?? []).map((e: any) => mapCollection(e.node));
 }

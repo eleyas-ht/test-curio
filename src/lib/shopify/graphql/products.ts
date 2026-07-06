@@ -20,7 +20,8 @@ export const PRODUCTS_QUERY = /* GraphQL */ `
     $sortKey: ProductSortKeys = BEST_SELLING
     $reverse: Boolean = false
     $query: String
-  ) {
+    $country: CountryCode
+  ) @inContext(country: $country) {
     products(
       first: $first
       last: $last
@@ -51,7 +52,7 @@ export const PRODUCT_BY_HANDLE_QUERY = /* GraphQL */ `
   ${MONEY_FRAGMENT}
   ${IMAGE_FRAGMENT}
   ${VARIANT_FRAGMENT}
-  query ProductByHandle($handle: String!) {
+  query ProductByHandle($handle: String!, $country: CountryCode) @inContext(country: $country) {
     product(handle: $handle) {
       id
       title
@@ -117,7 +118,7 @@ export const PRODUCT_BY_HANDLE_QUERY = /* GraphQL */ `
 /** Related products for the PDP. */
 export const PRODUCT_RECOMMENDATIONS_QUERY = /* GraphQL */ `
   ${CARD_FRAGMENTS}
-  query ProductRecommendations($productId: ID!) {
+  query ProductRecommendations($productId: ID!, $country: CountryCode) @inContext(country: $country) {
     productRecommendations(productId: $productId) {
       ...ProductCard
     }

@@ -206,6 +206,7 @@ export interface Cart {
   checkoutUrl: string;
   totalQuantity: number;
   note?: string | null;
+  buyerIdentity?: { email?: string | null; customer?: { id: string } | null } | null;
   discountCodes: CartDiscountCode[];
   cost: {
     subtotalAmount: Money;

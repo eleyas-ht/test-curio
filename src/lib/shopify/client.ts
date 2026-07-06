@@ -38,6 +38,14 @@ interface GraphQLResponse<T> {
 export interface ShopifyFetchOptions {
   /** Real buyer IP — forwarded so Shopify's bot rate-limiting attributes correctly. */
   buyerIp?: string;
+  /**
+   * ISO 3166-1 alpha-2 country code, merged into the request's GraphQL
+   * variables as `$country`. Queries/mutations that declare `$country`
+   * and apply `@inContext(country: $country)` resolve Shopify Markets
+   * pricing/currency for that country; operations that don't declare
+   * the variable simply ignore the extra key.
+   */
+  country?: string;
 }
 
 /** Per-attempt request timeout + transient-failure retry policy. */
@@ -64,6 +72,7 @@ export async function shopifyFetch<T>(
   }
 
   let lastError: ShopifyError | null = null;
+  const requestVariables = options.country ? { ...variables, country: options.country } : variables;
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     // Per-attempt timeout so a hung connection doesn't block the page.
@@ -79,7 +88,7 @@ export async function shopifyFetch<T>(
           'Shopify-Storefront-Private-Token': TOKEN,
           ...(options.buyerIp ? { 'Shopify-Storefront-Buyer-IP': options.buyerIp } : {}),
         },
-        body: JSON.stringify({ query, variables }),
+        body: JSON.stringify({ query, variables: requestVariables }),
         signal: controller.signal,
       });
     } catch (cause) {

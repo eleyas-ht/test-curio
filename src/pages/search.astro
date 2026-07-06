@@ -4,9 +4,12 @@ import BaseLayout from '~/layouts/BaseLayout.astro';
 import ProductFeatCard from '~/components/product/ProductFeatCard.astro';
 import '~/styles/pages/shop.css';
 import { searchProducts, searchContent } from '~/lib/shopify';
+import { buyerIpFrom } from '~/lib/shopify/buyer-ip';
+import { countryFrom } from '~/lib/shopify/country';
 import type { ProductCard } from '~/lib/shopify/types';
 import type { PageResult, ArticleResult } from '~/lib/shopify/services/search';
 
+const opts = { buyerIp: buyerIpFrom(Astro.request), country: countryFrom(Astro.request) };
 const url = Astro.url;
 const q = (url.searchParams.get('q') ?? '').trim();
 const type = (url.searchParams.get('type') ?? 'products') as 'products' | 'pages' | 'articles';
@@ -39,7 +42,7 @@ if (q) {
         pageSize: type === 'products' ? 24 : 1,
         after: type === 'products' ? after : undefined,
         before: type === 'products' ? before : undefined,
-      }),
+      }, opts),
       searchContent<PageResult>({ query: q, type: 'PAGE', pageSize: type === 'pages' ? 24 : 1, after: type === 'pages' ? after : undefined }),
       searchContent<ArticleResult>({ query: q, type: 'ARTICLE', pageSize: type === 'articles' ? 24 : 1, after: type === 'articles' ? after : undefined }),
     ]);

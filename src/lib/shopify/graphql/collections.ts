@@ -15,7 +15,8 @@ export const COLLECTION_BY_HANDLE_QUERY = /* GraphQL */ `
     $sortKey: ProductCollectionSortKeys = COLLECTION_DEFAULT
     $reverse: Boolean = false
     $filters: [ProductFilter!]
-  ) {
+    $country: CountryCode
+  ) @inContext(country: $country) {
     collection(handle: $handle) {
       id
       title
@@ -74,7 +75,7 @@ export const COLLECTION_BY_HANDLE_QUERY = /* GraphQL */ `
 export const COLLECTION_META_QUERY = /* GraphQL */ `
   ${MONEY_FRAGMENT}
   ${IMAGE_FRAGMENT}
-  query CollectionMeta($handle: String!) {
+  query CollectionMeta($handle: String!, $country: CountryCode) @inContext(country: $country) {
     collection(handle: $handle) {
       id
       title

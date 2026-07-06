@@ -23,6 +23,8 @@
 //
 // ============================================================
 
+import { imgUrl } from '~/lib/assets';
+
 export type InstagramMode = 'api' | 'custom';
 
 export interface InstagramPost {
@@ -73,32 +75,32 @@ export const INSTAGRAM: InstagramConfig = {
   // href, or link to any relevant page. Remove href entirely to disable clicks.
   customPosts: [
     {
-      image: '/images/editorial-instagram-01.jpg',
+      image: imgUrl('/images/editorial-instagram-01.jpg'),
       alt: 'Product lifestyle shot 1',
       href: 'https://www.instagram.com/amaraakhonelectronics/',
     },
     {
-      image: '/images/editorial-instagram-02.jpg',
+      image: imgUrl('/images/editorial-instagram-02.jpg'),
       alt: 'Product lifestyle shot 2',
       href: 'https://www.instagram.com/amaraakhonelectronics/',
     },
     {
-      image: '/images/editorial-instagram-03.jpg',
+      image: imgUrl('/images/editorial-instagram-03.jpg'),
       alt: 'Product lifestyle shot 3',
       href: 'https://www.instagram.com/amaraakhonelectronics/',
     },
     {
-      image: '/images/editorial-instagram-04.jpg',
+      image: imgUrl('/images/editorial-instagram-04.jpg'),
       alt: 'Product lifestyle shot 4',
       href: 'https://www.instagram.com/amaraakhonelectronics/',
     },
     {
-      image: '/images/editorial-instagram-05.jpg',
+      image: imgUrl('/images/editorial-instagram-05.jpg'),
       alt: 'Product lifestyle shot 5',
       href: 'https://www.instagram.com/amaraakhonelectronics/',
     },
     {
-      image: '/images/editorial-instagram-06.jpg',
+      image: imgUrl('/images/editorial-instagram-06.jpg'),
       alt: 'Product lifestyle shot 6',
       href: 'https://www.instagram.com/amaraakhonelectronics/',
     },

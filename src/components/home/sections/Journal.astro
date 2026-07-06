@@ -7,6 +7,7 @@
 // ============================================================
 import type { BlogArticle } from '~/lib/shopify/types';
 import { JOURNAL_CONFIG, JOURNAL_FALLBACK } from '~/config/journal';
+import { imgUrl } from '~/lib/assets';
 
 interface Props {
   /** Live Shopify blog articles. Empty array → shows static fallback. */
@@ -70,7 +71,7 @@ const cards: Card[] = articles.length > 0
     }))
   : JOURNAL_FALLBACK.map((f) => ({
       href: f.href,
-      image: f.image,
+      image: imgUrl(f.image),
       imageAlt: f.title,
       category: f.category,
       title: f.title,

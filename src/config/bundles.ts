@@ -1,3 +1,5 @@
+import { imgUrl } from '~/lib/assets';
+
 ﻿// ============================================================
 //  Bundle Section Configuration — "CURATED BUNDLE · The Setup"
 //
@@ -148,7 +150,7 @@ export const BUNDLE: BundleConfig = {
       title: 'The <em>Work</em> Setup.',
       intro:
         'Engineered for deep focus — three tools that eliminate friction and raise the standard of every session. Save 18% when you take all three.',
-      heroImage: '/images/curated-setup-04.jpg',
+      heroImage: imgUrl('/images/curated-setup-04.jpg'),
       discount: 18,
       ctaText: 'Add Setup to cart',
       // Create this code in Shopify Admin → Discounts → Create discount → Discount code
@@ -193,7 +195,7 @@ export const BUNDLE: BundleConfig = {
       title: 'The <em>Vision</em> Setup.',
       intro:
         'For those who capture the world before it moves on — paired for cohesion, carried as a system. Save 20% when you take all three.',
-      heroImage: '/images/curated-setup-02.jpg',
+      heroImage: imgUrl('/images/curated-setup-02.jpg'),
       discount: 20,
       ctaText: 'Add Setup to cart',
       discountCode: 'BUNDLE-VISION-20',
@@ -235,7 +237,7 @@ export const BUNDLE: BundleConfig = {
       title: 'The <em>Home</em> Setup.',
       intro:
         'A smarter home starts with three decisions made well — not a dozen gadgets made poorly. Save 20% when you take all three.',
-      heroImage: '/images/curated-setup-03.jpg',
+      heroImage: imgUrl('/images/curated-setup-03.jpg'),
       discount: 20,
       ctaText: 'Add Setup to cart',
       discountCode: 'BUNDLE-HOME-20',
@@ -277,7 +279,7 @@ export const BUNDLE: BundleConfig = {
       title: 'The <em>Sound</em> Setup.',
       intro:
         'Three pieces our editors actually use together — chosen as a system, not a list. Save 18% when you take all three.',
-      heroImage: '/images/curated-setup-01.jpg',
+      heroImage: imgUrl('/images/curated-setup-01.jpg'),
       discount: 18,
       ctaText: 'Add Setup to cart',
       discountCode: 'BUNDLE-SOUND-18',

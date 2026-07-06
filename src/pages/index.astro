@@ -22,6 +22,8 @@ import Faq from '~/components/home/sections/Faq.astro';
 import Instagram from '~/components/home/sections/Instagram.astro';
 import Newsletter from '~/components/home/sections/Newsletter.astro';
 import { getProducts, getCollectionsByHandles, getPicksProducts, getDepartmentsCollections, getProductsByHandles, getProduct, getBlogArticles } from '~/lib/shopify';
+import { buyerIpFrom } from '~/lib/shopify/buyer-ip';
+import { countryFrom } from '~/lib/shopify/country';
 import type { BlogArticle, ProductCard, Collection } from '~/lib/shopify/types';
 import { PICKS } from '~/config/picks';
 import { SHOWCASE } from '~/config/showcase';
@@ -31,9 +33,13 @@ import { TESTIMONIALS } from '~/config/testimonials';
 import { JOURNAL_CONFIG } from '~/config/journal';
 import type { ResolvedTestimonial } from '~/components/home/sections/Testimonials.astro';
 
+// Same buyer IP + country forwarded to every Storefront API call on this page
+// so Shopify resolves one consistent Market/currency for this visitor.
+const opts = { buyerIp: buyerIpFrom(Astro.request), country: countryFrom(Astro.request) };
+
 let products: ProductCard[] = [];
 try {
-  const page = await getProducts({ pageSize: 12, sortKey: 'BEST_SELLING' });
+  const page = await getProducts({ pageSize: 12, sortKey: 'BEST_SELLING' }, opts);
   products = page.items;
 } catch (err) {
   console.error('[home] Shopify load failed:', (err as Error).message);
@@ -51,7 +57,7 @@ if (FEATURED.mode === 'collection-tabs' && FEATURED.collectionTabs.length > 0) {
       if (tab.isAllTab) return { label: tab.customName ?? 'All', products: null as ProductCard[] | null };
       if (!tab.collectionHandle) return null;
       try {
-        const data = await getPicksProducts(tab.collectionHandle, tab.fetchLimit ?? FEATURED.fetchLimit);
+        const data = await getPicksProducts(tab.collectionHandle, tab.fetchLimit ?? FEATURED.fetchLimit, opts);
         if (!data) return null;
         return { label: tab.customName ?? data.collectionTitle, products: data.products };
       } catch (err) {
@@ -86,7 +92,7 @@ try {
       DEPARTMENTS_CONFIG.customCollections.length > 0
         ? [...DEPARTMENTS_CONFIG.customCollections]
         : undefined,
-  });
+  }, opts);
 } catch (err) {
   console.error('[home] Departments load failed:', (err as Error).message);
 }
@@ -103,6 +109,7 @@ const picksData = await Promise.all(
         const productsData = await getPicksProducts(
           cfg.productsConfig.collectionHandle,
           cfg.productsConfig.productLimit,
+          opts,
         );
         return { cfg, collections: [] as Collection[], productsData };
       } catch (err) {
@@ -112,7 +119,7 @@ const picksData = await Promise.all(
     }
     if (cfg.mode === 'collections') {
       try {
-        const collections = await getCollectionsByHandles(cfg.collectionsConfig.handles);
+        const collections = await getCollectionsByHandles(cfg.collectionsConfig.handles, opts);
         return { cfg, collections, productsData: null as PicksProductsData };
       } catch (err) {
         console.error(`[home] Picks[${i}] collections load failed:`, (err as Error).message);
@@ -129,7 +136,7 @@ const picksData = await Promise.all(
 let showcaseProducts: ProductCard[] = [];
 if (SHOWCASE.mode === 'shopify') {
   try {
-    showcaseProducts = await getProductsByHandles(SHOWCASE.shopifyConfig.productHandles);
+    showcaseProducts = await getProductsByHandles(SHOWCASE.shopifyConfig.productHandles, opts);
   } catch (err) {
     console.error('[home] Showcase products load failed:', (err as Error).message);
   }
@@ -158,7 +165,7 @@ const resolvedTestimonials: ResolvedTestimonial[] = await Promise.all(
     // Try Shopify handle first (Option A)
     if (t.productHandle && t.productHandle.trim()) {
       try {
-        const p = await getProduct(t.productHandle.trim());
+        const p = await getProduct(t.productHandle.trim(), opts);
         if (p) {
           const price = p.priceRange?.minVariantPrice;
           const priceStr = price

@@ -1,7 +1,7 @@
 // ============================================================
 //  Product services — fetch + transform
 // ============================================================
-import { shopifyFetch } from '../client';
+import { shopifyFetch, type ShopifyFetchOptions } from '../client';
 import {
   PRODUCTS_QUERY,
   PRODUCT_BY_HANDLE_QUERY,
@@ -23,13 +23,18 @@ export interface ProductListParams {
 /** Paginated storefront product list. */
 export async function getProducts(
   params: ProductListParams = {},
+  opts: ShopifyFetchOptions = {},
 ): Promise<Paginated<ProductCard>> {
-  const data = await shopifyFetch<{ products: any }>(PRODUCTS_QUERY, {
-    ...cursorVars({ pageSize: params.pageSize ?? 12, after: params.after, before: params.before }),
-    sortKey: params.sortKey ?? 'BEST_SELLING',
-    reverse: params.reverse ?? false,
-    query: params.query ?? null,
-  });
+  const data = await shopifyFetch<{ products: any }>(
+    PRODUCTS_QUERY,
+    {
+      ...cursorVars({ pageSize: params.pageSize ?? 12, after: params.after, before: params.before }),
+      sortKey: params.sortKey ?? 'BEST_SELLING',
+      reverse: params.reverse ?? false,
+      query: params.query ?? null,
+    },
+    opts,
+  );
   return paginate(data.products, mapProductCard);
 }
 
@@ -70,18 +75,28 @@ function productToCard(p: Product): ProductCard {
  * search-query approach could silently drop handles due to relevance ranking
  * or search-index lag, so some selected products went missing).
  */
-export async function getProductsByHandles(handles: string[]): Promise<ProductCard[]> {
+export async function getProductsByHandles(
+  handles: string[],
+  opts: ShopifyFetchOptions = {},
+): Promise<ProductCard[]> {
   const wanted = handles.map((h) => h.trim()).filter(Boolean);
   if (wanted.length === 0) return [];
 
-  const products = await Promise.all(wanted.map((h) => getProduct(h)));
+  const products = await Promise.all(wanted.map((h) => getProduct(h, opts)));
   // Preserve the requested order; skip handles that don't resolve to a product.
   return products.filter((p): p is Product => p !== null).map(productToCard);
 }
 
 /** Full product detail by handle, or null if not found. */
-export async function getProduct(handle: string): Promise<Product | null> {
-  const data = await shopifyFetch<{ product: any | null }>(PRODUCT_BY_HANDLE_QUERY, { handle });
+export async function getProduct(
+  handle: string,
+  opts: ShopifyFetchOptions = {},
+): Promise<Product | null> {
+  const data = await shopifyFetch<{ product: any | null }>(
+    PRODUCT_BY_HANDLE_QUERY,
+    { handle },
+    opts,
+  );
   return data.product ? mapProduct(data.product) : null;
 }
 
@@ -89,10 +104,12 @@ export async function getProduct(handle: string): Promise<Product | null> {
 export async function getProductRecommendations(
   productId: string,
   limit = 4,
+  opts: ShopifyFetchOptions = {},
 ): Promise<ProductCard[]> {
   const data = await shopifyFetch<{ productRecommendations: any[] | null }>(
     PRODUCT_RECOMMENDATIONS_QUERY,
     { productId },
+    opts,
   );
   return (data.productRecommendations ?? []).slice(0, limit).map(mapProductCard);
 }

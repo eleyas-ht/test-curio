@@ -9,16 +9,19 @@ import BaseLayout from '~/layouts/BaseLayout.astro';
 import ProductBody from '~/components/pages/ProductBody.astro';
 import '~/styles/pages/product.css';
 import { getProduct, getProductRecommendations } from '~/lib/shopify';
+import { buyerIpFrom } from '~/lib/shopify/buyer-ip';
+import { countryFrom } from '~/lib/shopify/country';
 import { formatMoney, isOnSale } from '~/lib/utils';
 import type { Product, ProductCard } from '~/lib/shopify/types';
 import { getProductWidget, type JudgeMeWidget } from '~/lib/judgeme';
 
 const { handle } = Astro.params;
+const opts = { buyerIp: buyerIpFrom(Astro.request), country: countryFrom(Astro.request) };
 
 let product: Product | null = null;
 let loadFailed = false;
 try {
-  product = await getProduct(handle!);
+  product = await getProduct(handle!, opts);
 } catch (err) {
   loadFailed = true;
   console.error('[product] load failed:', (err as Error).message);
@@ -31,7 +34,7 @@ let relProducts: ProductCard[] = [];
 let reviews: JudgeMeWidget | null = null;
 if (product) {
   [relProducts, reviews] = await Promise.all([
-    getProductRecommendations(product.id, 8).catch(() => [] as ProductCard[]),
+    getProductRecommendations(product.id, 8, opts).catch(() => [] as ProductCard[]),
     getProductWidget(product.handle).catch(() => null),
   ]);
 }

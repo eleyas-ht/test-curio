@@ -4,12 +4,17 @@ import BaseLayout from '~/layouts/BaseLayout.astro';
 import ShopBody from '~/components/pages/ShopBody.astro';
 import '~/styles/pages/shop.css';
 import { getProducts } from '~/lib/shopify';
+import { buyerIpFrom } from '~/lib/shopify/buyer-ip';
+import { countryFrom } from '~/lib/shopify/country';
 import { buildFacets } from '~/lib/facets';
 import type { ProductCard } from '~/lib/shopify/types';
 
 let products: ProductCard[] = [];
 try {
-  const page = await getProducts({ pageSize: 100, sortKey: 'BEST_SELLING' });
+  const page = await getProducts(
+    { pageSize: 100, sortKey: 'BEST_SELLING' },
+    { buyerIp: buyerIpFrom(Astro.request), country: countryFrom(Astro.request) },
+  );
   products = page.items;
 } catch (err) {
   console.error('[shop] load failed:', (err as Error).message);

@@ -1,10 +1,12 @@
 // GET /api/search?q=... — predictive (instant) search proxy.
 import type { APIRoute } from 'astro';
 import { predictiveSearch } from '~/lib/shopify';
+import { buyerIpFrom } from '~/lib/shopify/buyer-ip';
+import { countryFrom } from '~/lib/shopify/country';
 
 export const prerender = false;
 
-export const GET: APIRoute = async ({ url }) => {
+export const GET: APIRoute = async ({ url, request }) => {
   const q = url.searchParams.get('q')?.trim() ?? '';
   if (q.length < 2) {
     return new Response(JSON.stringify({ products: [], collections: [], queries: [] }), {
@@ -12,7 +14,7 @@ export const GET: APIRoute = async ({ url }) => {
     });
   }
   try {
-    const result = await predictiveSearch(q);
+    const result = await predictiveSearch(q, { buyerIp: buyerIpFrom(request), country: countryFrom(request) });
     return new Response(JSON.stringify(result), {
       headers: { 'content-type': 'application/json; charset=utf-8' },
     });

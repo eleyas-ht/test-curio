@@ -1,9 +1,9 @@
 <p align="center">
 <img src="src/assets/images/logo.png" alt="Curio Logo" width="200" />
 </p>
-<h1 align="center">Curio · The Edit — Editorial Headless Shopify Storefront</h1>
+<h1 align="center">Curio — Astro Headless Shopify Storefront</h1>
 <p align="center">
-  A production eCommerce template built with Astro 6 (SSR), React 19 islands, nanostores, and Tailwind CSS v4, powered end-to-end by the Shopify Storefront API 2026-04.
+  A production eCommerce template built with Astro 6 (SSR), React 19 islands, nanostores powered end-to-end by the Shopify Storefront API 2026-04.
 </p>
 <p align="center">
 <a href="#features">Features</a> |
@@ -22,7 +22,6 @@
 ## Features
 
 - Astro 6 with SSR via `@astrojs/node` and React 19 islands.
-- Tailwind CSS v4 with editorial design tokens (`@theme` in `src/styles/global.css`).
 - Framework-agnostic cart via nanostores (`src/stores/cart.ts`) — header badge, drawer, and cart page stay in sync.
 - Security invariant: the browser never talks to Shopify directly — all traffic uses a private Storefront token through server code; the client only calls same-origin `/api/*`.
 - Native faceted filters (Brand, Availability, Size, Color, Price with counts), sort, and pagination on collection pages.
@@ -59,41 +58,42 @@
 
 ## Getting Started
 
-### Prerequisites
+**Prerequisites:** Node.js `>= 22.12.0`, yarn, and a [Shopify store](https://www.shopify.com/partners).
 
-- Node.js >= 22.12.0
-- yarn
+### 1. Get your Shopify Storefront API token
 
-### Install
+1. Sign in to [Shopify Admin](https://accounts.shopify.com/store-login).
+2. Install the **Headless** channel (**Settings → Apps and sales channels → Shopify App Store → Headless**).
+3. Open the **Headless** channel and click **Add storefront**.
+4. In **Storefront API**, reveal and copy the **Private access token** (starts with `shpat_`).
+5. Note your `*.myshopify.com` store domain.
+
+### 2. Install and configure
 
 ```bash
 yarn install
-cp .env.example .env     # fill in Shopify Storefront credentials
+cp .env.example .env      # PowerShell: Copy-Item .env.example .env
 ```
 
-### Development
+Set these values in `.env`:
+
+```env
+SHOPIFY_SHOP_DOMAIN=your-shop.myshopify.com
+SHOPIFY_STOREFRONT_PRIVATE_TOKEN=shpat_xxxxxxxxxxxxxxxxxxxxxxxx
+SHOPIFY_API_VERSION=2026-04
+```
+
+Optional integrations (customer login, reviews, Instagram, newsletter) are documented inline in [`.env.example`](.env.example).
+
+### 3. Run
 
 ```bash
-yarn dev                 # → http://localhost:4321
+yarn dev                 # dev server → http://localhost:4321
+yarn build               # production build → dist/server/entry.mjs
+yarn preview             # preview the production build
 ```
 
-### Build
-
-```bash
-yarn build               # standalone Node server → dist/server/entry.mjs
-```
-
-### Preview
-
-```bash
-yarn preview
-```
-
-Run the production server with:
-
-```bash
-HOST=0.0.0.0 PORT=4321 node ./dist/server/entry.mjs
-```
+See [Deployment](#deployment) for hosting on a VPS, Cloudflare, Vercel, or Netlify.
 
 ---
 
@@ -157,7 +157,6 @@ src/
     global.css        # Design tokens (@theme), base styles, editorial palette
 astro.config.mjs
 package.json
-tailwind.config.js
 tsconfig.json
 .env.example
 ```
@@ -186,7 +185,6 @@ To make PDP specs/video/reviews fully data-driven, enable product metafields wit
 | --- | --- | --- |
 | Astro | ^6 | Static site framework (SSR) |
 | React | ^19 | UI islands |
-| Tailwind CSS | ^4 | Styling |
 | @astrojs/node | ^10 | SSR adapter |
 | @astrojs/react | ^4 | React integration |
 | nanostores | — | Framework-agnostic state (cart) |

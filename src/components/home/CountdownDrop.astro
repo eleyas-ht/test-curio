@@ -48,6 +48,9 @@ import { Image } from 'astro:assets';
 import Icon     from '~/components/ui/Icon.astro';
 import { img }  from '~/lib/assets';
 import { getProduct } from '~/lib/shopify';
+import { buyerIpFrom } from '~/lib/shopify/buyer-ip';
+import { countryFrom } from '~/lib/shopify/country';
+import { formatMoney } from '~/lib/utils';
 
 // ── Props / settings ─────────────────────────────────────────────────────────
 
@@ -93,14 +96,11 @@ const {
 // Fetches only when a handle is configured. Falls back gracefully when the
 // handle is empty or the product is not found in the store.
 
-const shopifyProduct = productHandle ? await getProduct(productHandle) : null;
+const shopifyProduct = productHandle
+  ? await getProduct(productHandle, { buyerIp: buyerIpFrom(Astro.request), country: countryFrom(Astro.request) })
+  : null;
 
 // ── Resolved display values ───────────────────────────────────────────────────
-
-function formatPrice(amount: string): string {
-  const n = parseFloat(amount);
-  return isNaN(n) ? amount : `$${n.toFixed(2)}`;
-}
 
 const productTitle     = shopifyProduct?.title ?? fallbackTitle;
 const productUrl       = shopifyProduct ? `/products/${shopifyProduct.handle}` : '#';
@@ -109,11 +109,17 @@ const productAvailable = shopifyProduct?.availableForSale ?? true;
 const variantId        = shopifyProduct?.variants?.[0]?.id ?? '';
 
 const displayPrice = shopifyProduct?.priceRange?.minVariantPrice?.amount
-  ? formatPrice(shopifyProduct.priceRange.minVariantPrice.amount)
+  ? formatMoney(
+      shopifyProduct.priceRange.minVariantPrice.amount,
+      shopifyProduct.priceRange.minVariantPrice.currencyCode,
+    )
   : fallbackPrice;
 
 const compareAtPrice = shopifyProduct?.compareAtPriceRange?.minVariantPrice?.amount
-  ? formatPrice(shopifyProduct.compareAtPriceRange.minVariantPrice.amount)
+  ? formatMoney(
+      shopifyProduct.compareAtPriceRange.minVariantPrice.amount,
+      shopifyProduct.compareAtPriceRange.minVariantPrice.currencyCode,
+    )
   : null;
 
 // Show a "Sale" badge when compare-at is higher than the current price.

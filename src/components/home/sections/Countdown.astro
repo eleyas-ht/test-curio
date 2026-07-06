@@ -52,6 +52,10 @@
 // ============================================================
 
 import { getProduct } from '~/lib/shopify';
+import { buyerIpFrom } from '~/lib/shopify/buyer-ip';
+import { countryFrom } from '~/lib/shopify/country';
+import { formatMoney } from '~/lib/utils';
+import { imgUrl } from '~/lib/assets';
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -91,14 +95,11 @@ const {
 
 // ── Shopify product fetch ─────────────────────────────────────────────────────
 
-const shopifyProduct = productHandle ? await getProduct(productHandle) : null;
+const shopifyProduct = productHandle
+  ? await getProduct(productHandle, { buyerIp: buyerIpFrom(Astro.request), country: countryFrom(Astro.request) })
+  : null;
 
 // ── Resolved display values ───────────────────────────────────────────────────
-
-function formatPrice(amount: string): string {
-  const n = parseFloat(amount);
-  return isNaN(n) ? amount : `$${n.toFixed(2)}`;
-}
 
 const productTitle     = shopifyProduct?.title   ?? '';
 const productUrl       = shopifyProduct           ? `/products/${shopifyProduct.handle}` : '#';
@@ -106,11 +107,17 @@ const productAvailable = shopifyProduct?.availableForSale ?? true;
 const variantId        = shopifyProduct?.variants?.[0]?.id ?? '';
 
 const displayPrice = shopifyProduct?.priceRange?.minVariantPrice?.amount
-  ? formatPrice(shopifyProduct.priceRange.minVariantPrice.amount)
+  ? formatMoney(
+      shopifyProduct.priceRange.minVariantPrice.amount,
+      shopifyProduct.priceRange.minVariantPrice.currencyCode,
+    )
   : '';
 
 const compareAtPrice = shopifyProduct?.compareAtPriceRange?.minVariantPrice?.amount
-  ? formatPrice(shopifyProduct.compareAtPriceRange.minVariantPrice.amount)
+  ? formatMoney(
+      shopifyProduct.compareAtPriceRange.minVariantPrice.amount,
+      shopifyProduct.compareAtPriceRange.minVariantPrice.currencyCode,
+    )
   : null;
 
 const isOnSale = compareAtPrice && compareAtPrice !== displayPrice;
@@ -131,9 +138,9 @@ const badgeMeta = !shopifyProduct
 // built-in static slides so the section always looks complete.
 
 const STATIC_SLIDES: SlideItem[] = fallbackImages ?? [
-  { src: '/images/countdown01.png', name: 'AudioCraft Phantom',     meta: '47 units at launch · from $649'   },
-  { src: '/images/countdown-02.jpg', name: 'ChronoX Limited Edition', meta: '32 units at launch · from $429' },
-  { src: '/images/countdown-03.jpg', name: 'PixelSnap Pro Max',       meta: '25 units at launch · from $1,299' },
+  { src: imgUrl('/images/countdown01.png'), name: 'AudioCraft Phantom',     meta: '47 units at launch · from $649'   },
+  { src: imgUrl('/images/countdown-02.jpg'), name: 'ChronoX Limited Edition', meta: '32 units at launch · from $429' },
+  { src: imgUrl('/images/countdown-03.jpg'), name: 'PixelSnap Pro Max',       meta: '25 units at launch · from $1,299' },
 ];
 
 const slides: SlideItem[] = shopifyProduct?.images?.length

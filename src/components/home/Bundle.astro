@@ -16,6 +16,8 @@ import BundleSectionReact from '~/components/react/BundleSection';
 import type { BundleItemData, BundleSlideData } from '~/components/react/BundleSection';
 import { BUNDLE } from '~/config/bundles';
 import { getProduct } from '~/lib/shopify';
+import { buyerIpFrom } from '~/lib/shopify/buyer-ip';
+import { countryFrom } from '~/lib/shopify/country';
 import type { Product } from '~/lib/shopify/types';
 
 // ── Helpers ──────────────────────────────────────────────────
@@ -53,9 +55,10 @@ const resolvedSlides: BundleSlideData[] = await Promise.all(
 
     if (BUNDLE.mode === 'shopify' && bundle.productHandles.length > 0) {
       // Fetch each product by handle in parallel; silently skip failures
+      const bundleOpts = { buyerIp: buyerIpFrom(Astro.request), country: countryFrom(Astro.request) };
       const fetched = await Promise.all(
         bundle.productHandles.map((handle) =>
-          getProduct(handle).catch(() => null),
+          getProduct(handle, bundleOpts).catch(() => null),
         ),
       );
       const products = fetched.filter((p): p is Product => p !== null);

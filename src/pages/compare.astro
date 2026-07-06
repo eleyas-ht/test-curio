@@ -5,6 +5,8 @@
 // ============================================================
 import BaseLayout from '~/layouts/BaseLayout.astro';
 import { getProduct } from '~/lib/shopify/services/products';
+import { buyerIpFrom } from '~/lib/shopify/buyer-ip';
+import { countryFrom } from '~/lib/shopify/country';
 import { formatMoney, isOnSale } from '~/lib/utils';
 
 const handlesParam = Astro.url.searchParams.get('handles') ?? '';
@@ -14,7 +16,8 @@ const handles = handlesParam
   .filter(Boolean)
   .slice(0, 4);
 
-const products = (await Promise.all(handles.map((h) => getProduct(h)))).filter(
+const opts = { buyerIp: buyerIpFrom(Astro.request), country: countryFrom(Astro.request) };
+const products = (await Promise.all(handles.map((h) => getProduct(h, opts)))).filter(
   (p): p is NonNullable<typeof p> => p !== null,
 );
 

@@ -1,6 +1,6 @@
 // POST /api/cart/update — { lineId, quantity }  (quantity 0 removes)
 import type { APIRoute } from 'astro';
-import { buyerIpFrom, json, updateLine } from '~/lib/cart-server';
+import { buyerIpFrom, countryFrom, json, updateLine } from '~/lib/cart-server';
 
 export const prerender = false;
 
@@ -14,7 +14,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       return json({ cart: null, userErrors: [{ message: 'lineId and quantity required' }] }, 400);
     }
 
-    const { cart, userErrors } = await updateLine(cookies, { id: lineId, quantity }, buyerIpFrom(request));
+    const { cart, userErrors } = await updateLine(cookies, { id: lineId, quantity }, buyerIpFrom(request), countryFrom(request));
     return json({ cart, userErrors });
   } catch (err) {
     return json({ cart: null, error: (err as Error).message }, 500);

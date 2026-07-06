@@ -6,6 +6,8 @@ import CartBody from '~/components/pages/CartBody.astro';
 import '~/styles/pages/cart.css';
 import { SITE } from '~/config/site';
 import { getProductsByHandles } from '~/lib/shopify';
+import { buyerIpFrom } from '~/lib/shopify/buyer-ip';
+import { countryFrom } from '~/lib/shopify/country';
 import { formatMoney } from '~/lib/utils';
 
 export const prerender = false;
@@ -18,7 +20,10 @@ let giftVariantId = '';
 let giftPrice = 0;
 let giftPriceDisplay = '';
 if (giftHandle) {
-  const [giftProduct] = await getProductsByHandles([giftHandle]);
+  const [giftProduct] = await getProductsByHandles([giftHandle], {
+    buyerIp: buyerIpFrom(Astro.request),
+    country: countryFrom(Astro.request),
+  });
   if (giftProduct?.variantId && giftProduct.availableForSale) {
     giftVariantId = giftProduct.variantId;
     giftPrice = Number(giftProduct.priceRange.minVariantPrice.amount);
@@ -50,8 +55,9 @@ const giftEnabled = !!giftVariantId;
   const GIFT_HANDLE: string = cfg.giftHandle ?? '';
   const GIFT_VARIANT_ID: string = cfg.giftVariantId ?? '';
   const GIFT_PRICE: number = cfg.giftPrice ?? 0;
+  let currentCurrency = 'USD';
   const money = (n: number) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: Number.isInteger(n) ? 0 : 2 }).format(n);
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: currentCurrency, minimumFractionDigits: Number.isInteger(n) ? 0 : 2 }).format(n);
 
   // Per-line discount — mirrors the cart drawer. Prefer Shopify's real
   // discountAllocations (valid discount code); fall back to the _bundleDiscount
@@ -133,6 +139,11 @@ const giftEnabled = !!giftVariantId;
     }
     if (layout) layout.style.display = '';
     if (empty) empty.hidden = true;
+
+    // Set before any money() calls below (including the per-line prices in the
+    // map over `lines`) so every price in this render pass uses the cart's
+    // actual currency, not a stale value from a previous render.
+    currentCurrency = cart.cost.subtotalAmount.currencyCode ?? 'USD';
 
     if (list) {
       list.innerHTML = lines

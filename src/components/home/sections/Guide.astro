@@ -10,6 +10,8 @@
 //                  Defaults to the built-in 5-slide dataset below.
 // ============================================================
 
+import { imgUrl } from '~/lib/assets';
+
 interface GuideSlide {
   img: string;
   alt: string;
@@ -99,7 +101,9 @@ const defaultSlides: GuideSlide[] = [
   },
 ];
 
-const guideSlides = slides ?? defaultSlides;
+// Resolve each slide image to its bundled src/assets URL (the img path is also
+// serialized into the client slider script below, so it must be a plain URL).
+const guideSlides = (slides ?? defaultSlides).map((s) => ({ ...s, img: imgUrl(s.img) }));
 
 // Server-render the first slide so there is no flash of empty content.
 const first = guideSlides[0];

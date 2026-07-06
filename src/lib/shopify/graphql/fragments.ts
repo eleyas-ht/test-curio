@@ -95,6 +95,12 @@ export const CART_FRAGMENT = /* GraphQL */ `
     checkoutUrl
     totalQuantity
     note
+    buyerIdentity {
+      email
+      customer {
+        id
+      }
+    }
     discountCodes {
       code
       applicable

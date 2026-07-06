@@ -4,6 +4,7 @@
 import type { ProductCard } from '~/lib/shopify/types';
 import ProductFeatCard from '~/components/product/ProductFeatCard.astro';
 import { formatMoney } from '~/lib/utils';
+import { imgUrl } from '~/lib/assets';
 import type { JudgeMeWidget } from '~/lib/judgeme';
 
 interface PdVariant {
@@ -379,7 +380,7 @@ const relGrid    = relProducts.slice(0, 8);
                   const min = p.priceRange.minVariantPrice;
                   return (
                     <div class="pd-pair">
-                      <img src={p.featuredImage?.url ?? '/images/pd-gallery-01.jpg'} alt={p.featuredImage?.altText ?? p.title} loading="lazy" />
+                      <img src={p.featuredImage?.url ?? imgUrl('/images/pd-gallery-01.jpg')} alt={p.featuredImage?.altText ?? p.title} loading="lazy" />
                       <div class="pd-pair-info">
                         <span class="pd-pair-name">{p.title}</span>
                         <span class="pd-pair-price">{formatMoney(min.amount, min.currencyCode)}</span>
@@ -435,7 +436,7 @@ const relGrid    = relProducts.slice(0, 8);
 
       <!-- Full-width product video -->
       <section class="pd-video">
-        <video class="pd-video-el" autoplay muted loop playsinline poster="/images/gaming-room.jpg">
+        <video class="pd-video-el" autoplay muted loop playsinline poster={imgUrl('/images/gaming-room.jpg')}>
           <source src="/video/video-section-01.mp4" type="video/mp4">
         </video>
         <div class="pd-video-overlay">
