@@ -1779,10 +1779,11 @@
     }
 
     .pd-rev-form-success svg {
+      display: block;
       width: 38px;
       height: 38px;
       color: #5f7355;
-      margin-bottom: 12px;
+      margin: 0 auto 12px;
     }
 
     .pd-rev-success-title {

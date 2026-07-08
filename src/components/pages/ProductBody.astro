@@ -29,6 +29,7 @@ interface PdData {
   category: string;
   desc: string;
   descHtml: string;
+  highlights: string[];
   priceNow: string;
   priceWas: string;
   save: string;
@@ -40,12 +41,31 @@ interface PdData {
 interface Props {
   pd: PdData;
   relProducts?: ProductCard[];
-  delivery?: { cutoff: string; eta: string };
+  delivery?: { cutoff: string; eta: string; cutoffTs?: number };
   reviews?: JudgeMeWidget;
   shopDomain?: string;
 }
 
 const { pd, relProducts = [], delivery, reviews, shopDomain } = Astro.props;
+
+// Description display option — max number of words shown in .pd-desc.
+// Set to 0 (or null) to show the full description untruncated.
+const DESC_MAX_WORDS = 30;
+const descWords = pd.desc.trim().split(/\s+/).filter(Boolean);
+const descTruncated = DESC_MAX_WORDS > 0 && descWords.length > DESC_MAX_WORDS;
+const descDisplay = descTruncated
+  ? descWords.slice(0, DESC_MAX_WORDS).join(' ') + '…'
+  : pd.desc;
+
+// Key highlights — driven by the custom.highlights product metafield.
+// Falls back to these defaults when the metafield is empty/unset.
+const DEFAULT_HIGHLIGHTS = [
+  'Authentic, brand-new & sealed — 2-year warranty included',
+  'Free express shipping on orders over $75',
+  '30-day free returns, no questions asked',
+  'Editor-curated pick — tested by our team',
+];
+const highlights = pd.highlights?.length ? pd.highlights : DEFAULT_HIGHLIGHTS;
 
 // Star rendering helper — filled (★) + empty (☆) from a float rating
 function renderStars(rating: number): string {
@@ -96,6 +116,27 @@ const initUrgencyQty = baseVariant?.qty != null && baseVariant.qty > 0 && baseVa
   ? baseVariant.qty
   : null;
 
+// Urgency + social-proof figures. Real Shopify stock drives the "left" count
+// and stock bar; the "sold this week" / "viewing now" counters have no
+// Storefront data source, so they're derived from a per-product seed —
+// stable for a given product, but distinct across the catalog (no flicker,
+// no identical numbers on every page).
+function seededInt(seed: string, min: number, max: number): number {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  const frac = ((h >>> 0) % 100000) / 100000;
+  return Math.floor(min + frac * (max - min + 1));
+}
+const urgSeed       = pd.id || pd.handle || pd.title;
+const soldThisWeek  = seededInt(urgSeed + ':sold', 12, 60);
+const viewingNow    = seededInt(urgSeed + ':view', 8, 40);
+const stockLeft     = initUrgencyQty ?? seededInt(urgSeed + ':left', 5, 12);
+// Stock bar = remaining stock as a share of total moved (left + sold this week).
+const stockPct      = Math.max(6, Math.min(94, Math.round((stockLeft / (stockLeft + soldThisWeek)) * 100)));
+
 // Gallery — cap at 5 to keep the rail manageable
 const galleryImages = pd.images.slice(0, 5);
 const mainImage = galleryImages[0];
@@ -108,6 +149,17 @@ const categoryHref = pd.category
 // Pairs: sidebar (first 4) and related grid (up to 8)
 const pairsItems = relProducts.slice(0, 4);
 const relGrid    = relProducts.slice(0, 8);
+
+// Social share links — built from the canonical product URL, title and image.
+const shareUrl   = Astro.url.origin + Astro.url.pathname;
+const shareTitle = pd.title;
+const shareImage = pd.images[0]?.url ?? '';
+const enc = encodeURIComponent;
+const shareLinks = {
+  twitter: `https://twitter.com/intent/tweet?url=${enc(shareUrl)}&text=${enc(shareTitle)}`,
+  facebook: `https://www.facebook.com/sharer/sharer.php?u=${enc(shareUrl)}`,
+  pinterest: `https://pinterest.com/pin/create/button/?url=${enc(shareUrl)}&description=${enc(shareTitle)}${shareImage ? `&media=${enc(shareImage)}` : ''}`,
+};
 ---
 
   <!-- ============================================================
@@ -177,48 +229,32 @@ const relGrid    = relProducts.slice(0, 8);
             {initSave && <span class="pd-price-save">{initSave}</span>}
           </div>
 
-          <p class="pd-desc">{pd.desc}</p>
+          <p class="pd-desc">{descDisplay}</p>
 
-          <!-- Key highlights -->
+          <!-- Key highlights — sourced from custom.highlights metafield -->
           <ul class="pd-highlights">
-            <li><svg viewBox="0 0 20 20" fill="none">
-                <circle cx="10" cy="10" r="10" fill="#9A6B4F" />
-                <path d="M5.8 10.4l2.7 2.6 5-5.8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"
-                  stroke-linejoin="round" />
-              </svg>Authentic, brand-new &amp; sealed — 2-year warranty included</li>
-            <li><svg viewBox="0 0 20 20" fill="none">
-                <circle cx="10" cy="10" r="10" fill="#9A6B4F" />
-                <path d="M5.8 10.4l2.7 2.6 5-5.8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"
-                  stroke-linejoin="round" />
-              </svg>Free express shipping on orders over $75</li>
-            <li><svg viewBox="0 0 20 20" fill="none">
-                <circle cx="10" cy="10" r="10" fill="#9A6B4F" />
-                <path d="M5.8 10.4l2.7 2.6 5-5.8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"
-                  stroke-linejoin="round" />
-              </svg>30-day free returns, no questions asked</li>
-            <li><svg viewBox="0 0 20 20" fill="none">
-                <circle cx="10" cy="10" r="10" fill="#9A6B4F" />
-                <path d="M5.8 10.4l2.7 2.6 5-5.8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"
-                  stroke-linejoin="round" />
-              </svg>Editor-curated pick — tested by our team</li>
+            {highlights.map((item) => (
+              <li><svg viewBox="0 0 20 20" fill="none">
+                  <circle cx="10" cy="10" r="10" fill="#9A6B4F" />
+                  <path d="M5.8 10.4l2.7 2.6 5-5.8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"
+                    stroke-linejoin="round" />
+                </svg>{item}</li>
+            ))}
           </ul>
 
-          <!-- Urgency + social proof -->
-          <div class="pd-urgency">
+          <!-- Urgency + social proof (dynamic — real stock + seeded counters) -->
+          <div class="pd-urgency" data-sold={soldThisWeek}>
             <div class="pd-urgency-top">
-              {initUrgencyQty != null
-                ? <span class="pd-urgency-msg">Only <strong>{initUrgencyQty} left</strong> — selling fast</span>
-                : <span class="pd-urgency-msg">Only <strong>8 left</strong> — selling fast</span>
-              }
+              <span class="pd-urgency-msg">Only <strong>{stockLeft} left</strong> — selling fast</span>
               <span class="pd-social">
                 <svg viewBox="0 0 24 24" fill="currentColor">
                   <path d="M12 2s5 4 5 9a5 5 0 0 1-10 0c0-1 .3-2 .8-2.8C8.4 9.6 9 10.5 9 11.5c0 .8.6 1.5 1.4 1.5.9 0 1.6-.7 1.6-1.7C12 9 10 7 12 2Z" />
                 </svg>
-                <strong>24</strong>&nbsp;sold this week
+                <strong>{soldThisWeek}</strong>&nbsp;sold this week
               </span>
             </div>
-            <div class="pd-stock-bar"><span style="width:30%"></span></div>
-            <span class="pd-viewing"><span class="pd-viewing-dot"></span><strong>17</strong>&nbsp;people are viewing this right now</span>
+            <div class="pd-stock-bar"><span style={`width:${stockPct}%`}></span></div>
+            <span class="pd-viewing"><span class="pd-viewing-dot"></span><strong>{viewingNow}</strong>&nbsp;people are viewing this right now</span>
           </div>
 
           <!-- Variant options (SSR from Shopify) -->
@@ -266,7 +302,7 @@ const relGrid    = relProducts.slice(0, 8);
               <circle cx="18" cy="17" r="2" />
             </svg>
             {delivery
-              ? <p>Order within <strong>{delivery.cutoff}</strong> to get it by <strong>{delivery.eta}</strong></p>
+              ? <p>Order within <strong id="pd-cutoff" data-deadline={delivery.cutoffTs}>{delivery.cutoff}</strong> to get it by <strong id="pd-eta">{delivery.eta}</strong></p>
               : <p>Order within <strong id="pd-cutoff">—</strong> to get it by <strong id="pd-eta">—</strong></p>
             }
           </div>
@@ -348,11 +384,11 @@ const relGrid    = relProducts.slice(0, 8);
             <span>SKU: <strong>{initSku}</strong></span>
             <span>Category: <a href={categoryHref}>{pd.category}</a></span>
             <div class="pd-share">Share:
-              <a href="#" aria-label="Share on Twitter"><svg viewBox="0 0 24 24" fill="currentColor">
+              <a href={shareLinks.twitter} target="_blank" rel="noopener noreferrer" aria-label="Share on X"><svg viewBox="0 0 24 24" fill="currentColor">
                   <path d="M18.9 1.2h3.7l-8 9.1L24 22.8h-7.4l-5.8-7.6-6.6 7.6H.5l8.6-9.8L0 1.2h7.6l5.2 6.9 6.1-6.9Zm-1.3 19.4h2L6.5 3.3H4.3l13.3 17.3Z" /></svg></a>
-              <a href="#" aria-label="Share on Facebook"><svg viewBox="0 0 24 24" fill="currentColor">
+              <a href={shareLinks.facebook} target="_blank" rel="noopener noreferrer" aria-label="Share on Facebook"><svg viewBox="0 0 24 24" fill="currentColor">
                   <path d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.3c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.3v7A10 10 0 0 0 22 12Z" /></svg></a>
-              <a href="#" aria-label="Share on Pinterest"><svg viewBox="0 0 24 24" fill="currentColor">
+              <a href={shareLinks.pinterest} target="_blank" rel="noopener noreferrer" aria-label="Share on Pinterest"><svg viewBox="0 0 24 24" fill="currentColor">
                   <path d="M12 2a10 10 0 0 0-3.6 19.3c-.1-.8-.2-2 0-2.9l1.2-5s-.3-.6-.3-1.5c0-1.4.8-2.4 1.8-2.4.9 0 1.3.6 1.3 1.4 0 .9-.5 2.1-.8 3.3-.2 1 .5 1.8 1.5 1.8 1.8 0 3.1-1.9 3.1-4.6 0-2.4-1.7-4.1-4.2-4.1-2.8 0-4.5 2.1-4.5 4.3 0 .9.3 1.8.7 2.3.1.1.1.2.1.3l-.3 1.1c0 .2-.1.2-.3.1-1.2-.5-1.9-2.2-1.9-3.6 0-2.9 2.1-5.6 6.1-5.6 3.2 0 5.7 2.3 5.7 5.4 0 3.2-2 5.7-4.8 5.7-.9 0-1.8-.5-2.1-1.1l-.6 2.2c-.2.8-.8 1.9-1.2 2.5A10 10 0 1 0 12 2Z" /></svg></a>
             </div>
           </div>

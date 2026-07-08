@@ -111,6 +111,10 @@ export const PRODUCT_BY_HANDLE_QUERY = /* GraphQL */ `
       ratingCount: metafield(namespace: "reviews", key: "rating_count") {
         value
       }
+      highlights: metafield(namespace: "custom", key: "highlights") {
+        value
+        type
+      }
     }
   }
 `;

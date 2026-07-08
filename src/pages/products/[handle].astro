@@ -64,6 +64,12 @@ const cutoffStr = now < cutoffTime
     ? `${Math.floor(msLeft / 3600000)}h ${Math.floor((msLeft % 3600000) / 60000)}m`
     : `${Math.floor(msLeft / 60000)} minutes`)
   : 'midnight tonight';
+// Absolute deadline the live countdown ticks toward: the 4pm same-day
+// dispatch cutoff, or (once that's passed) midnight tonight for next-day
+// dispatch. Sent as epoch ms so the browser can tick against its own clock.
+const endOfDay = new Date(now);
+endOfDay.setHours(23, 59, 59, 999);
+const cutoffTs = (now < cutoffTime ? cutoffTime : endOfDay).getTime();
 
 // Build the pd data blob — shared between ProductBody (SSR props) and the
 // #pd-data JSON blob (client-side variant switching). Both must stay in sync.
@@ -84,6 +90,7 @@ if (product) {
     category: product.productType || 'Shop',
     desc: product.description || '',
     descHtml: product.descriptionHtml || product.description || '',
+    highlights: product.highlights ?? [],
     priceNow: formatMoney(min.amount, cur),
     priceWas: onSale && cmp ? formatMoney(cmp.amount, cur) : '',
     save: onSale && cmp ? formatMoney((Number(cmp.amount) - Number(min.amount)).toString(), cur) : '',
@@ -130,7 +137,7 @@ if (product) {
       <ProductBody
         pd={pd as any}
         relProducts={relProducts}
-        delivery={{ cutoff: cutoffStr, eta: etaStr }}
+        delivery={{ cutoff: cutoffStr, eta: etaStr, cutoffTs }}
         reviews={reviews ?? undefined}
         shopDomain={import.meta.env.SHOPIFY_SHOP_DOMAIN as string}
       />
@@ -251,10 +258,17 @@ if (product) {
         stock.innerHTML = `<span></span>${avail ? 'In stock' : 'Out of stock'}`;
       }
 
-      // Urgency — only update if real qty is available
-      const urgency = $('.pd-urgency-msg');
-      if (urgency && v?.qty != null && v.qty > 0 && v.qty <= 10) {
-        urgency.innerHTML = `Only <strong>${v.qty} left</strong> — selling fast`;
+      // Urgency — reflect the selected variant's real stock when it's low.
+      // Updates both the "left" count and the stock bar (share of stock moved).
+      if (v?.qty != null && v.qty > 0 && v.qty <= 10) {
+        const urgency = $('.pd-urgency-msg');
+        if (urgency) urgency.innerHTML = `Only <strong>${v.qty} left</strong> — selling fast`;
+        const sold = Number(($('.pd-urgency') as HTMLElement | null)?.dataset.sold ?? 0);
+        const bar = document.querySelector<HTMLElement>('.pd-stock-bar span');
+        if (bar && sold > 0) {
+          const pct = Math.max(6, Math.min(94, Math.round((v.qty / (v.qty + sold)) * 100)));
+          bar.style.width = pct + '%';
+        }
       }
 
       // SKU
@@ -397,6 +411,37 @@ if (product) {
   document.querySelectorAll<HTMLElement>('.pd-acc-trigger').forEach((btn) =>
     btn.addEventListener('click', () => btn.closest('.pd-acc-item')?.classList.toggle('open')),
   );
+
+  // ── Live delivery countdown — tick the dispatch cutoff in real time ──
+  const cutoffEl = document.getElementById('pd-cutoff');
+  const deadline = Number(cutoffEl?.dataset.deadline);
+  if (cutoffEl && deadline > 0) {
+    let timer = 0;
+    const tick = () => {
+      const ms = deadline - Date.now();
+      if (ms <= 0) {
+        cutoffEl.textContent = 'end of day';
+        clearInterval(timer);
+        return;
+      }
+      const h = Math.floor(ms / 3600000);
+      const m = Math.floor((ms % 3600000) / 60000);
+      const s = Math.floor((ms % 60000) / 1000);
+      cutoffEl.textContent = h > 0 ? `${h}h ${m}m ${s}s` : m > 0 ? `${m}m ${s}s` : `${s}s`;
+    };
+    tick();
+    timer = window.setInterval(tick, 1000);
+  }
+
+  // ── Live "viewing now" drift — nudge the count so it feels real-time ──
+  const viewingEl = document.querySelector<HTMLElement>('.pd-viewing strong');
+  if (viewingEl) {
+    let viewing = Number(viewingEl.textContent) || 0;
+    setInterval(() => {
+      viewing = Math.max(3, viewing + (Math.random() < 0.5 ? -1 : 1));
+      viewingEl.textContent = String(viewing);
+    }, 5000);
+  }
 
   // ── Video mute toggle ──
   const videoEl = document.querySelector<HTMLVideoElement>('.pd-video-el');

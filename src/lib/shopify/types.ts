@@ -75,6 +75,8 @@ export interface Product {
   /** Aggregate star rating from the Shopify Product Reviews metafield. */
   rating?: number | null;
   ratingCount?: number | null;
+  /** Key highlights bullet list from the custom.highlights metafield. */
+  highlights?: string[];
 }
 
 /** Lightweight product shape used in grids/cards. */

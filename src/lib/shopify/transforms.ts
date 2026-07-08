@@ -124,6 +124,20 @@ export function mapProduct(p: Raw): Product {
     }
   } catch {}
 
+  // custom.highlights — either a list.*_text_field (JSON array) or a
+  // multi_line_text_field (newline-separated). Support both.
+  let highlights: string[] = [];
+  const hlMeta = p.highlights?.value;
+  if (hlMeta) {
+    try {
+      const parsed = JSON.parse(hlMeta);
+      if (Array.isArray(parsed)) highlights = parsed.map(String);
+    } catch {
+      highlights = String(hlMeta).split('\n');
+    }
+    highlights = highlights.map((s) => s.trim()).filter(Boolean);
+  }
+
   return {
     id: p.id,
     title: p.title,
@@ -143,6 +157,7 @@ export function mapProduct(p: Raw): Product {
     seo: p.seo ?? {},
     rating,
     ratingCount,
+    highlights,
   };
 }
 
