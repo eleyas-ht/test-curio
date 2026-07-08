@@ -1306,7 +1306,7 @@
       background: var(--warm-white);
       border: 1px solid var(--sand);
       border-radius: var(--r-lg);
-      padding: 28px 28px 0;
+      padding: 28px 28px 28px;
       overflow: hidden;
     }
 
@@ -1344,8 +1344,31 @@
     .pd-rev-empty {
       font-size: 13.5px;
       color: var(--muted);
-      padding: 20px 0 28px;
+      padding: 20px 0 20px;
       margin: 0;
+    }
+
+    /* Write a review — custom button shown when a product has no reviews yet */
+    .pd-rev-write-btn {
+      display: block;
+      width: 100%;
+      margin: 0 0 4px;
+      padding: 10px 0;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--clay);
+      background: transparent;
+      border: 1px solid var(--clay);
+      border-radius: var(--r-sm);
+      cursor: pointer;
+      transition: background var(--t-base), color var(--t-base);
+    }
+    .pd-rev-write-btn:hover {
+      background: var(--clay);
+      color: #fff;
     }
 
     /* ── Judge.me widget scoped inside the reviews card ── */

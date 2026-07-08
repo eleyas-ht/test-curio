@@ -1,0 +1,747 @@
+---
+// ============================================================
+//  PredictiveSearch — Astro port of the former React island.
+//
+//  Renders its own trigger button (matches the other header
+//  icons) plus a full-screen dark search overlay, and enhances
+//  them with a vanilla-TS <script> reproducing every behaviour
+//  of the React version:
+//    • Debounced live search against /api/search (220ms)
+//    • Suggestions / collections / products / pages / articles
+//    • Hint pills before typing; loading / error / empty states
+//    • Keyboard nav (Arrow keys + Enter), aria-activedescendant
+//    • Esc to close, body scroll-lock, focus trap + restore
+//    • Polite live region for screen readers
+//
+//  Styles are global (is:global) because the results markup is
+//  injected at runtime — Astro's scoped styles only attach to
+//  build-time template nodes, so they'd miss injected content.
+// ============================================================
+---
+
+<button
+  type="button"
+  class="header-icon psearch-trigger"
+  aria-label="Search"
+  aria-haspopup="dialog"
+>
+  <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6">
+    <circle cx="11" cy="11" r="7"></circle>
+    <path d="m20 20-3.5-3.5" stroke-linecap="round"></path>
+  </svg>
+</button>
+
+<div class="psearch-overlay" role="dialog" aria-modal="true" aria-label="Site search">
+  <button type="button" class="psearch-close" aria-label="Close search">✕</button>
+
+  <div class="psearch-box">
+    <span class="psearch-label">What are you looking for?</span>
+
+    <form class="psearch-form">
+      <div class="psearch-inputrow">
+        <svg class="psearch-search-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"></circle>
+          <path d="m20 20-3.5-3.5" stroke-linecap="round"></path>
+        </svg>
+        <input
+          class="psearch-input"
+          type="search"
+          placeholder="Search products, guides, journal…"
+          autocomplete="off"
+          aria-label="Search"
+          aria-autocomplete="list"
+          aria-controls="search-results"
+        />
+        <button type="submit" class="psearch-submit" aria-label="Search">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="7"></circle>
+            <path d="m20 20-3.5-3.5" stroke-linecap="round"></path>
+          </svg>
+        </button>
+      </div>
+    </form>
+
+    <p class="sr-only psearch-live" role="status" aria-live="polite"></p>
+
+    <div id="search-results" class="psearch-results" role="listbox"></div>
+  </div>
+</div>
+
+<style is:global>
+  /* ── Overlay ─────────────────────────────────────────────── */
+  .psearch-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(17, 17, 17, 0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 230;
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 100px;
+    overflow-y: auto;
+  }
+  .psearch-overlay.open {
+    display: flex;
+  }
+
+  .psearch-close {
+    position: fixed;
+    top: 26px;
+    right: 28px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 252, 247, 0.1);
+    color: var(--warm-white);
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 200ms;
+    border: none;
+    flex-shrink: 0;
+  }
+  .psearch-close:hover {
+    background: rgba(255, 252, 247, 0.2);
+  }
+
+  .psearch-box {
+    max-width: 700px;
+    width: 100%;
+    padding: 0 30px 60px;
+  }
+
+  .psearch-label {
+    font-family: var(--font-sans);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(255, 252, 247, 0.38);
+    margin-bottom: 22px;
+    display: block;
+  }
+
+  /* ── Input row ───────────────────────────────────────────── */
+  .psearch-inputrow {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border-bottom: 2px solid rgba(255, 252, 247, 0.16);
+    padding-bottom: 18px;
+    margin-bottom: 34px;
+  }
+  .psearch-search-icon {
+    width: 22px;
+    height: 22px;
+    color: rgba(255, 252, 247, 0.45);
+    stroke: currentColor;
+    fill: none;
+    flex-shrink: 0;
+  }
+  .psearch-input {
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: none;
+    font-family: var(--font-serif);
+    font-size: 34px;
+    font-weight: 400;
+    color: var(--warm-white);
+    caret-color: var(--clay);
+    outline: none;
+    line-height: 1;
+  }
+  .psearch-submit {
+    background: transparent;
+    color: rgba(255, 252, 247, 0.45);
+    padding: 8px;
+    cursor: pointer;
+    border: none;
+    flex-shrink: 0;
+    transition: color 200ms;
+  }
+  .psearch-submit:hover {
+    color: var(--clay);
+  }
+  .psearch-submit svg {
+    width: 22px;
+    height: 22px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.8;
+  }
+
+  /* ── Hint pills (pre-query) ──────────────────────────────── */
+  .psearch-hints {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .psearch-hint {
+    font-family: var(--font-sans);
+    font-size: 12.5px;
+    font-weight: 600;
+    color: rgba(255, 252, 247, 0.55);
+    background: rgba(255, 252, 247, 0.07);
+    border: 1px solid rgba(255, 252, 247, 0.12);
+    border-radius: var(--r-pill);
+    padding: 7px 16px;
+    cursor: pointer;
+    transition: background 200ms, color 200ms;
+  }
+  .psearch-hint:hover {
+    color: var(--warm-white);
+    background: rgba(255, 252, 247, 0.15);
+  }
+
+  /* ── Status messages ─────────────────────────────────────── */
+  .psearch-msg {
+    color: rgba(255, 252, 247, 0.38);
+    font-size: 14px;
+    letter-spacing: 0.05em;
+  }
+  .psearch-inline-link {
+    color: var(--warm-white);
+    text-decoration: underline;
+  }
+
+  /* ── Results ─────────────────────────────────────────────── */
+  .psearch-results-list {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+  .psearch-section-label {
+    font-family: var(--font-sans);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: rgba(255, 252, 247, 0.38);
+    margin-bottom: 10px;
+  }
+
+  .psearch-pillrow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .psearch-pill {
+    font-family: var(--font-sans);
+    font-size: 12.5px;
+    font-weight: 600;
+    color: rgba(255, 252, 247, 0.55);
+    background: rgba(255, 252, 247, 0.07);
+    border: 1px solid rgba(255, 252, 247, 0.12);
+    border-radius: var(--r-pill);
+    padding: 6px 14px;
+    text-decoration: none;
+    transition: background 200ms, color 200ms, border-color 200ms;
+    display: inline-block;
+  }
+  .psearch-pill:hover,
+  .psearch-pill.is-active {
+    color: var(--warm-white);
+    background: rgba(255, 252, 247, 0.15);
+    border-color: rgba(255, 252, 247, 0.28);
+  }
+
+  .psearch-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .psearch-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 9px 10px;
+    border-radius: 6px;
+    background: transparent;
+    text-decoration: none;
+    transition: background 160ms;
+  }
+  .psearch-row:hover,
+  .psearch-row.is-active {
+    background: rgba(255, 252, 247, 0.07);
+  }
+
+  .psearch-thumb {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    border-radius: 4px;
+    overflow: hidden;
+    background: rgba(255, 252, 247, 0.08);
+    border: 1px solid rgba(255, 252, 247, 0.12);
+  }
+  .psearch-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .psearch-thumb-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255, 252, 247, 0.45);
+  }
+
+  .psearch-row-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--warm-white);
+    font-size: 14px;
+  }
+  .psearch-row-price {
+    font-family: var(--font-sans);
+    font-size: 13px;
+    color: rgba(255, 252, 247, 0.38);
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .psearch-row-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .psearch-row-info .psearch-row-title {
+    display: block;
+  }
+  .psearch-row-excerpt {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: rgba(255, 252, 247, 0.38);
+    font-size: 12px;
+    margin-top: 2px;
+  }
+  .psearch-row-arrow {
+    color: rgba(255, 252, 247, 0.38);
+    flex-shrink: 0;
+  }
+
+  .psearch-viewall {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: rgba(255, 252, 247, 0.55);
+    text-decoration: none;
+    border-top: 1px solid rgba(255, 252, 247, 0.16);
+    padding-top: 16px;
+    transition: color 200ms;
+  }
+  .psearch-viewall:hover {
+    color: var(--warm-white);
+  }
+</style>
+
+<script>
+  import { formatMoney } from '~/lib/utils';
+
+  // ── Result shapes (from /api/search) ──────────────────────
+  interface PProduct {
+    id: string;
+    title: string;
+    handle: string;
+    featuredImage?: { url: string; altText?: string | null } | null;
+    priceRange: { minVariantPrice: { amount: string; currencyCode: string } };
+  }
+  interface PCollection { id: string; title: string; handle: string }
+  interface PPage { id: string; title: string; handle: string }
+  interface PArticle {
+    id: string;
+    title: string;
+    handle: string;
+    blog: { handle: string };
+    image?: { url: string; altText?: string | null } | null;
+    excerpt?: string | null;
+  }
+  interface PQuery { text: string; styledText: string }
+  interface Results {
+    queries: PQuery[];
+    products: PProduct[];
+    collections: PCollection[];
+    pages: PPage[];
+    articles: PArticle[];
+  }
+
+  const EMPTY: Results = { queries: [], products: [], collections: [], pages: [], articles: [] };
+
+  const HINTS = [
+    'Wireless headphones',
+    'Best smartwatches',
+    'Laptops under $1500',
+    'Buying guide: audio',
+    'The Sound Setup',
+    "Editor's picks",
+  ];
+
+  const FOCUSABLE =
+    'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+
+  // ── Inline icons (lucide equivalents of the React island's) ─
+  const ICON_FILE =
+    '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>';
+  const ICON_BOOK =
+    '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>';
+  const ICON_ARROW_ROW =
+    '<svg class="psearch-row-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>';
+  const ICON_ARROW_VIEWALL =
+    '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>';
+
+  function esc(s: unknown): string {
+    return String(s ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  const root = document.querySelector<HTMLElement>('.psearch-overlay');
+  const trigger = document.querySelector<HTMLButtonElement>('.psearch-trigger');
+
+  if (root && trigger) {
+    const input = root.querySelector<HTMLInputElement>('.psearch-input')!;
+    const form = root.querySelector<HTMLFormElement>('.psearch-form')!;
+    const closeBtn = root.querySelector<HTMLButtonElement>('.psearch-close')!;
+    const resultsEl = root.querySelector<HTMLElement>('#search-results')!;
+    const liveEl = root.querySelector<HTMLElement>('.psearch-live')!;
+
+    // ── State (mirrors the React island's useState set) ──────
+    let open = false;
+    let query = '';
+    let results: Results = EMPTY;
+    let loading = false;
+    let error = false;
+    let activeIndex = -1;
+    // Flat list of destination URLs, in render order, for keyboard nav.
+    let navUrls: string[] = [];
+
+    let debounce: ReturnType<typeof setTimeout> | undefined;
+    let previouslyFocused: HTMLElement | null = null;
+    let prevOverflow = '';
+
+    const trimmed = () => query.trim();
+    const showResults = () => trimmed().length >= 2;
+    const hasResults = () =>
+      results.queries.length +
+        results.products.length +
+        results.collections.length +
+        results.pages.length +
+        results.articles.length >
+      0;
+
+    // ── Live region text ─────────────────────────────────────
+    function liveText(): string {
+      if (!showResults()) return '';
+      if (loading) return 'Searching';
+      if (error) return 'Search failed';
+      if (!hasResults()) return `No results for ${trimmed()}`;
+      return `${results.products.length} products found`;
+    }
+
+    // ── Markup builders ──────────────────────────────────────
+    function hintsHtml(): string {
+      return `<div class="psearch-hints">${HINTS.map(
+        (h) => `<button type="button" class="psearch-hint" data-hint="${esc(h)}">${esc(h)}</button>`,
+      ).join('')}</div>`;
+    }
+
+    // Builds the full results tree AND (re)fills navUrls in render order.
+    function resultsHtml(): string {
+      navUrls = [];
+      const r = results;
+      const sections: string[] = [];
+
+      const opt = (href: string) => {
+        const i = navUrls.length;
+        navUrls.push(href);
+        return `id="sr-item-${i}" data-nav-index="${i}" role="option" aria-selected="false"`;
+      };
+
+      // Suggestions (queries) — pills
+      if (r.queries.length) {
+        const pills = r.queries
+          .map((q) => {
+            const href = `/search?q=${encodeURIComponent(q.text)}`;
+            return `<a ${opt(href)} class="psearch-pill" href="${esc(href)}">${esc(q.text)}</a>`;
+          })
+          .join('');
+        sections.push(
+          `<section><p class="psearch-section-label">Suggestions</p><div class="psearch-pillrow">${pills}</div></section>`,
+        );
+      }
+
+      // Collections — pills
+      if (r.collections.length) {
+        const pills = r.collections
+          .map((c) => {
+            const href = `/collections/${c.handle}`;
+            return `<a ${opt(href)} class="psearch-pill" href="${esc(href)}">${esc(c.title)}</a>`;
+          })
+          .join('');
+        sections.push(
+          `<section><p class="psearch-section-label">Collections</p><div class="psearch-pillrow">${pills}</div></section>`,
+        );
+      }
+
+      // Products — rows
+      if (r.products.length) {
+        const rows = r.products
+          .map((p) => {
+            const href = `/products/${p.handle}`;
+            const img = p.featuredImage
+              ? `<img src="${esc(p.featuredImage.url)}" alt="${esc(
+                  p.featuredImage.altText ?? p.title,
+                )}" loading="lazy">`
+              : '';
+            const price = formatMoney(
+              p.priceRange.minVariantPrice.amount,
+              p.priceRange.minVariantPrice.currencyCode,
+            );
+            return `<li><a ${opt(href)} class="psearch-row" href="${esc(
+              href,
+            )}"><span class="psearch-thumb">${img}</span><span class="psearch-row-title">${esc(
+              p.title,
+            )}</span><span class="psearch-row-price">${price}</span></a></li>`;
+          })
+          .join('');
+        sections.push(
+          `<section><p class="psearch-section-label">Products</p><ul class="psearch-list">${rows}</ul></section>`,
+        );
+      }
+
+      // Pages — rows
+      if (r.pages.length) {
+        const rows = r.pages
+          .map((p) => {
+            const href = `/pages/${p.handle}`;
+            return `<li><a ${opt(href)} class="psearch-row" href="${esc(
+              href,
+            )}"><span class="psearch-thumb psearch-thumb-icon">${ICON_FILE}</span><span class="psearch-row-title">${esc(
+              p.title,
+            )}</span>${ICON_ARROW_ROW}</a></li>`;
+          })
+          .join('');
+        sections.push(
+          `<section><p class="psearch-section-label">Pages</p><ul class="psearch-list">${rows}</ul></section>`,
+        );
+      }
+
+      // Articles — rows
+      if (r.articles.length) {
+        const rows = r.articles
+          .map((a) => {
+            const href = `/blogs/${a.blog.handle}/${a.handle}`;
+            const thumb = a.image
+              ? `<img src="${esc(a.image.url)}" alt="${esc(a.image.altText ?? a.title)}" loading="lazy">`
+              : ICON_BOOK;
+            const excerpt = a.excerpt
+              ? `<span class="psearch-row-excerpt">${esc(a.excerpt)}</span>`
+              : '';
+            return `<li><a ${opt(href)} class="psearch-row" href="${esc(
+              href,
+            )}"><span class="psearch-thumb psearch-thumb-icon">${thumb}</span><span class="psearch-row-info"><span class="psearch-row-title">${esc(
+              a.title,
+            )}</span>${excerpt}</span>${ICON_ARROW_ROW}</a></li>`;
+          })
+          .join('');
+        sections.push(
+          `<section><p class="psearch-section-label">Articles</p><ul class="psearch-list">${rows}</ul></section>`,
+        );
+      }
+
+      const viewAll = `<a class="psearch-viewall" href="/search?q=${encodeURIComponent(
+        trimmed(),
+      )}">View all results for "${esc(trimmed())}" ${ICON_ARROW_VIEWALL}</a>`;
+
+      return `<div class="psearch-results-list">${sections.join('')}${viewAll}</div>`;
+    }
+
+    // ── Highlight the active option + wire aria-activedescendant ─
+    function applyActive() {
+      resultsEl.querySelectorAll<HTMLElement>('[data-nav-index]').forEach((el) => {
+        const on = Number(el.dataset.navIndex) === activeIndex;
+        el.classList.toggle('is-active', on);
+        el.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      if (activeIndex >= 0) input.setAttribute('aria-activedescendant', `sr-item-${activeIndex}`);
+      else input.removeAttribute('aria-activedescendant');
+    }
+
+    // ── Render the results area from current state ───────────
+    function render() {
+      liveEl.textContent = liveText();
+      if (!showResults()) {
+        resultsEl.innerHTML = hintsHtml();
+        navUrls = [];
+      } else if (loading && !hasResults()) {
+        resultsEl.innerHTML = '<p class="psearch-msg">Searching…</p>';
+        navUrls = [];
+      } else if (error) {
+        resultsEl.innerHTML = `<p class="psearch-msg">Something went wrong. <a class="psearch-inline-link" href="/search?q=${encodeURIComponent(
+          trimmed(),
+        )}">View full results</a></p>`;
+        navUrls = [];
+      } else if (!hasResults()) {
+        resultsEl.innerHTML = `<p class="psearch-msg">No matches for "${esc(trimmed())}".</p>`;
+        navUrls = [];
+      } else {
+        resultsEl.innerHTML = resultsHtml();
+      }
+      applyActive();
+    }
+
+    // ── Debounced fetch (220ms), mirroring the React effect ──
+    function scheduleFetch() {
+      clearTimeout(debounce);
+      if (!open || !showResults()) {
+        results = EMPTY;
+        error = false;
+        loading = false;
+        render();
+        return;
+      }
+      loading = true;
+      error = false;
+      render();
+      debounce = setTimeout(async () => {
+        try {
+          const res = await fetch(`/api/search?q=${encodeURIComponent(trimmed())}`);
+          if (!res.ok) throw new Error('search failed');
+          const data = (await res.json()) as Partial<Results>;
+          results = {
+            queries: data.queries ?? [],
+            products: data.products ?? [],
+            collections: data.collections ?? [],
+            pages: data.pages ?? [],
+            articles: data.articles ?? [],
+          };
+          error = false;
+        } catch {
+          results = EMPTY;
+          error = true;
+        } finally {
+          loading = false;
+          activeIndex = -1; // React resets the active row whenever results change
+          render();
+        }
+      }, 220);
+    }
+
+    // ── Open / close ─────────────────────────────────────────
+    function openSearch() {
+      if (open) return;
+      open = true;
+      previouslyFocused = document.activeElement as HTMLElement | null;
+      root!.classList.add('open');
+      prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      render();
+      setTimeout(() => input.focus(), 50);
+    }
+
+    function closeSearch() {
+      if (!open) return;
+      open = false;
+      root!.classList.remove('open');
+      document.body.style.overflow = prevOverflow;
+      clearTimeout(debounce);
+      query = '';
+      input.value = '';
+      results = EMPTY;
+      error = false;
+      loading = false;
+      activeIndex = -1;
+      render();
+      previouslyFocused?.focus?.();
+    }
+
+    // ── Focus trap (Tab cycles within the overlay) ───────────
+    function visibleFocusables(): HTMLElement[] {
+      return Array.from(root!.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+        (el) => el.offsetParent !== null,
+      );
+    }
+
+    // ── Wiring ───────────────────────────────────────────────
+    trigger.addEventListener('click', () => openSearch());
+    closeBtn.addEventListener('click', () => closeSearch());
+
+    input.addEventListener('input', () => {
+      query = input.value;
+      activeIndex = -1;
+      scheduleFetch();
+    });
+
+    // Enter submits the form → active row or full search page.
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (activeIndex >= 0 && navUrls[activeIndex]) {
+        window.location.href = navUrls[activeIndex];
+        return;
+      }
+      const t = trimmed();
+      if (t) window.location.href = `/search?q=${encodeURIComponent(t)}`;
+    });
+
+    // Arrow keys move the active row (only when results exist).
+    input.addEventListener('keydown', (e) => {
+      if (!hasResults()) return;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        activeIndex = Math.min(activeIndex + 1, navUrls.length - 1);
+        applyActive();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        activeIndex = Math.max(activeIndex - 1, -1);
+        applyActive();
+      }
+    });
+
+    // Hint pills — delegated (they are injected at runtime).
+    resultsEl.addEventListener('click', (e) => {
+      const hint = (e.target as HTMLElement).closest<HTMLElement>('.psearch-hint');
+      if (hint && hint.dataset.hint) {
+        window.location.href = `/search?q=${encodeURIComponent(hint.dataset.hint)}`;
+      }
+    });
+
+    // Esc closes; Tab is trapped inside the overlay.
+    document.addEventListener('keydown', (e) => {
+      if (!open) return;
+      if (e.key === 'Escape') {
+        closeSearch();
+        return;
+      }
+      if (e.key === 'Tab') {
+        const els = visibleFocusables();
+        if (!els.length) return;
+        const first = els[0];
+        const last = els[els.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    });
+  }
+</script>

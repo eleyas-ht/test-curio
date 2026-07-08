@@ -3,7 +3,7 @@
 </p>
 <h1 align="center">Curio — Astro Headless Shopify Storefront</h1>
 <p align="center">
-  A production eCommerce template built with Astro 6 (SSR), React 19 islands, nanostores powered end-to-end by the Shopify Storefront API 2026-04.
+  A production eCommerce template built with Astro 7 (SSR) and nanostores, powered end-to-end by the Shopify Storefront API 2026-04.
 </p>
 <p align="center">
 <a href="#features">Features</a> |
@@ -21,7 +21,7 @@
 
 ## Features
 
-- Astro 6 with SSR via `@astrojs/node` and React 19 islands.
+- Astro 7 with SSR via `@astrojs/node` and lightweight vanilla-TS island scripts.
 - Framework-agnostic cart via nanostores (`src/stores/cart.ts`) — header badge, drawer, and cart page stay in sync.
 - Security invariant: the browser never talks to Shopify directly — all traffic uses a private Storefront token through server code; the client only calls same-origin `/api/*`.
 - Native faceted filters (Brand, Availability, Size, Color, Price with counts), sort, and pagination on collection pages.
@@ -143,7 +143,7 @@ public/
 src/
   assets/
     images/           # Optimized images (processed by Astro)
-  components/         # Astro + React section and UI components
+  components/         # Astro section and UI components
   layouts/
     BaseLayout.astro  # HTML shell, head, meta, SEO
   lib/
@@ -183,13 +183,11 @@ To make PDP specs/video/reviews fully data-driven, enable product metafields wit
 
 | Dependency | Version | Purpose |
 | --- | --- | --- |
-| Astro | ^6 | Static site framework (SSR) |
-| React | ^19 | UI islands |
-| @astrojs/node | ^10 | SSR adapter |
-| @astrojs/react | ^4 | React integration |
+| Astro | ^7 | Site framework (SSR) |
+| @astrojs/node | ^11 | SSR adapter |
 | nanostores | — | Framework-agnostic state (cart) |
 
-> `astro@6` ⇄ `@astrojs/node@^10` ⇄ `@astrojs/react@^4`, `react@19` are mutually pinned — bumping individually breaks the build.
+> `astro@7` ⇄ `@astrojs/node@^11` are mutually pinned — bumping individually breaks the build.
 
 ---
 

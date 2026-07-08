@@ -18,7 +18,7 @@
 import { getMenu } from '~/lib/shopify';
 import { CUSTOM_NAV, NAV_SOURCE, type NavItem } from '~/config/nav';
 import { SITE } from '~/config/site';
-import PredictiveSearch from '~/components/react/PredictiveSearch';
+import PredictiveSearch from '~/components/layout/PredictiveSearch.astro';
 
 // ── URL helpers ─────────────────────────────────────────────
 
@@ -89,8 +89,8 @@ function issueHtml(issue: string): string {
     </div>
     <a href="/" class="header-brand">{SITE.name}<sup>{SITE.brandSuffix}</sup></a>
     <div class="header-right">
-      {/* PredictiveSearch island renders its own trigger button */}
-      <PredictiveSearch client:load />
+      {/* PredictiveSearch renders its own trigger button + overlay */}
+      <PredictiveSearch />
       <a class="header-icon" href="/account" aria-label="Account">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6">
           <circle cx="12" cy="8" r="4" />

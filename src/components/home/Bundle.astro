@@ -7,13 +7,13 @@
 //      real variants / prices / images into BundleItemData[]
 //    • custom mode → passes static config data directly
 //
-//  Then mounts BundleSection as a React island (client:load)
-//  so the slider, item toggles, and add-to-cart are interactive.
+//  Then renders BundleSection (Astro), whose client script makes
+//  the slider, item toggles, and add-to-cart interactive.
 //
 //  Configuration: src/config/bundles.ts
 // ============================================================
-import BundleSectionReact from '~/components/react/BundleSection';
-import type { BundleItemData, BundleSlideData } from '~/components/react/BundleSection';
+import BundleSection from '~/components/home/BundleSection.astro';
+import type { BundleItemData, BundleSlideData } from '~/components/home/bundle.types';
 import { BUNDLE } from '~/config/bundles';
 import { getProduct } from '~/lib/shopify';
 import { buyerIpFrom } from '~/lib/shopify/buyer-ip';
@@ -139,5 +139,5 @@ const resolvedSlides: BundleSlideData[] = await Promise.all(
 ---
 
 {resolvedSlides.length > 0 && (
-  <BundleSectionReact client:load slides={resolvedSlides} />
+  <BundleSection slides={resolvedSlides} />
 )}

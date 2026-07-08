@@ -7,8 +7,6 @@
     "paths": {
       "~/*": ["src/*"]
     },
-    "jsx": "react-jsx",
-    "jsxImportSource": "react",
     "types": ["node"]
   }
 }

@@ -35,7 +35,7 @@ export function img(name: string): ImageMetadata | undefined {
  * Unknown local names fall back to the original string so nothing silently
  * disappears.
  *
- * Use this at render/data-build sites (raw `<img src>`, React island props,
+ * Use this at render/data-build sites (raw `<img src>`, island props,
  * client-serialized JSON) where Astro's `<Image>` component can't be used.
  */
 export function imgUrl(ref: string | null | undefined): string {

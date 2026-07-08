@@ -43,7 +43,6 @@ interface AdminGqlResponse<T> {
 interface UserError {
   field: string[] | null;
   message: string;
-  code?: string;
 }
 
 async function adminGql<T>(
@@ -91,11 +90,15 @@ async function subscribeViaShopify(email: string): Promise<void> {
   }
 
   // ── Step 1: create new customer with marketing consent ────────
+  // NOTE: customerCreate returns UserError (not CustomerUserError), which
+  // exposes only `field` and `message` — there is no `code` field. Selecting
+  // `code` here makes Shopify reject the whole query, so duplicate emails are
+  // detected from the message text below instead.
   const CREATE_MUTATION = `
     mutation customerCreate($input: CustomerInput!) {
       customerCreate(input: $input) {
         customer { id }
-        userErrors { field message code }
+        userErrors { field message }
       }
     }
   `;
@@ -114,8 +117,10 @@ async function subscribeViaShopify(email: string): Promise<void> {
   if (customer) return;
 
   // Check whether the email is already taken by an existing customer.
+  // customerCreate's UserError has no `code`, so match on field + message
+  // (e.g. "Email has already been taken").
   const emailTaken = userErrors.some(
-    (e) => e.code === 'TAKEN' || (e.field?.includes('email') && /taken|exist/i.test(e.message)),
+    (e) => e.field?.includes('email') && /taken|exist/i.test(e.message),
   );
 
   if (!emailTaken) {

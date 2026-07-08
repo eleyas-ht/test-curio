@@ -28,7 +28,8 @@ export async function getProductWidget(handle: string): Promise<JudgeMeWidget | 
     const countM  = data.widget.match(/data-number-of-reviews='(\d+)'/);
     const rating  = ratingM ? parseFloat(ratingM[1]) : 0;
     const count   = countM  ? parseInt(countM[1], 10) : 0;
-    if (!count) return null;
+    // Note: a zero-review product still returns a valid widget — we keep it so
+    // the PDP can render the "Write a review" button for the first reviewer.
 
     const productId = data.product_external_id ?? 0;
 

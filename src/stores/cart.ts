@@ -1,5 +1,5 @@
 // ============================================================
-//  Cart store (nanostores) — shared across every React island.
+//  Cart store (nanostores) — shared across every island script.
 //  Astro mounts islands as separate roots, so a framework-agnostic
 //  store is the right tool to keep the header badge, the drawer,
 //  and the PDP buttons in sync. All mutations hit same-origin

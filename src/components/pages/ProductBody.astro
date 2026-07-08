@@ -504,14 +504,28 @@ const relGrid    = relProducts.slice(0, 8);
         <aside class="pd-reviews-card" id="pd-reviews-list">
           {reviews ? (
             <>
-              <div class="pd-rev-score">
-                <span class="pd-rev-big">{reviews.rating.toFixed(1)}</span>
-                <span class="pd-rev-stars">{renderStars(reviews.rating)}</span>
-                <span class="pd-rev-count">Based on {reviews.count.toLocaleString()} reviews</span>
-              </div>
-              <div class="pd-jdgm-body">
-                <Fragment set:html={reviews.html} />
-              </div>
+              {reviews.count > 0 ? (
+                <>
+                  <div class="pd-rev-score">
+                    <span class="pd-rev-big">{reviews.rating.toFixed(1)}</span>
+                    <span class="pd-rev-stars">{renderStars(reviews.rating)}</span>
+                    <span class="pd-rev-count">Based on {reviews.count.toLocaleString()} reviews</span>
+                  </div>
+                  <div class="pd-jdgm-body">
+                    <Fragment set:html={reviews.html} />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div class="pd-rev-score">
+                    <span class="pd-rev-big">—</span>
+                    <span class="pd-rev-stars">☆☆☆☆☆</span>
+                    <span class="pd-rev-count">No reviews yet</span>
+                  </div>
+                  <p class="pd-rev-empty">Be the first to share your experience.</p>
+                  <button type="button" class="pd-rev-write-btn" id="pd-rev-write">Write a review</button>
+                </>
+              )}
               <!-- Inline write-review form (hidden until the button is clicked) -->
               <div class="pd-rev-form" id="pd-rev-form" data-product-id={reviews.productId} data-handle={pd.handle} hidden>
                 <div class="pd-rev-form-head">
@@ -625,6 +639,7 @@ const relGrid    = relProducts.slice(0, 8);
       `<script>(function(){`,
       // ── Show / hide the inline form ──────────────────────────────
       `var wlink=document.querySelector('.jdgm-write-rev-link');`,
+      `var wbtn=document.getElementById('pd-rev-write');`,
       `var form=document.getElementById('pd-rev-form');`,
       `var cancel=document.getElementById('pd-rev-form-cancel');`,
       `function openForm(){if(!form)return;form.hidden=false;form.scrollIntoView({behavior:'smooth',block:'nearest'});}`,
@@ -640,6 +655,7 @@ const relGrid    = relProducts.slice(0, 8);
       `function closeForm(){if(!form)return;form.hidden=true;resetForm();}`,
       // Capture phase so this fires before any Judge.me bubble handler
       `if(wlink)wlink.addEventListener('click',function(e){e.preventDefault();e.stopImmediatePropagation();openForm();},true);`,
+      `if(wbtn)wbtn.addEventListener('click',openForm);`,
       `if(cancel)cancel.addEventListener('click',closeForm);`,
       // ── Star picker ──────────────────────────────────────────────
       `var stars=document.querySelectorAll('.pdrs');`,
