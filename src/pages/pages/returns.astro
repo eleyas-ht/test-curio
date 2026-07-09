@@ -1,0 +1,13 @@
+---
+// Refund Policy — static route, takes precedence over the [handle] CMS catch-all.
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import RefundBody from '~/components/pages/RefundBody.astro';
+import '~/styles/pages/refund.css';
+---
+
+<BaseLayout
+  title="Refund Policy"
+  description="Our 30-day return window, what qualifies, how to start a return, and how long refunds take — the Curio refund policy, plainly stated."
+>
+  <RefundBody />
+</BaseLayout>

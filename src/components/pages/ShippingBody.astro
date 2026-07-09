@@ -1,0 +1,205 @@
+---
+// Shipping policy body — editorial layout: hero, rate table, timeline, notes.
+const methods: {
+  name: string;
+  time: string;
+  cost: string;
+  note: string;
+}[] = [
+  {
+    name: 'Standard',
+    time: '3–5 business days',
+    cost: 'Free over £50 · £3.95 under',
+    note: 'Tracked, signature not required.',
+  },
+  {
+    name: 'Express',
+    time: '1–2 business days',
+    cost: '£7.95',
+    note: 'Order before 2pm GMT for same-day dispatch.',
+  },
+  {
+    name: 'Same-day',
+    time: 'By 9pm, today',
+    cost: '£14.95',
+    note: 'Eligible London postcodes only. Shown at checkout.',
+  },
+  {
+    name: 'International',
+    time: '7–14 business days',
+    cost: 'From £12.95',
+    note: 'Duties and import taxes calculated at checkout.',
+  },
+];
+
+const timeline: { step: string; title: string; body: string }[] = [
+  {
+    step: '01',
+    title: 'Order placed',
+    body: 'You receive a confirmation email within minutes. Orders can be changed or cancelled from your account for 30 minutes after placement.',
+  },
+  {
+    step: '02',
+    title: 'Picked & packed',
+    body: 'Orders placed before 2pm GMT on a business day are dispatched the same day. Anything later goes out the next working morning.',
+  },
+  {
+    step: '03',
+    title: 'In transit',
+    body: 'A tracking link is emailed the moment your parcel leaves our warehouse. Follow it live from your account order page.',
+  },
+  {
+    step: '04',
+    title: 'Delivered',
+    body: 'Check the contents on arrival. If anything is wrong, tell us within 48 hours and we will make it right at no cost to you.',
+  },
+];
+
+const notes: { q: string; a: string }[] = [
+  {
+    q: 'Where do you ship?',
+    a: 'To more than 40 countries. A full list appears at checkout once you enter your address — if your country is not offered, we cannot currently deliver there.',
+  },
+  {
+    q: 'Who pays customs and duties?',
+    a: 'Duties and import taxes are calculated and collected at checkout, so nothing further is owed on arrival. Prices shown are inclusive for every destination we serve.',
+  },
+  {
+    q: 'What if my parcel is lost?',
+    a: 'If tracking has not moved for 7 business days, <a href="/contact">write to us</a>. We open a claim with the carrier and send a replacement rather than making you wait on the outcome.',
+  },
+  {
+    q: 'Can I ship to a different address?',
+    a: 'Yes. Enter any delivery address at checkout, or save several to your account. We do not ship to PO boxes or freight-forwarding services.',
+  },
+  {
+    q: 'Are there items you cannot ship?',
+    a: 'Lithium-battery products cannot travel by air, so a small number of items are limited to ground delivery and to domestic addresses. This is flagged on the product page.',
+  },
+];
+---
+
+<main class="ship">
+
+  <!-- ============ HERO ============ -->
+  <section class="ship-hero">
+    <div class="container">
+      <nav class="cart-breadcrumb" aria-label="Breadcrumb">
+        <a href="/">Home</a><span class="cart-bc-sep">/</span>
+        <span aria-current="page">Shipping</span>
+      </nav>
+
+      <div class="ship-hero-inner">
+        <div class="ship-hero-text">
+          <span class="eyebrow ship-eyebrow">Help Centre · Delivery</span>
+          <h1 class="ship-title">Shipping,<br><em>plainly</em> stated.</h1>
+          <p class="ship-lead">No hidden handling fees, no surprise charges at the door. What you
+            see at checkout is what you pay. Questions we haven't answered here?
+            <a href="/contact" class="ship-inline-link">Write to us</a> and a real person replies.</p>
+        </div>
+
+        <div class="ship-hero-stat-col">
+          <div class="ship-stat">
+            <span class="ship-stat-num">£50</span>
+            <span class="ship-stat-label">order value for<br>free standard delivery</span>
+          </div>
+          <div class="ship-stat">
+            <span class="ship-stat-num">2pm</span>
+            <span class="ship-stat-label">cut-off for<br>same-day dispatch</span>
+          </div>
+          <div class="ship-stat">
+            <span class="ship-stat-num">40+</span>
+            <span class="ship-stat-label">countries<br>we ship to</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ RATES ============ -->
+  <section class="ship-rates">
+    <div class="container">
+      <h2 class="ship-section-title"><span class="ed-label">Methods & rates</span></h2>
+
+      <div class="ship-table" role="table" aria-label="Shipping methods and rates">
+        <div class="ship-row ship-row-head" role="row">
+          <span role="columnheader">Method</span>
+          <span role="columnheader">Estimated time</span>
+          <span role="columnheader">Cost</span>
+        </div>
+        {methods.map((m) => (
+          <div class="ship-row" role="row">
+            <span class="ship-cell-name" role="cell">
+              {m.name}
+              <span class="ship-cell-note">{m.note}</span>
+            </span>
+            <span class="ship-cell-time" role="cell">{m.time}</span>
+            <span class="ship-cell-cost" role="cell">{m.cost}</span>
+          </div>
+        ))}
+      </div>
+
+      <p class="ship-fineprint">Estimates are counted in business days from dispatch, not from the
+        moment you order. They exclude weekends and public holidays. Carrier delays during peak
+        seasons are outside our control, though we will always chase them on your behalf.</p>
+    </div>
+  </section>
+
+  <!-- ============ TIMELINE ============ -->
+  <section class="ship-timeline-sec">
+    <div class="container">
+      <h2 class="ship-section-title"><span class="ed-label">From order to doorstep</span></h2>
+
+      <ol class="ship-timeline">
+        {timeline.map((t) => (
+          <li class="ship-step">
+            <span class="ship-step-num">{t.step}</span>
+            <h3 class="ship-step-title">{t.title}</h3>
+            <p class="ship-step-body">{t.body}</p>
+          </li>
+        ))}
+      </ol>
+    </div>
+  </section>
+
+  <!-- ============ NOTES ============ -->
+  <section class="ship-notes-sec">
+    <div class="container">
+      <h2 class="ship-section-title"><span class="ed-label">The small print</span></h2>
+
+      <div class="ship-notes">
+        {notes.map((n) => (
+          <div class="ship-note">
+            <h3 class="ship-note-q">{n.q}</h3>
+            <p class="ship-note-a" set:html={n.a} />
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CTA ============ -->
+  <section class="ship-cta">
+    <div class="container">
+      <div class="ship-cta-rule" aria-hidden="true"></div>
+      <div class="ship-cta-inner">
+        <span class="eyebrow">Something not right?</span>
+        <h2 class="ship-cta-title">We'll <em>fix</em> it.</h2>
+        <p class="ship-cta-body">Damaged on arrival, late, or never turned up — one message is all it
+          takes. Our editorial team handles support directly, so you are never explaining yourself
+          twice to a ticketing system.</p>
+        <div class="ship-cta-actions">
+          <a href="/contact" class="btn-primary">
+            Get in touch
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </a>
+          <a href="/pages/returns" class="ship-text-link">Returns & refunds</a>
+          <a href="/faq" class="ship-text-link">Read the FAQ</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>

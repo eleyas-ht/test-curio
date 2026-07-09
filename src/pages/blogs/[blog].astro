@@ -22,7 +22,7 @@ let hasNextPage = false;
 let nextCursor: string | null = null;
 
 try {
-  const result = await getBlogListing(blogHandle!, 6, afterCursor);
+  const result = await getBlogListing(blogHandle!, 7, afterCursor);
   if (result) {
     blogTitle = result.title;
     articles = result.articles;

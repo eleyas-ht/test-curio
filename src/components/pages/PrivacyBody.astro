@@ -1,0 +1,265 @@
+---
+// Privacy policy body — editorial layout: hero, principles, data table, rights, contact.
+const LAST_UPDATED = '9 July 2026';
+
+const principles: { title: string; body: string }[] = [
+  {
+    title: 'We never sell your data',
+    body: 'Not to advertisers, not to data brokers, not to anyone. There is no commercial arrangement anywhere in this business that involves passing your details to a third party for money.',
+  },
+  {
+    title: 'We collect the minimum',
+    body: 'A shipping address to send a parcel. An email to confirm it arrived. We do not ask for a date of birth, a phone number, or a gender to sell you headphones.',
+  },
+  {
+    title: 'You can leave with everything',
+    body: 'Ask, and we export every record we hold on you in a portable format — or delete it outright. No retention team will call to talk you out of it.',
+  },
+];
+
+const collected: { what: string; why: string; basis: string }[] = [
+  {
+    what: 'Name, email, delivery and billing address',
+    why: 'To process your order, deliver it, and contact you about it.',
+    basis: 'Contract',
+  },
+  {
+    what: 'Order history and returns',
+    why: 'To handle returns and warranty claims, and to meet tax and accounting obligations.',
+    basis: 'Contract · Legal obligation',
+  },
+  {
+    what: 'Payment details',
+    why: 'Processed directly by Shopify Payments. Raw card numbers never touch our servers and we cannot see them.',
+    basis: 'Contract',
+  },
+  {
+    what: 'Account credentials',
+    why: 'To let you sign in, save addresses, and manage returns. Passwords are stored hashed, never in plain text.',
+    basis: 'Contract',
+  },
+  {
+    what: 'Email address, for the newsletter',
+    why: 'To send The Edit. Only if you asked for it, and every message carries a one-click unsubscribe.',
+    basis: 'Consent',
+  },
+  {
+    what: 'Aggregate analytics and device data',
+    why: 'To see which pages are slow or broken. Truncated at the IP level and never joined to your account.',
+    basis: 'Legitimate interest',
+  },
+];
+
+const shared: { who: string; what: string }[] = [
+  { who: 'Shopify', what: 'Storefront, checkout, and order records. Our data processor.' },
+  { who: 'Shopify Payments · Stripe', what: 'Card authorisation and fraud checks. They see the card; we do not.' },
+  { who: 'Carriers', what: 'Your name, address, and phone only when needed to make a delivery.' },
+  { who: 'Email provider', what: 'Order confirmations and, if you opted in, the newsletter.' },
+  { who: 'Tax and law enforcement', what: 'Only where we are legally compelled, and only what is compelled.' },
+];
+
+const rights: { title: string; body: string }[] = [
+  { title: 'Access', body: 'Get a copy of everything we hold about you.' },
+  { title: 'Rectification', body: 'Correct anything that is wrong or out of date.' },
+  { title: 'Erasure', body: 'Have your records deleted, subject to tax retention rules.' },
+  { title: 'Portability', body: 'Receive your data in a machine-readable format.' },
+  { title: 'Objection', body: 'Object to processing based on legitimate interest.' },
+  { title: 'Withdraw consent', body: 'Unsubscribe or revoke consent at any time, without penalty.' },
+];
+
+const notes: { q: string; a: string }[] = [
+  {
+    q: 'How long do you keep my data?',
+    a: 'Order records are held for seven years, because tax law requires it. Marketing consent lasts until you withdraw it. Analytics are aggregated after 14 months. Delete your account and everything not legally required goes with it.',
+  },
+  {
+    q: 'Do you use cookies?',
+    a: 'Only what the shop needs to work — your cart, your session, your preferences — plus privacy-respecting aggregate analytics. No advertising or cross-site tracking cookies. Details on the <a href="/pages/cookies">cookies page</a>.',
+  },
+  {
+    q: 'Where is my data stored?',
+    a: 'On Shopify infrastructure, which may process data outside the UK and EEA. Those transfers rely on Standard Contractual Clauses and equivalent safeguards.',
+  },
+  {
+    q: 'Is my data used to train AI models?',
+    a: 'No. Your orders, messages, and browsing are not used to train machine-learning models, ours or anyone else\'s.',
+  },
+  {
+    q: 'What happens if there is a breach?',
+    a: 'We notify the regulator within 72 hours and tell you directly, without delay, whenever there is a meaningful risk to you. We will tell you what happened before we know exactly how.',
+  },
+  {
+    q: 'Do you track children?',
+    a: 'Curio is not intended for anyone under 16. We do not knowingly collect their data, and we delete it promptly if we learn we have.',
+  },
+];
+---
+
+<main class="privacy">
+
+  <!-- ============ HERO ============ -->
+  <section class="privacy-hero">
+    <div class="container">
+      <nav class="cart-breadcrumb" aria-label="Breadcrumb">
+        <a href="/">Home</a><span class="cart-bc-sep">/</span>
+        <span aria-current="page">Privacy</span>
+      </nav>
+
+      <div class="privacy-hero-inner">
+        <div class="privacy-hero-text">
+          <span class="eyebrow privacy-eyebrow">Legal · Privacy</span>
+          <h1 class="privacy-title">Your data,<br><em>not</em> our product.</h1>
+          <p class="privacy-lead">Most privacy policies are written to protect the company. This one
+            is written to be read. It says what we collect, why we collect it, and how to make us
+            stop. <a href="/contact" class="privacy-inline-link">Ask us anything</a> that it fails to answer.</p>
+        </div>
+
+        <div class="privacy-hero-stat-col">
+          <div class="privacy-stat">
+            <span class="privacy-stat-num">0</span>
+            <span class="privacy-stat-label">data sold to<br>third parties, ever</span>
+          </div>
+          <div class="privacy-stat">
+            <span class="privacy-stat-num">30 days</span>
+            <span class="privacy-stat-label">to answer any<br>request you make</span>
+          </div>
+          <div class="privacy-stat">
+            <span class="privacy-stat-num">72 hrs</span>
+            <span class="privacy-stat-label">breach notice,<br>if it ever happens</span>
+          </div>
+        </div>
+      </div>
+
+      <p class="privacy-updated">Last updated {LAST_UPDATED} · Curio Ltd is the data controller</p>
+    </div>
+  </section>
+
+  <!-- ============ PRINCIPLES ============ -->
+  <section class="privacy-principles">
+    <div class="container">
+      <h2 class="privacy-section-title"><span class="ed-label">Three promises</span></h2>
+
+      <div class="privacy-grid">
+        {principles.map((p, i) => (
+          <div class="privacy-card">
+            <span class="privacy-card-num">{String(i + 1).padStart(2, '0')}</span>
+            <h3 class="privacy-card-title">{p.title}</h3>
+            <p class="privacy-card-body">{p.body}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ WHAT WE COLLECT ============ -->
+  <section class="privacy-collect-sec">
+    <div class="container">
+      <h2 class="privacy-section-title"><span class="ed-label">What we collect, and why</span></h2>
+
+      <div class="privacy-table" role="table" aria-label="Personal data we collect">
+        <div class="privacy-row privacy-row-head" role="row">
+          <span role="columnheader">Data</span>
+          <span role="columnheader">Purpose</span>
+          <span role="columnheader">Lawful basis</span>
+        </div>
+        {collected.map((c) => (
+          <div class="privacy-row" role="row">
+            <span class="privacy-cell-what" role="rowheader">{c.what}</span>
+            <span class="privacy-cell-why" role="cell">{c.why}</span>
+            <span class="privacy-cell-basis" role="cell">{c.basis}</span>
+          </div>
+        ))}
+      </div>
+
+      <p class="privacy-fineprint">"Lawful basis" is the legal justification required under UK GDPR
+        and the EU GDPR to process personal data at all. Where the basis is consent, you may withdraw
+        it at any time and we stop. Where it is contract, refusing means we cannot ship you an order.</p>
+    </div>
+  </section>
+
+  <!-- ============ WHO WE SHARE WITH ============ -->
+  <section class="privacy-shared-sec">
+    <div class="container">
+      <h2 class="privacy-section-title"><span class="ed-label">Who else sees it</span></h2>
+
+      <dl class="privacy-shared">
+        {shared.map((s) => (
+          <div class="privacy-shared-item">
+            <dt class="privacy-shared-who">{s.who}</dt>
+            <dd class="privacy-shared-what">{s.what}</dd>
+          </div>
+        ))}
+      </dl>
+
+      <p class="privacy-fineprint">Each of these is a processor acting on our written instructions,
+        not an independent owner of your data. None of them may use it for their own purposes.</p>
+    </div>
+  </section>
+
+  <!-- ============ YOUR RIGHTS ============ -->
+  <section class="privacy-rights-sec">
+    <div class="container">
+      <h2 class="privacy-section-title"><span class="ed-label">Your rights</span></h2>
+
+      <ul class="privacy-rights">
+        {rights.map((r) => (
+          <li class="privacy-right">
+            <svg class="privacy-right-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M4 12.5l5 5L20 6.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <div>
+              <h3 class="privacy-right-title">{r.title}</h3>
+              <p class="privacy-right-body">{r.body}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <p class="privacy-fineprint">Exercise any of these by writing to
+        <a href="mailto:privacy@curio.example">privacy@curio.example</a>. We reply within 30 days, free
+        of charge. If you are unhappy with the outcome you may complain to the Information
+        Commissioner's Office at <a href="https://ico.org.uk" rel="noopener">ico.org.uk</a> — though we
+        would rather you gave us the chance to fix it first.</p>
+    </div>
+  </section>
+
+  <!-- ============ SMALL PRINT ============ -->
+  <section class="privacy-notes-sec">
+    <div class="container">
+      <h2 class="privacy-section-title"><span class="ed-label">The small print</span></h2>
+
+      <div class="privacy-notes">
+        {notes.map((n) => (
+          <div class="privacy-note">
+            <h3 class="privacy-note-q">{n.q}</h3>
+            <p class="privacy-note-a" set:html={n.a} />
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CTA ============ -->
+  <section class="privacy-cta">
+    <div class="container">
+      <div class="privacy-cta-rule" aria-hidden="true"></div>
+      <div class="privacy-cta-inner">
+        <span class="eyebrow">Questions about your data?</span>
+        <h2 class="privacy-cta-title">Ask a <em>human</em>.</h2>
+        <p class="privacy-cta-body">No legal department, no automated response. Write to us and
+          someone who understands both the policy and the database will answer you properly.</p>
+        <div class="privacy-cta-actions">
+          <a href="/contact" class="btn-primary">
+            Get in touch
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </a>
+          <a href="/pages/cookies" class="privacy-text-link">Cookie policy</a>
+          <a href="/pages/terms" class="privacy-text-link">Terms of service</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>

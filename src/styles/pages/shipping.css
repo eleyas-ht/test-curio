@@ -1,0 +1,382 @@
+/* ============================================================
+   SHIPPING POLICY PAGE
+============================================================ */
+
+/* ── Hero ── */
+.ship-hero {
+  background: var(--cream);
+  border-bottom: 1px solid var(--sand);
+  padding: 48px 0 72px;
+}
+
+.ship-eyebrow {
+  display: block;
+  margin-bottom: 20px;
+}
+
+.ship-hero-inner {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 64px;
+  align-items: end;
+  margin-top: 32px;
+}
+
+.ship-title {
+  font-family: var(--font-serif);
+  font-size: clamp(42px, 6vw, 80px);
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  margin-bottom: 24px;
+}
+
+.ship-title em {
+  font-style: italic;
+  color: var(--clay);
+}
+
+.ship-lead {
+  font-size: 16px;
+  line-height: 1.75;
+  color: var(--muted);
+  max-width: 540px;
+}
+
+.ship-inline-link {
+  color: var(--clay);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: opacity var(--t-fast) var(--ease);
+}
+
+.ship-inline-link:hover {
+  opacity: 0.75;
+}
+
+/* Stat column */
+.ship-hero-stat-col {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding-left: 40px;
+  border-left: 1px solid var(--sand-deep);
+}
+
+.ship-stat-num {
+  display: block;
+  font-family: var(--font-serif);
+  font-size: 38px;
+  font-weight: 400;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.ship-stat-label {
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.5;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ── Shared section heading ── */
+.ship-section-title {
+  margin-bottom: 32px;
+}
+
+/* ── Rates table ── */
+.ship-rates {
+  padding: 72px 0 0;
+}
+
+.ship-table {
+  display: flex;
+  flex-direction: column;
+}
+
+.ship-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 24px;
+  align-items: baseline;
+  padding: 24px 4px;
+  border-top: 1px solid var(--sand);
+}
+
+.ship-row:last-child {
+  border-bottom: 1px solid var(--sand);
+}
+
+.ship-row-head {
+  border-top: none;
+  padding-bottom: 14px;
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+
+.ship-cell-name {
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.ship-cell-note {
+  display: block;
+  margin-top: 6px;
+  font-size: 13.5px;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.ship-cell-time {
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.ship-cell-cost {
+  font-family: var(--font-serif);
+  font-size: 17px;
+  color: var(--ink);
+}
+
+.ship-fineprint {
+  margin-top: 28px;
+  max-width: 620px;
+  font-size: 13.5px;
+  line-height: 1.75;
+  color: var(--muted);
+}
+
+/* ── Timeline ── */
+.ship-timeline-sec {
+  padding: 80px 0 0;
+}
+
+.ship-timeline {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 40px;
+  list-style: none;
+}
+
+.ship-step {
+  padding-top: 20px;
+  border-top: 1px solid var(--sand-deep);
+}
+
+.ship-step-num {
+  display: block;
+  font-family: var(--font-serif);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  color: var(--clay);
+  margin-bottom: 14px;
+}
+
+.ship-step-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--ink);
+  margin-bottom: 10px;
+}
+
+.ship-step-body {
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--muted);
+}
+
+/* ── Small print notes ── */
+.ship-notes-sec {
+  padding: 80px 0 0;
+}
+
+.ship-notes {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 44px 64px;
+  max-width: 940px;
+}
+
+.ship-note-q {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--ink);
+  margin-bottom: 10px;
+}
+
+.ship-note-a {
+  font-size: 14.5px;
+  line-height: 1.8;
+  color: var(--muted);
+}
+
+.ship-note-a a {
+  color: var(--clay);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: opacity var(--t-fast) var(--ease);
+}
+
+.ship-note-a a:hover {
+  opacity: 0.75;
+}
+
+/* ── CTA ── */
+.ship-cta {
+  padding: 80px 0 100px;
+}
+
+.ship-cta-rule {
+  width: 100%;
+  height: 1px;
+  background: var(--sand-deep);
+  margin-bottom: 64px;
+}
+
+.ship-cta-inner {
+  max-width: 680px;
+}
+
+.ship-cta-title {
+  font-family: var(--font-serif);
+  font-size: clamp(34px, 4.5vw, 62px);
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: var(--ink);
+  margin: 16px 0 20px;
+}
+
+.ship-cta-title em {
+  font-style: italic;
+  color: var(--clay);
+}
+
+.ship-cta-body {
+  font-size: 15.5px;
+  line-height: 1.75;
+  color: var(--muted);
+  margin-bottom: 36px;
+}
+
+.ship-cta-actions {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+
+.ship-text-link {
+  font-size: 14px;
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color var(--t-fast) var(--ease);
+}
+
+.ship-text-link:hover {
+  color: var(--clay);
+}
+
+/* ── Responsive ── */
+@media (max-width: 1000px) {
+  .ship-timeline {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 36px 40px;
+  }
+}
+
+@media (max-width: 900px) {
+  .ship-hero-inner {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+
+  .ship-hero-stat-col {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 24px 40px;
+    padding-left: 0;
+    border-left: none;
+    border-top: 1px solid var(--sand-deep);
+    padding-top: 32px;
+  }
+
+  .ship-stat {
+    min-width: 100px;
+  }
+
+  .ship-notes {
+    grid-template-columns: 1fr;
+    gap: 36px;
+  }
+}
+
+@media (max-width: 640px) {
+  .ship-hero {
+    padding: 32px 0 52px;
+  }
+
+  .ship-title {
+    font-size: clamp(36px, 10vw, 56px);
+  }
+
+  .ship-rates,
+  .ship-timeline-sec,
+  .ship-notes-sec {
+    padding-top: 56px;
+  }
+
+  /* Table collapses to stacked rows: method + note, then time / cost pair. */
+  .ship-row-head {
+    display: none;
+  }
+
+  .ship-row {
+    grid-template-columns: 1fr auto;
+    gap: 8px 16px;
+    padding: 20px 4px;
+  }
+
+  .ship-cell-name {
+    grid-column: 1 / -1;
+  }
+
+  .ship-cell-time {
+    font-size: 14px;
+  }
+
+  .ship-cell-cost {
+    text-align: right;
+  }
+
+  .ship-timeline {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .ship-cta {
+    padding: 60px 0 80px;
+  }
+
+  .ship-cta-actions {
+    gap: 20px;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .ship-inline-link,
+  .ship-text-link,
+  .ship-note-a a {
+    transition: none;
+  }
+}

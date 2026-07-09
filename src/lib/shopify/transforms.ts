@@ -94,6 +94,19 @@ export function mapProductCard(p: Raw): ProductCard {
 }
 
 export function mapVariant(v: Raw): ProductVariant {
+  // Flatten Shopify storeAvailability into the client-ready pickup shape.
+  const pickup = nodes<Raw>(v.storeAvailability).map((s) => {
+    const loc = s.location ?? {};
+    const a = loc.address ?? {};
+    const addr = [a.city, a.province, a.country].filter(Boolean).join(', ');
+    return {
+      name: loc.name ?? 'Store',
+      addr,
+      status: (s.available ? 'in' : 'out') as 'in' | 'low' | 'out',
+      time: s.pickUpTime || (s.available ? 'Usually ready soon' : 'Currently unavailable for pickup'),
+    };
+  });
+
   return {
     id: v.id,
     title: v.title,
@@ -104,6 +117,7 @@ export function mapVariant(v: Raw): ProductVariant {
     price: v.price,
     compareAtPrice: v.compareAtPrice ?? null,
     image: v.image ?? null,
+    pickup,
   };
 }
 

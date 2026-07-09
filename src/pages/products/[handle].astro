@@ -108,6 +108,7 @@ if (product) {
       compareNum: v.compareAtPrice ? Number(v.compareAtPrice.amount) : 0,
       image: v.image?.url ?? '',
       options: v.selectedOptions,
+      pickup: v.pickup ?? [],
     })),
   };
 }
@@ -292,6 +293,22 @@ if (product) {
             ? `Add to Cart — <span id="pd-atc-price">${price}</span>`
             : 'Sold out';
       }
+
+      // Pickup — reflect the selected variant's primary available location
+      const pickupBlock = $('.pd-pickup');
+      if (pickupBlock) {
+        const stores = pickupFor(v);
+        const primary = stores.find((s: any) => s.status !== 'out') ?? stores[0] ?? null;
+        pickupBlock.style.display = primary ? '' : 'none';
+        if (primary) {
+          const nameEl = pickupBlock.querySelector('.pd-pickup-title strong');
+          const subEl = pickupBlock.querySelector('.pd-pickup-sub');
+          if (nameEl) nameEl.textContent = primary.name;
+          if (subEl) subEl.textContent = primary.time;
+        }
+        const trig = document.getElementById('pd-pickup-trigger');
+        if (trig) trig.style.display = stores.length > 1 ? '' : 'none';
+      }
     }
 
     atc?.addEventListener('click', async () => {
@@ -305,21 +322,6 @@ if (product) {
 
     buynowBtn?.addEventListener('click', () => {
       if (activeVariant?.id) buyNow(activeVariant.id, qty);
-    });
-
-    // ── Pairs carousel quick-add (delegated) ──
-    document.addEventListener('click', (e) => {
-      const btn = (e.target as HTMLElement)?.closest<HTMLButtonElement>('.pd-pair-add[data-pair-variant]');
-      if (!btn || btn.disabled) return;
-      e.preventDefault();
-      const variantId = btn.dataset.pairVariant;
-      if (!variantId) return;
-      btn.disabled = true;
-      btn.classList.add('atc-added');
-      void addItem(variantId).finally(() => {
-        btn.disabled = false;
-        setTimeout(() => btn.classList.remove('atc-added'), 2000);
-      });
     });
 
     // ── Wishlist toggle ──
@@ -345,23 +347,24 @@ if (product) {
       });
     }
 
-    // ── Pickup availability drawer ──
-    const PICKUP_STORES = [
-      { name: 'Japan Warehouse',          addr: 'Tokyo, Japan',              status: 'in',  time: 'Usually ready in 24 hours' },
-      { name: 'Singapore Distribution',   addr: 'Singapore',                 status: 'in',  time: 'Usually ready in 1–2 business days' },
-      { name: 'US West Coast Hub',         addr: 'Los Angeles, CA',           status: 'low', time: 'Usually ready in 3–5 business days' },
-      { name: 'UK Fulfillment Centre',     addr: 'London, United Kingdom',    status: 'out', time: 'Currently unavailable for pickup' },
-      { name: 'AU Distribution Centre',    addr: 'Sydney, Australia',         status: 'in',  time: 'Usually ready in 2–3 business days' },
-    ];
+    // ── Pickup availability drawer — real Shopify storeAvailability ──
     const STATUS_LABEL: Record<string, string> = { in: 'Available', low: 'Low stock', out: 'Unavailable' };
 
     const pickupOverlay = document.getElementById('pd-pickup-overlay');
     const pickupSubEl   = document.getElementById('pd-pickup-drawer-sub');
     const pickupStoresEl = document.getElementById('pd-pickup-stores');
 
+    // Pickup locations for the selected variant; fall back to any variant that
+    // offers pickup so the drawer isn't empty when the current one has none.
+    function pickupFor(v: any): any[] {
+      if (v?.pickup?.length) return v.pickup;
+      return pd.variants.find((x: any) => x.pickup?.length)?.pickup ?? [];
+    }
+
     function renderPickupStores() {
       if (!pickupStoresEl) return;
-      pickupStoresEl.innerHTML = PICKUP_STORES.map((s) => `
+      const stores = pickupFor(activeVariant);
+      pickupStoresEl.innerHTML = stores.map((s: any) => `
         <div class="pd-pickup-store">
           <span class="pd-pickup-store-dot ${s.status}"></span>
           <div class="pd-pickup-store-info">

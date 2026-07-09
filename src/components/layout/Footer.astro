@@ -6,17 +6,26 @@
 //  FOOTER_SOURCE in src/config/footer.ts:
 //
 //    'custom'   — edit CUSTOM_FOOTER_COLUMNS in footer.ts
-//    'shopify'  — fetch the "footer" menu from Shopify Admin
-//                 (Online Store → Navigation → footer).
-//                 Top-level items = column headings.
-//                 Their children = column links.
+//    'shopify'  — fetch the menus named by SHOPIFY_FOOTER_MENU_HANDLES
+//                 from Shopify Admin (Online Store → Navigation).
+//                 A list of handles → one menu per column.
+//                 A single handle → top-level items are the column
+//                 headings, their children are the links.
 //                 Falls back to CUSTOM_FOOTER_COLUMNS on error.
+//
+//  FOOTER_COLUMN_COUNT (footer.ts) sets how many columns render.
 //
 //  All other content (statement, tagline, social, legal, copyright)
 //  is managed in src/config/site.ts.
 // ============================================================
 import { SITE } from '~/config/site';
-import { FOOTER_SOURCE, CUSTOM_FOOTER_COLUMNS, type FooterColumn } from '~/config/footer';
+import {
+  FOOTER_SOURCE,
+  FOOTER_COLUMN_COUNT,
+  SHOPIFY_FOOTER_MENU_HANDLES,
+  CUSTOM_FOOTER_COLUMNS,
+  type FooterColumn,
+} from '~/config/footer';
 import { getMenu } from '~/lib/shopify';
 
 // ── URL helper (mirrors Header.astro) ───────────────────────
@@ -36,20 +45,44 @@ let columns: FooterColumn[] = CUSTOM_FOOTER_COLUMNS;
 
 if (FOOTER_SOURCE === 'shopify') {
   try {
-    const menu = await getMenu('footer');
-    if (menu?.items?.length) {
-      columns = menu.items.map(col => ({
-        title: col.title,
-        links: (col.items ?? []).map(item => ({
-          label: item.title,
-          href: toPath(item.url),
-        })),
-      }));
+    if (Array.isArray(SHOPIFY_FOOTER_MENU_HANDLES)) {
+      // One menu per column: menu title = heading, top-level items = links.
+      const menus = await Promise.all(
+        SHOPIFY_FOOTER_MENU_HANDLES.slice(0, FOOTER_COLUMN_COUNT).map(h =>
+          getMenu(h).catch(() => null),
+        ),
+      );
+      const resolved = menus
+        .filter(menu => menu?.items?.length)
+        .map(menu => ({
+          title: menu!.title,
+          links: menu!.items.map(item => ({
+            label: item.title,
+            href: toPath(item.url),
+          })),
+        }));
+      if (resolved.length) columns = resolved;
+    } else {
+      // One nested menu: top-level items = headings, children = links.
+      const menu = await getMenu(SHOPIFY_FOOTER_MENU_HANDLES);
+      if (menu?.items?.length) {
+        columns = menu.items.map(col => ({
+          title: col.title,
+          links: (col.items ?? []).map(item => ({
+            label: item.title,
+            href: toPath(item.url),
+          })),
+        }));
+      }
     }
   } catch {
     /* keep CUSTOM_FOOTER_COLUMNS as fallback on API error */
   }
 }
+
+// ── Trim to the configured number of columns ────────────────
+
+columns = columns.slice(0, FOOTER_COLUMN_COUNT);
 
 // ── Statement parser: *word* → <em>, \n → <br /> ────────────
 
@@ -74,7 +107,7 @@ const SOCIAL_SVGS: Record<(typeof SITE.social)[number]['icon'], string> = {
 <footer class="footer">
   <div class="container">
     <h2 class="footer-statement" set:html={statementHtml} />
-    <div class="footer-grid">
+    <div class="footer-grid" style={`--footer-cols: ${columns.length}`}>
       <div class="footer-col-brand">
         <a href="/" class="footer-brand">{SITE.name}</a>
         <p class="footer-tag">{SITE.footerTagline}</p>

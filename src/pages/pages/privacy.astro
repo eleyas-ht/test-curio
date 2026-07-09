@@ -1,0 +1,13 @@
+---
+// Privacy Policy — static route, takes precedence over the [handle] CMS catch-all.
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import PrivacyBody from '~/components/pages/PrivacyBody.astro';
+import '~/styles/pages/privacy.css';
+---
+
+<BaseLayout
+  title="Privacy Policy"
+  description="What data Curio collects, why we collect it, who else sees it, and how to access or delete it — written to be read, not to protect us."
+>
+  <PrivacyBody />
+</BaseLayout>

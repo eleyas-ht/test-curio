@@ -22,6 +22,14 @@ export interface SelectedOption {
   value: string;
 }
 
+/** A store/warehouse pickup location for a variant (Shopify storeAvailability). */
+export interface PickupLocation {
+  name: string;
+  addr: string;
+  status: 'in' | 'low' | 'out';
+  time: string;
+}
+
 export interface ProductVariant {
   id: string;
   title: string;
@@ -32,6 +40,8 @@ export interface ProductVariant {
   price: Money;
   compareAtPrice?: Money | null;
   image?: Image | null;
+  /** Real pickup availability per location (empty when pickup isn't offered). */
+  pickup?: PickupLocation[];
 }
 
 export interface ProductOptionValue {

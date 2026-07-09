@@ -98,6 +98,22 @@ export const PRODUCT_BY_HANDLE_QUERY = /* GraphQL */ `
         edges {
           node {
             ...VariantFields
+            storeAvailability(first: 20) {
+              edges {
+                node {
+                  available
+                  pickUpTime
+                  location {
+                    name
+                    address {
+                      city
+                      province
+                      country
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }

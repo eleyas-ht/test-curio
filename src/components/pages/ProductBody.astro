@@ -7,6 +7,7 @@ import { formatMoney } from '~/lib/utils';
 import { imgUrl } from '~/lib/assets';
 import type { JudgeMeWidget } from '~/lib/judgeme';
 
+interface PdPickup { name: string; addr: string; status: string; time: string }
 interface PdVariant {
   id: string;
   sku: string;
@@ -18,6 +19,7 @@ interface PdVariant {
   compareNum: number;
   image: string;
   options: { name: string; value: string }[];
+  pickup: PdPickup[];
 }
 interface PdOption { name: string; values: string[] }
 interface PdImage  { url: string; alt: string }
@@ -149,6 +151,14 @@ const categoryHref = pd.category
 // Pairs: sidebar (first 4) and related grid (up to 8)
 const pairsItems = relProducts.slice(0, 4);
 const relGrid    = relProducts.slice(0, 8);
+
+// Store pickup — real availability from Shopify (variant.storeAvailability).
+// Prefer the base variant's locations; fall back to any variant that offers
+// pickup so the block still renders when the cheapest variant has none.
+const basePickup   = baseVariant?.pickup ?? [];
+const fallbackList = pd.variants.find((v) => (v.pickup?.length ?? 0) > 0)?.pickup ?? [];
+const pickupList   = basePickup.length ? basePickup : fallbackList;
+const primaryPickup = pickupList.find((p) => p.status !== 'out') ?? pickupList[0] ?? null;
 
 // Social share links — built from the canonical product URL, title and image.
 const shareUrl   = Astro.url.origin + Astro.url.pathname;
@@ -348,19 +358,23 @@ const shareLinks = {
             </p>
           </div>
 
-          <!-- Store pickup availability -->
-          <div class="pd-pickup">
-            <svg class="pd-pickup-ico" viewBox="0 0 20 20" fill="none">
-              <circle cx="10" cy="10" r="10" fill="#5f7355" />
-              <path d="M5.8 10.4l2.7 2.6 5-5.8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"
-                stroke-linejoin="round" />
-            </svg>
-            <div class="pd-pickup-text">
-              <p class="pd-pickup-title">Pickup available at <strong>Japan Warehouse</strong></p>
-              <p class="pd-pickup-sub">Usually ready in 24 hours</p>
+          <!-- Store pickup availability (real Shopify storeAvailability) -->
+          {primaryPickup && (
+            <div class="pd-pickup">
+              <svg class="pd-pickup-ico" viewBox="0 0 20 20" fill="none">
+                <circle cx="10" cy="10" r="10" fill="#5f7355" />
+                <path d="M5.8 10.4l2.7 2.6 5-5.8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"
+                  stroke-linejoin="round" />
+              </svg>
+              <div class="pd-pickup-text">
+                <p class="pd-pickup-title">Pickup available at <strong>{primaryPickup.name}</strong></p>
+                <p class="pd-pickup-sub">{primaryPickup.time}</p>
+              </div>
+              {pickupList.length > 1 && (
+                <button class="pd-pickup-link" id="pd-pickup-trigger" aria-haspopup="dialog">Check availability at other stores</button>
+              )}
             </div>
-            <button class="pd-pickup-link" id="pd-pickup-trigger" aria-haspopup="dialog">Check availability at other stores</button>
-          </div>
+          )}
 
           <!-- Assurances -->
           <ul class="pd-assure">
@@ -421,8 +435,8 @@ const shareLinks = {
                         <span class="pd-pair-name">{p.title}</span>
                         <span class="pd-pair-price">{formatMoney(min.amount, min.currencyCode)}</span>
                       </div>
-                      {p.variantId && p.firstVariantAvailable
-                        ? <button class="pd-pair-add" data-pair-variant={p.variantId} aria-label={`Add ${p.title} to cart`}>Add</button>
+                      {p.firstVariantAvailable
+                        ? <button class="pd-pair-add" data-qv-handle={p.handle} aria-label={`Quick view ${p.title}`}>Add</button>
                         : <a class="pd-pair-add" href={`/products/${p.handle}`}>View</a>
                       }
                     </div>

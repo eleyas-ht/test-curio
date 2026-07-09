@@ -1,0 +1,237 @@
+---
+// Refund policy body — editorial layout: hero, eligibility, steps, timings, notes.
+const eligibility: { ok: boolean; title: string; body: string }[] = [
+  {
+    ok: true,
+    title: 'Opened and tested',
+    body: 'Take it out of the box. Plug it in. If it is not right for you, it still comes back — open-box is not a reason for us to refuse a return.',
+  },
+  {
+    ok: true,
+    title: 'Within 30 days',
+    body: 'The window runs from the day your parcel is delivered, not the day you ordered. Gifts bought in December run until 31 January.',
+  },
+  {
+    ok: true,
+    title: 'Faulty at any point',
+    body: 'Defects inside the manufacturer warranty are handled by us, on your behalf. A fault is never a change-of-mind return and never costs you postage.',
+  },
+  {
+    ok: false,
+    title: 'Damaged by use',
+    body: 'Scratches, drops, water ingress, or missing parts reduce or void the refund. We photograph every return on arrival and will always show you what we found.',
+  },
+  {
+    ok: false,
+    title: 'Hygiene-sealed items',
+    body: 'In-ear headphones and other sealed personal items cannot be returned once the seal is broken, unless the item is faulty. This is flagged on the product page.',
+  },
+  {
+    ok: false,
+    title: 'Final-sale items',
+    body: 'Clearance stock marked "final sale" at the point of purchase is not returnable for change of mind. Statutory rights on faulty goods are unaffected.',
+  },
+];
+
+const steps: { step: string; title: string; body: string }[] = [
+  {
+    step: '01',
+    title: 'Start the return',
+    body: 'Open your account dashboard, find the order, and choose Return. Guest checkout? Use the link in your confirmation email or write to us.',
+  },
+  {
+    step: '02',
+    title: 'Print the label',
+    body: 'We email a prepaid tracked label within one business day. Return postage is free on every domestic order — nothing is deducted from your refund.',
+  },
+  {
+    step: '03',
+    title: 'We inspect it',
+    body: 'Inspection takes up to 2 business days from the moment the parcel reaches our warehouse. You get an email the moment it passes.',
+  },
+  {
+    step: '04',
+    title: 'Money back',
+    body: 'Refunds go to the original payment method within 3–5 business days of inspection. Your bank may take a further day or two to post it.',
+  },
+];
+
+const timings: { label: string; value: string; note: string }[] = [
+  { label: 'Return window', value: '30 days', note: 'From delivery, not from order.' },
+  { label: 'Return postage', value: 'Free', note: 'Domestic orders. International is paid by the customer unless faulty.' },
+  { label: 'Inspection', value: '≤ 2 days', note: 'Business days from arrival at our warehouse.' },
+  { label: 'Refund issued', value: '3–5 days', note: 'To the original payment method, after inspection.' },
+];
+
+const notes: { q: string; a: string }[] = [
+  {
+    q: 'Do I get the original shipping cost back?',
+    a: 'Yes, if you return the whole order within the 30-day window. Expedited shipping upgrades are refunded at the standard rate. Partial returns keep the original delivery charge.',
+  },
+  {
+    q: 'What arrives damaged, or never arrives at all?',
+    a: 'That is not a return — it is our problem. Photograph it and <a href="/contact">tell us</a> within 48 hours of delivery. We send a replacement or refund in full, with no return postage and no inspection wait. See the <a href="/pages/shipping">shipping policy</a> for lost parcels.',
+  },
+  {
+    q: 'Can I exchange instead of refund?',
+    a: 'Yes — choose Exchange when you start the return and we reserve the replacement immediately, so a popular size or colour does not sell out while your parcel is in transit. Any price difference is settled when the exchange ships.',
+  },
+  {
+    q: 'How are refunds on discounted orders calculated?',
+    a: 'You are refunded what you actually paid. If a multi-buy discount no longer applies once an item is removed, the remaining items are re-priced at their standard rate and the difference comes off the refund.',
+  },
+  {
+    q: 'What about international returns?',
+    a: 'The same 30-day window applies. Return postage is paid by the customer unless the item is faulty, and duties paid at checkout are refunded with the item. Mark the parcel "returned goods" so it is not charged again on the way back.',
+  },
+  {
+    q: 'My refund has not arrived.',
+    a: 'Check the confirmation email first, then your card statement — refunds often post as a reversal against the original charge rather than a fresh credit. If it has been more than 10 business days, <a href="/contact">write to us</a> and we will chase it.',
+  },
+];
+---
+
+<main class="refund">
+
+  <!-- ============ HERO ============ -->
+  <section class="refund-hero">
+    <div class="container">
+      <nav class="cart-breadcrumb" aria-label="Breadcrumb">
+        <a href="/">Home</a><span class="cart-bc-sep">/</span>
+        <span aria-current="page">Returns & Refunds</span>
+      </nav>
+
+      <div class="refund-hero-inner">
+        <div class="refund-hero-text">
+          <span class="eyebrow refund-eyebrow">Help Centre · Returns</span>
+          <h1 class="refund-title">Thirty days.<br><em>No</em> runaround.</h1>
+          <p class="refund-lead">Open it, test it, live with it for a month. If the thing does not
+            earn its place, send it back and we return your money — return postage on us.
+            <a href="/contact" class="refund-inline-link">Ask an editor</a> if you would rather talk it through first.</p>
+        </div>
+
+        <div class="refund-hero-stat-col">
+          <div class="refund-stat">
+            <span class="refund-stat-num">30</span>
+            <span class="refund-stat-label">day window,<br>from delivery</span>
+          </div>
+          <div class="refund-stat">
+            <span class="refund-stat-num">£0</span>
+            <span class="refund-stat-label">return postage<br>on domestic orders</span>
+          </div>
+          <div class="refund-stat">
+            <span class="refund-stat-num">3–5 days</span>
+            <span class="refund-stat-label">refund, once<br>inspection clears</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ELIGIBILITY ============ -->
+  <section class="refund-eligibility">
+    <div class="container">
+      <h2 class="refund-section-title"><span class="ed-label">What comes back</span></h2>
+
+      <div class="refund-grid">
+        {eligibility.map((e) => (
+          <div class={`refund-card${e.ok ? '' : ' refund-card-no'}`}>
+            <span class="refund-card-mark" aria-hidden="true">
+              {e.ok ? (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M4 12.5l5 5L20 6.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              )}
+            </span>
+            <span class="refund-card-flag">{e.ok ? 'Returnable' : 'Not returnable'}</span>
+            <h3 class="refund-card-title">{e.title}</h3>
+            <p class="refund-card-body">{e.body}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ HOW IT WORKS ============ -->
+  <section class="refund-steps-sec">
+    <div class="container">
+      <h2 class="refund-section-title"><span class="ed-label">How a return works</span></h2>
+
+      <ol class="refund-steps">
+        {steps.map((s) => (
+          <li class="refund-step">
+            <span class="refund-step-num">{s.step}</span>
+            <h3 class="refund-step-title">{s.title}</h3>
+            <p class="refund-step-body">{s.body}</p>
+          </li>
+        ))}
+      </ol>
+    </div>
+  </section>
+
+  <!-- ============ TIMINGS ============ -->
+  <section class="refund-timings-sec">
+    <div class="container">
+      <h2 class="refund-section-title"><span class="ed-label">Timings at a glance</span></h2>
+
+      <div class="refund-table" role="table" aria-label="Return and refund timings">
+        {timings.map((t) => (
+          <div class="refund-row" role="row">
+            <span class="refund-cell-label" role="rowheader">{t.label}</span>
+            <span class="refund-cell-value" role="cell">{t.value}</span>
+            <span class="refund-cell-note" role="cell">{t.note}</span>
+          </div>
+        ))}
+      </div>
+
+      <p class="refund-fineprint">Business days exclude weekends and public holidays. Nothing on this
+        page limits your statutory rights, including the right to cancel a distance-selling contract
+        within 14 days of delivery for any reason at all.</p>
+    </div>
+  </section>
+
+  <!-- ============ NOTES ============ -->
+  <section class="refund-notes-sec">
+    <div class="container">
+      <h2 class="refund-section-title"><span class="ed-label">The small print</span></h2>
+
+      <div class="refund-notes">
+        {notes.map((n) => (
+          <div class="refund-note">
+            <h3 class="refund-note-q">{n.q}</h3>
+            <p class="refund-note-a" set:html={n.a} />
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CTA ============ -->
+  <section class="refund-cta">
+    <div class="container">
+      <div class="refund-cta-rule" aria-hidden="true"></div>
+      <div class="refund-cta-inner">
+        <span class="eyebrow">Ready to send it back?</span>
+        <h2 class="refund-cta-title">Start a <em>return</em>.</h2>
+        <p class="refund-cta-body">Everything begins in your account — find the order, choose the
+          item, and a prepaid label lands in your inbox within a business day. No forms, no queue,
+          no explaining yourself twice.</p>
+        <div class="refund-cta-actions">
+          <a href="/account/orders" class="btn-primary">
+            Go to my orders
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </a>
+          <a href="/pages/shipping" class="refund-text-link">Shipping policy</a>
+          <a href="/contact" class="refund-text-link">Contact an editor</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>

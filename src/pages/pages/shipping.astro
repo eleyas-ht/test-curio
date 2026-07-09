@@ -1,0 +1,13 @@
+---
+// Shipping Policy — static route, takes precedence over the [handle] CMS catch-all.
+import BaseLayout from '~/layouts/BaseLayout.astro';
+import ShippingBody from '~/components/pages/ShippingBody.astro';
+import '~/styles/pages/shipping.css';
+---
+
+<BaseLayout
+  title="Shipping Policy"
+  description="Delivery methods, rates, dispatch times, international duties and lost-parcel cover — the Curio shipping policy, plainly stated."
+>
+  <ShippingBody />
+</BaseLayout>

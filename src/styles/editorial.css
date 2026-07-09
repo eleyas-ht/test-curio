@@ -3982,7 +3982,7 @@
 
     .footer-grid {
       display: grid;
-      grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr;
+      grid-template-columns: 1.4fr repeat(var(--footer-cols, 4), 1fr);
       gap: 50px;
       padding-bottom: 56px;
       border-bottom: 1px solid rgba(231, 216, 197, 0.16);
@@ -5745,6 +5745,23 @@
 
       .newsletter-submit {
         height: 52px;
+      }
+    }
+
+    /* Instagram: 2 x 2 grid instead of a 4-up clipped row.
+       Posts past the 4th are hidden, matching what desktop shows. */
+    @media (max-width: 767px) {
+      .insta-posts {
+        flex-wrap: wrap;
+        row-gap: 16px;
+      }
+
+      .insta-post {
+        flex: 0 0 calc(50% - 8px);
+      }
+
+      .insta-post:nth-child(n + 5) {
+        display: none;
       }
     }
 
