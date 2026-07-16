@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "curio",
+  "name": "test-curio",
   "compatibility_date": "2026-06-01",
   // nodejs_compat provides node:crypto (used by the PKCE helpers) and
   // populates process.env from the Worker's vars/secrets at runtime.
