@@ -21,7 +21,7 @@ import Promo from '~/components/home/Promo.astro';
 import Faq from '~/components/home/sections/Faq.astro';
 import Instagram from '~/components/home/sections/Instagram.astro';
 import Newsletter from '~/components/home/sections/Newsletter.astro';
-import { getProducts, getCollectionsByHandles, getPicksProducts, getDepartmentsCollections, getProductsByHandles, getProduct, getBlogArticles } from '~/lib/shopify';
+import { getProducts, getCollectionsByHandles, getPicksProducts, getDepartmentsCollections, getProductsByHandles, getProduct, getBlogArticles, getBuyerCurrency } from '~/lib/shopify';
 import { buyerIpFrom } from '~/lib/shopify/buyer-ip';
 import { countryFrom } from '~/lib/shopify/country';
 import type { BlogArticle, ProductCard, Collection } from '~/lib/shopify/types';
@@ -68,13 +68,19 @@ if (FEATURED.mode === 'collection-tabs' && FEATURED.collectionTabs.length > 0) {
   );
 
   // Deduplicated union of every collection tab's products (used by all-tabs).
+  // Interleaved round-robin (accessories[0], phone[0], …, accessories[1], …)
+  // rather than concatenated, so the All tab leads with a mix from every
+  // collection instead of mirroring the first tab — makes tab switches visible.
   const seen = new Set<string>();
   const allProducts: ProductCard[] = [];
-  for (const r of resolved) {
-    if (r?.products) {
-      for (const p of r.products) {
-        if (!seen.has(p.id)) { seen.add(p.id); allProducts.push(p); }
-      }
+  const sources = resolved
+    .map((r) => r?.products)
+    .filter((ps): ps is ProductCard[] => !!ps);
+  const maxLen = sources.reduce((m, ps) => Math.max(m, ps.length), 0);
+  for (let i = 0; i < maxLen; i++) {
+    for (const ps of sources) {
+      const p = ps[i];
+      if (p && !seen.has(p.id)) { seen.add(p.id); allProducts.push(p); }
     }
   }
 
@@ -130,15 +136,37 @@ const picksData = await Promise.all(
   })
 );
 
+// Custom-mode Picks cards carry raw amounts (no Shopify fetch of their own), so
+// resolve the visitor's live market currency once to price them dynamically —
+// the same currency @inContext resolves for every Shopify price on the page.
+let picksCurrency = 'USD';
+if (PICKS.some((cfg) => cfg.mode === 'custom')) {
+  try {
+    picksCurrency = (await getBuyerCurrency(opts)) ?? 'USD';
+  } catch (err) {
+    console.error('[home] Picks currency load failed:', (err as Error).message);
+  }
+}
+
 // Product Showcase — in 'shopify' mode, fetch the hand-picked products (by
 // handle, in order). In 'custom' mode no API call is made; the component reads
 // SHOWCASE.customItems directly.
 let showcaseProducts: ProductCard[] = [];
+// Custom-mode slides carry raw amounts (no Shopify fetch of their own), so
+// resolve the visitor's live market currency once to price them dynamically —
+// the same currency @inContext resolves for every Shopify price on the page.
+let showcaseCurrency = 'USD';
 if (SHOWCASE.mode === 'shopify') {
   try {
     showcaseProducts = await getProductsByHandles(SHOWCASE.shopifyConfig.productHandles, opts);
   } catch (err) {
     console.error('[home] Showcase products load failed:', (err as Error).message);
+  }
+} else {
+  try {
+    showcaseCurrency = (await getBuyerCurrency(opts)) ?? 'USD';
+  } catch (err) {
+    console.error('[home] Showcase currency load failed:', (err as Error).message);
   }
 }
 
@@ -223,6 +251,7 @@ const resolvedTestimonials: ResolvedTestimonial[] = await Promise.all(
       collections={collections}
       collectionKickers={cfg.collectionsConfig.kickers}
       customItems={[...cfg.customItems]}
+      currencyCode={picksCurrency}
     />
   ))}
   <Departments collections={departmentsCollections} config={DEPARTMENTS_CONFIG} />
@@ -232,6 +261,7 @@ const resolvedTestimonials: ResolvedTestimonial[] = await Promise.all(
     shopifyProducts={showcaseProducts}
     shopifyConfig={SHOWCASE.shopifyConfig}
     customItems={SHOWCASE.customItems}
+    currencyCode={showcaseCurrency}
   />
   <Featured
     tabs={featuredTabs.length > 0 ? featuredTabs : undefined}

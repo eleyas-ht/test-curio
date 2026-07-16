@@ -15,7 +15,7 @@
 
 export type NavSource = 'shopify' | 'custom';
 
-export const NAV_SOURCE: NavSource = 'custom';
+export const NAV_SOURCE: NavSource = 'shopify';
 
 // ============================================================
 //  NavItem — 3-level nesting (top → dropdown → mega columns)
@@ -63,18 +63,18 @@ export const CUSTOM_NAV: NavItem[] = [
         title: 'Audio',
         url: '#',
         items: [
-          { title: 'Headphones', url: '/collections/accessories' },
-          { title: 'Earbuds', url: '/collections/bundle-active-life' },
-          { title: 'Speakers', url: '/collections/bundle-creator' },
+          { title: 'Headphones', url: '/collections/headphones' },
+          { title: 'Earbuds', url: '/collections/smart-home' },
+          { title: 'Speakers', url: '/collections/speakers' },
         ],
       },
       {
         title: 'Cameras',
         url: '#',
         items: [
-          { title: 'Mirrorless', url: '/collections/for-creators' },
-          { title: 'Compact', url: '/collections/for-athletes' },
-          { title: 'Accessories', url: '/collections/sale' },
+          { title: 'Mirrorless', url: '/collections/phone-tablet' },
+          { title: 'Compact', url: '/collections/pc-laptop' },
+          { title: 'Accessories', url: '/collections/accessories' },
         ],
       },
       {
@@ -83,7 +83,7 @@ export const CUSTOM_NAV: NavItem[] = [
         items: [
           { title: 'Laptops', url: '/collections/pc-laptop' },
           { title: 'Tablets', url: '/collections/phone-tablet' },
-          { title: 'Accessories', url: '/collections/home-appliances-1' },
+          { title: 'Accessories', url: '/collections/accessories' },
         ],
       },
     ],
@@ -96,7 +96,7 @@ export const CUSTOM_NAV: NavItem[] = [
         title: 'Audio',
         url: '#',
         items: [
-          { title: 'Zackpot Speaker', url: '/products/zackpot-speaker-1' },
+          { title: 'Zackpot Speaker', url: '/products/zackpot-speaker' },
           { title: 'Network Bridges', url: '/products/network-bridges-x1' },
           { title: 'Speakers', url: '/products/zackpot-speaker-1' },
         ],
@@ -115,8 +115,8 @@ export const CUSTOM_NAV: NavItem[] = [
         url: '#',
         items: [
           { title: 'Laptops', url: '/products/packbook-pro-15inch' },
-          { title: 'Tablets', url: '/products/zpad-pro-m-2' },
-          { title: 'Accessories', url: '/products/mango-router' },
+          { title: 'Tablets', url: '/products/kb-phone-15-pro' },
+          { title: 'Accessories', url: '/products/ornex-blender' },
         ],
       },
     ],

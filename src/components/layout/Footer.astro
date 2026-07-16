@@ -129,7 +129,15 @@ const SOCIAL_SVGS: Record<(typeof SITE.social)[number]['icon'], string> = {
       ))}
     </div>
     <div class="footer-bottom">
-      <span class="footer-copy">{SITE.copyright}</span>
+      <span class="footer-copy">
+        {SITE.copyright}
+        {SITE.credits.map(credit => (
+          <>
+            {' | '}{credit.prefix}{' '}
+            <a href={credit.href} target="_blank" rel="noopener noreferrer">{credit.label}</a>
+          </>
+        ))}
+      </span>
       <div class="footer-legal">
         {SITE.legal.map(link => (
           <a href={link.href}>{link.label}</a>

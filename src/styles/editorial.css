@@ -4077,6 +4077,15 @@
       color: rgba(255, 252, 247, 0.45);
     }
 
+    .footer-copy a {
+      color: rgba(255, 252, 247, 0.55);
+      transition: color var(--t-base) var(--ease);
+    }
+
+    .footer-copy a:hover {
+      color: var(--clay);
+    }
+
     .footer-legal {
       display: flex;
       gap: 22px;

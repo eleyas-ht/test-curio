@@ -159,9 +159,9 @@ export const BUNDLE: BundleConfig = {
 
       // Replace these with your real Shopify product handles (mode: 'shopify')
       productHandles: [
-        'zackpot-speaker-1', // example — replace with your handle
-        'mango-router',       // example — replace with your handle
-        'lf-7-pro',   // example — replace with your handle
+        'zackpot-speaker', // example — replace with your handle
+        'nexphone-lite-15',       // example — replace with your handle
+        'zackpot-speaker-1',   // example — replace with your handle
       ],
 
       customProducts: [
@@ -285,9 +285,9 @@ export const BUNDLE: BundleConfig = {
       discountCode: 'BUNDLE-SOUND-18',
 
       productHandles: [
-        'mango-router',
-        'lf-7-pro',
-        'network-bridges-x1',
+        'probook-ultra-x1',
+        'packbook-pro-15inch',
+        'ornex-blender',
       ],
 
       customProducts: [

@@ -32,6 +32,7 @@ interface Props {
   shopifyConfig?: ShowcaseShopifyConfig;  // → SHOWCASE.shopifyConfig
   // custom mode
   customItems?: ShowcaseCustomItem[];     // → SHOWCASE.customItems
+  currencyCode?: string;                  // buyer's live market currency (custom-mode prices)
 }
 
 const {
@@ -40,6 +41,7 @@ const {
   shopifyProducts = [],
   shopifyConfig,
   customItems = [],
+  currencyCode = 'USD',
 } = Astro.props;
 
 // ── Unified slide shape consumed by both the SSR markup and the script ────────
@@ -125,8 +127,9 @@ let slides: ShowcaseSlide[] =
         nameHtml: nameToHtml(item.title),
         // desc   → SHOWCASE.customItems[i].description (capped by customDescriptionLimit)
         desc: truncate(item.description, settings.customDescriptionLimit, 'chars'),
-        // price  → SHOWCASE.customItems[i].price  (omit to hide)
-        price: item.price ?? '',
+        // price  → SHOWCASE.customItems[i].price, formatted in the buyer's live
+        //          currency (currencyCode); omit the amount to hide the line
+        price: item.price != null ? formatMoney(item.price, currencyCode) : '',
         // href   → SHOWCASE.customItems[i].href
         href: item.href,
       }));

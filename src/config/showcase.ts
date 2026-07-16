@@ -36,7 +36,9 @@ export interface ShowcaseCustomItem {
   title: string;        // product title; wrap a word in *asterisks* for the italic clay accent → *Mini*
   description: string;  // supporting copy under the title
   href: string;         // "View Details" link destination (usually a product page)
-  price?: string;       // optional — preformatted, e.g. '$199'. Omit to hide the price line.
+  price?: number;       // optional — raw amount, e.g. 199. Formatted in the visitor's
+                        //   live currency (same market currency as every Shopify price
+                        //   on the page). Omit to hide the price line.
 }
 
 // ── Shopify source options (used when mode === 'shopify') ────────────────────
@@ -153,7 +155,7 @@ export const SHOWCASE: ShowcaseConfig = {
       description:
         '360° room-filling sound in a compact, waterproof body. 24-hour playtime with instant one-tap pairing.',
       href: '/products/zackpot-speaker',
-      price: '$199',
+      price: 95.50,
     },
     {
       // Slide 2 ────────────────────────────────────────────────────────────
@@ -163,8 +165,8 @@ export const SHOWCASE: ShowcaseConfig = {
       title: 'FlexFold *Pro*',
       description:
         'Flagship flip phone with Hasselblad co-engineered triple camera, 6.9" AMOLED display, and all-day battery.',
-      href: '/products/kb-phone-15-pro',
-      price: '$1,199',
+      href: '/products/nexphone-fold-x',
+      price: 550.52,
     },
     {
       // Slide 3 ────────────────────────────────────────────────────────────
@@ -174,8 +176,8 @@ export const SHOWCASE: ShowcaseConfig = {
       title: 'AuraBuds *Air*',
       description:
         'True wireless earbuds with adaptive ANC, ambient RGB lighting, and 36 hours of total battery life.',
-      href: '/products/zackpot-speaker-1',
-      price: '$129',
+      href: '/products/sports-wireless-earbuds',
+      price: 310,
     },
     {
       // Slide 4 ────────────────────────────────────────────────────────────
@@ -185,8 +187,8 @@ export const SHOWCASE: ShowcaseConfig = {
       title: 'ChronoX *Sport*',
       description:
         'Round AMOLED smartwatch with built-in GPS, heart rate & SpO2 tracking, and a 7-day battery life.',
-      href: '/products/zackpot-speaker',
-      price: '$299',
+      href: '/products/network-bridges-x1',
+      price: 210,
     },
   ],
 

@@ -44,8 +44,9 @@ export interface CustomPickItem {
   body: string;        // supporting copy below the title
   href: string;        // card CTA link destination (product page, collection, etc.)
   linkLabel: string;   // CTA link text, e.g. 'Shop' or 'Explore'
-  price?: string;      // optional — omit entirely to hide the price line
-  currency?: string;   // optional — shown as small text beside the price
+  price?: number;      // optional — raw amount (e.g. 399). Formatted automatically in the
+                       //            visitor's live market currency, and the currency code
+                       //            beside it stays dynamic too. Omit entirely to hide the price line.
 }
 
 // ── Products mode ────────────────────────────────────────────────────────────
@@ -184,10 +185,9 @@ export const PICKS: PicksConfig[] = [
         kicker: 'The Sound',
         title: 'A new benchmark for noise cancellation.',
         body: 'After six weeks of daily testing, the AudioCraft Pro X has quietly become the pair we reach for first. It\'s not the loudest. It\'s the most considered.',
-        href: '/products/kb-phone-15-pro',
+        href: '/products/smart-wireless-headphone',
         linkLabel: 'Shop',
-        price: '$399',
-        currency: 'USD',
+        price: 379,
       },
       {
         // Card 2 ─────────────────────────────────────────────────────────────
@@ -198,8 +198,7 @@ export const PICKS: PicksConfig[] = [
         body: 'The ChronoX Elite proves that a thoughtful smartwatch can wear like an heirloom. Brushed titanium, sapphire crystal, and an interface that respects your time.',
         href: '/products/network-bridges-x1',
         linkLabel: 'Shop',
-        price: '$499',
-        currency: 'USD',
+        price: 210,
       },
       {
         // Card 3 ─────────────────────────────────────────────────────────────
@@ -210,8 +209,7 @@ export const PICKS: PicksConfig[] = [
         body: 'The ProBook Ultra X1 doesn\'t ask to be admired. It asks to be used. After 30 days of writing, editing and shipping from it, we\'re not switching back.',
         href: '/products/packbook-pro-15inch',
         linkLabel: 'Shop',
-        price: '$1,899',
-        currency: 'USD',
+        price: 750.25,
       },
     ],
   },

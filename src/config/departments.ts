@@ -31,7 +31,7 @@ export const DEPARTMENTS_CONFIG = {
   //
   //   customCollections: ['headphones', 'gid://shopify/Collection/123', 'speakers'],
   //
-  customCollections: ['sale', 'phone-tablet', 'pc-laptop', 'kitchen-appliances', 'home-appliances-1', 'accessories'] as string[],
+  customCollections: ['headphones', 'speakers', 'tablets', 'smartwatches', 'cameras', 'smartphones'] as string[],
 
   // ── 4. Hover image preview ────────────────────────────────
   // On desktop, hovering a department row slides in that collection's image.

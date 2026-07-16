@@ -3,10 +3,12 @@
 //  Guide — BUYING GUIDE 55/45 split with cycling arrows
 //
 //  Configuration options:
-//    buttonHref  — URL the "Read the full guide" button links to.
-//                  Defaults to "#" if not provided.
+//    buttonHref  — Fallback URL the "Read the full guide" button links to
+//                  for any slide that doesn't set its own `href`.
+//                  Defaults to "blogs/news" if not provided.
 //    slides      — Optional override array. Each slide:
 //                    img, alt, tag, readtime, date, title, lede, body, items[]
+//                    plus an optional per-slide `href` (button URL).
 //                  Defaults to the built-in 5-slide dataset below.
 // ============================================================
 
@@ -22,6 +24,8 @@ interface GuideSlide {
   lede: string;
   body: string;
   items: string[];
+  /** Optional per-slide button URL. Falls back to `buttonHref` when omitted. */
+  href?: string;
 }
 
 interface Props {
@@ -31,7 +35,7 @@ interface Props {
   slides?: GuideSlide[];
 }
 
-const { buttonHref = '#', slides } = Astro.props;
+const { buttonHref = 'blogs/news', slides } = Astro.props;
 
 // Built-in 5-slide buying-guide dataset (matches home-editorial.html exactly).
 const defaultSlides: GuideSlide[] = [
@@ -41,6 +45,7 @@ const defaultSlides: GuideSlide[] = [
     tag: 'The Buying Guide',
     readtime: '12 min read',
     date: 'Updated May 2026',
+    href: 'blogs/news',
     title: 'How to choose your first <em>noise-cancelling</em> headphones.',
     lede: 'The perfect pair doesn’t exist. But the right pair for how you actually listen does — and we’ll help you find yours with four practical questions.',
     body: 'Before driver size and codec support enter the conversation, three honest answers decide whether you’ll actually wear them daily. Comfort, context, and cable philosophy matter more than any spec sheet.',
@@ -57,6 +62,7 @@ const defaultSlides: GuideSlide[] = [
     tag: 'Buying Guide',
     readtime: '10 min read',
     date: 'Updated May 2026',
+    href: 'blogs/news',
     title: 'The best wireless earbuds for <em>every budget</em> in 2026.',
     lede: 'We tested 32 pairs across every price tier to find the ones that actually deliver on sound, fit, and battery — not just the ones with the biggest marketing budget.',
     body: 'The earbud market has never been more competitive. The good news: even budget options now punch well above their weight. The hard part: finding the pair that stays comfortable for hours and fits your ear shape.',
@@ -73,6 +79,7 @@ const defaultSlides: GuideSlide[] = [
     tag: 'Buying Guide',
     readtime: '9 min read',
     date: 'Updated April 2026',
+    href: 'blogs/news',
     title: 'Smartwatch or classic? <em>Which one</em> actually fits your life.',
     lede: 'The line between fitness tracker and luxury timepiece has blurred. Here’s how to decide which screen — or hand — deserves your wrist real estate.',
     body: 'Modern smartwatches pack ECG readers, dive computers, and sleep tracking into a single case. Yet most people only use three features daily. We cut through the noise to what actually improves your day.',
@@ -89,6 +96,7 @@ const defaultSlides: GuideSlide[] = [
     tag: 'Buying Guide',
     readtime: '14 min read',
     date: 'Updated April 2026',
+    href: 'blogs/news',
     title: 'Mirrorless or DSLR: <em>the 2026</em> camera guide for creators.',
     lede: 'The industry has shifted decisively to mirrorless. But your next camera depends on what you actually shoot — not what’s trending on YouTube or Reddit.',
     body: 'Every major manufacturer has now bet their future on mirrorless. Yet DSLRs remain exceptional value on the used market, and phone cameras keep closing the gap. Here’s how to decide where your money goes.',
@@ -103,7 +111,12 @@ const defaultSlides: GuideSlide[] = [
 
 // Resolve each slide image to its bundled src/assets URL (the img path is also
 // serialized into the client slider script below, so it must be a plain URL).
-const guideSlides = (slides ?? defaultSlides).map((s) => ({ ...s, img: imgUrl(s.img) }));
+// Also resolve each slide's button URL, falling back to the shared buttonHref.
+const guideSlides = (slides ?? defaultSlides).map((s) => ({
+  ...s,
+  img: imgUrl(s.img),
+  href: s.href ?? buttonHref,
+}));
 
 // Server-render the first slide so there is no flash of empty content.
 const first = guideSlides[0];
@@ -148,8 +161,9 @@ const numerals = ['i', 'ii', 'iii', 'iv', 'v', 'vi'];
           </div>
         ))}
       </div>
-      <!-- buttonHref: set to a URL to make the button navigate to that page -->
-      <a href={buttonHref} class="btn-primary" id="guide-cta">
+      <!-- href comes from the active slide (each slide can set its own URL),
+           falling back to the shared buttonHref prop. -->
+      <a href={first.href} class="btn-primary" id="guide-cta">
         Read the full guide
         <svg viewBox="0 0 16 16" fill="currentColor">
           <path
@@ -183,10 +197,12 @@ const numerals = ['i', 'ii', 'iii', 'iv', 'v', 'vi'];
     var listEl  = document.getElementById('guide-list');
     var prevBtn = document.getElementById('guide-prev');
     var nextBtn = document.getElementById('guide-next');
+    var ctaEl   = document.getElementById('guide-cta');
 
     function render(i) {
       var d = guideSlides[i];
 
+      if (d.href) ctaEl.setAttribute('href', d.href);
       imgEl.src = d.img;
       imgEl.alt = d.alt;
       tagEl.textContent = d.tag;

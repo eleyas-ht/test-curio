@@ -11,8 +11,12 @@ import { formatMoney, isOnSale, discountPercent } from '~/lib/utils';
 interface Props {
   product: ProductCard;
   actions?: boolean;
+  /** Whether to show the product description tagline at all. Defaults to true. */
+  showDescription?: boolean;
+  /** How many characters of the product description to show in the tagline. Defaults to 40. */
+  descriptionChars?: number;
 }
-const { product: p, actions = false } = Astro.props;
+const { product: p, actions = false, showDescription = true, descriptionChars = 40 } = Astro.props;
 const slug = (s?: string) => (s ?? 'other').toLowerCase().replace(/[^a-z0-9]+/g, '-');
 const min = p.priceRange.minVariantPrice;
 const max = p.priceRange.maxVariantPrice;
@@ -31,6 +35,14 @@ const canQuickAdd = !soldOut && !ranged && !!p.variantId && firstVariantAvailabl
 
 // Rating display: real value from metafield, or null (no stars shown when absent)
 const ratingDisplay = p.rating != null ? p.rating.toFixed(1) : null;
+
+// Tagline: truncated product description (whitespace collapsed), capped at
+// `descriptionChars` and suffixed with an ellipsis when trimmed.
+const descriptionFull = (p.description ?? '').replace(/\s+/g, ' ').trim();
+const descriptionPreview =
+  descriptionFull.length > descriptionChars
+    ? `${descriptionFull.slice(0, descriptionChars).trimEnd()}…`
+    : descriptionFull;
 
 // Compact product snapshot for the compare store (serialised as a data attribute)
 const compareData = JSON.stringify({
@@ -117,7 +129,7 @@ const wishlistData = JSON.stringify({
   </div>
   <p class="feat-category">{cat}</p>
   <a href={href}><p class="feat-name">{p.title}</p></a>
-  <p class="feat-tagline"><em>{p.vendor || cat}</em></p>
+  {showDescription && descriptionPreview && <p class="feat-tagline"><em>{descriptionPreview}</em></p>}
   <div class="feat-bottom-row">
     <div class="feat-price-row">
       {onSale && cmp && !ranged && <span class="feat-price-orig">{formatMoney(cmp.amount, cmp.currencyCode)}</span>}

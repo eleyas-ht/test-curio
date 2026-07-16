@@ -56,11 +56,16 @@ export const SITE = {
   /** Footer legal row. Footer menu columns live in src/config/footer.ts. */
   legal: [
     { label: 'Privacy', href: '/pages/privacy' },
-    { label: 'Terms', href: '/pages/terms' },
-    { label: 'Cookies', href: '/pages/cookies' },
-    { label: 'Accessibility', href: '/pages/accessibility' },
+    { label: 'Terms', href: '/pages/returns' },
+    { label: 'Cookies', href: '/pages/privacy' },
+    { label: 'Accessibility', href: '/pages/shipping' },
   ],
-  copyright: '© 2026 Curio · The Edit · All rights reserved',
+  copyright: 'Copyright © Curio',
+  /** Attribution links appended to the copyright line, separated by `|`. */
+  credits: [
+    { prefix: 'Designed by', label: 'HasThemes', href: 'https://hasthemes.com/' },
+    { prefix: 'Powered by', label: 'Astro', href: 'https://astro.build/' },
+  ],
   /**
    * Cart drawer "You May Also Like" recommendations.
    *
